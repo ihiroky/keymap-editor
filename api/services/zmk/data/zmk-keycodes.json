@@ -2353,8 +2353,8 @@
     "footnotes": {}
   },
   {
-    "names": ["INTERNATIONAL_1", "INT1", "INT_RO"],
-    "description": "ろ (International 1)",
+    "names": ["INTERNATIONAL_1", "INT1", "INT_RO", "JP_BACKSLASH"],
+    "description": "ろ, \\  (International 1) or _ (JP Underscore)",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=86",
@@ -2383,8 +2383,8 @@
     "footnotes": {}
   },
   {
-    "names": ["INTERNATIONAL_3", "INT3", "INT_YEN"],
-    "description": "¥ (International 3)",
+    "names": ["INTERNATIONAL_3", "INT3", "INT_YEN", "JP_YEN"],
+    "description": "¥ (International 3) or | (JP Pipe)",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=86",
@@ -2398,7 +2398,7 @@
     "footnotes": {}
   },
   {
-    "names": ["INTERNATIONAL_4", "INT4", "INT_HENKAN"],
+    "names": ["INTERNATIONAL_4", "INT4", "INT_HENKAN", "JP_HENKAN"],
     "description": "変換 (International 4)",
     "context": "Keyboard",
     "clarify": false,
@@ -2413,7 +2413,7 @@
     "footnotes": {}
   },
   {
-    "names": ["INTERNATIONAL_5", "INT5", "INT_MUHENKAN"],
+    "names": ["INTERNATIONAL_5", "INT5", "INT_MUHENKAN", "JP_MUHENKAN"],
     "description": "無変換 (International 5)",
     "context": "Keyboard",
     "clarify": false,
@@ -2429,7 +2429,7 @@
   },
   {
     "names": ["INTERNATIONAL_6", "INT6", "INT_KPJPCOMMA"],
-    "description": ", [カソマ] (International 6)",
+    "description": ", [カンマ] (International 6)",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=87",
@@ -2488,8 +2488,8 @@
     "footnotes": {}
   },
   {
-    "names": ["LANGUAGE_1", "LANG1", "LANG_HANGEUL"],
-    "description": "한/영 (Language 1)",
+    "names": ["LANGUAGE_1", "LANG1", "LANG_HANGEUL", "LANG_KANA"],
+    "description": "한/영, かな (Language 1)",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=87",
@@ -2503,8 +2503,8 @@
     "footnotes": {}
   },
   {
-    "names": ["LANGUAGE_2", "LANG2", "LANG_HANJA"],
-    "description": "한자 (Language 2)",
+    "names": ["LANGUAGE_2", "LANG2", "LANG_HANJA", "LANG_EISU"],
+    "description": "한자, 英数 (Language 2)",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=87",
@@ -5545,6 +5545,516 @@
       "android": null,
       "macos": null,
       "ios": null
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_EXCLAMATION"],
+    "description": "Exclamation Mark (!) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_DQUOTE"],
+    "description": "Quote (') for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_HASH"],
+    "description": "Hash (#) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_DOLLAR"],
+    "description": "Dollar Sign ($) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_PERCENT"],
+    "description": "Percent Sign (%) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_AMPERSAND"],
+    "description": "Ampersand (&) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_QUOTE"],
+    "description": "Quote (') for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_LPAREN"],
+    "description": "Right Bracket (]) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_RPAREN"],
+    "description": "Right Parenthesis ()) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_MINUS"],
+    "description": "Minus Sign (-) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_EQUAL"],
+    "description": "Equal (=) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_CARET"],
+    "description": "Caret (^) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_TILDE"],
+    "description": "Tilde (~) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_PIPE"],
+    "description": "Pipe (|) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_AT"],
+    "description": "At Sign (@) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_BACKQUOTE"],
+    "description": "Backquote (`) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_LBRACKET"],
+    "description": "Left Bracket ([) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_LBRACE"],
+    "description": "Left Brace ({) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_RBRACKET"],
+    "description": "Right Bracket (]) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_RBRACE"],
+    "description": "Right Brace (}) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_SEMICOLON"],
+    "description": "Semicolon (;) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_PLUS"],
+    "description": "Minus Sign (-) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_COLON"],
+    "description": "Colon (:) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_ASTERISK"],
+    "description": "Asterisk (*) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_COMMA"],
+    "description": "Comma (,) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_LESS_THAN"],
+    "description": "Less than (<) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_DOT"],
+    "description": "Dot (.) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_GREATER_THAN"],
+    "description": "Greater than (>) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_SLASH"],
+    "description": "Slash (/) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_QUESTION"],
+    "description": "Question mark (?) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_UNDERSCORE"],
+    "description": "Underscore (_) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_KANA"],
+    "description": "Kana (かな) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_EISU"],
+    "description": "Eisu (英数) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
+    },
+    "footnotes": {}
+  },
+  {
+    "names": ["JP_HANZEN"],
+    "description": "Eisu (英数) for JP Keyboard",
+    "context": "Keyboard",
+    "clarify": false,
+    "documentation": "",
+    "os": {
+      "windows": true,
+      "linux": true,
+      "android": true,
+      "macos": true,
+      "ios": true
     },
     "footnotes": {}
   }
