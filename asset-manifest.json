@@ -1,21 +1,21 @@
 {
   "files": {
-    "main.css": "/static/css/main.ed9528ef.css",
-    "main.js": "/static/js/main.31e8da1d.js",
-    "static/media/fa-solid-900.ttf": "/static/media/fa-solid-900.e615bbcb258550973c16.ttf",
-    "static/media/fa-brands-400.ttf": "/static/media/fa-brands-400.b823fc0dbb5a5f0c21bb.ttf",
-    "static/media/fa-solid-900.woff2": "/static/media/fa-solid-900.59edf72a325ac2048d60.woff2",
-    "static/media/fa-brands-400.woff2": "/static/media/fa-brands-400.ebb7a127d2d8ee6f1832.woff2",
-    "static/media/fa-regular-400.ttf": "/static/media/fa-regular-400.0d03b1bbd1d62c1e1284.ttf",
-    "static/media/fa-regular-400.woff2": "/static/media/fa-regular-400.0caf4c6cf244a90efcc5.woff2",
-    "static/media/fa-v4compatibility.ttf": "/static/media/fa-v4compatibility.4baccb548138840fa33a.ttf",
-    "static/media/fa-v4compatibility.woff2": "/static/media/fa-v4compatibility.afac89562a5301459069.woff2",
-    "index.html": "/index.html",
-    "main.ed9528ef.css.map": "/static/css/main.ed9528ef.css.map",
-    "main.31e8da1d.js.map": "/static/js/main.31e8da1d.js.map"
+    "main.css": "/keymap-editor/static/css/main.d77f6d65.css",
+    "main.js": "/keymap-editor/static/js/main.14e44220.js",
+    "static/media/fa-solid-900.ttf": "/keymap-editor/static/media/fa-solid-900.e615bbcb258550973c16.ttf",
+    "static/media/fa-brands-400.ttf": "/keymap-editor/static/media/fa-brands-400.b823fc0dbb5a5f0c21bb.ttf",
+    "static/media/fa-solid-900.woff2": "/keymap-editor/static/media/fa-solid-900.59edf72a325ac2048d60.woff2",
+    "static/media/fa-brands-400.woff2": "/keymap-editor/static/media/fa-brands-400.ebb7a127d2d8ee6f1832.woff2",
+    "static/media/fa-regular-400.ttf": "/keymap-editor/static/media/fa-regular-400.0d03b1bbd1d62c1e1284.ttf",
+    "static/media/fa-regular-400.woff2": "/keymap-editor/static/media/fa-regular-400.0caf4c6cf244a90efcc5.woff2",
+    "static/media/fa-v4compatibility.ttf": "/keymap-editor/static/media/fa-v4compatibility.4baccb548138840fa33a.ttf",
+    "static/media/fa-v4compatibility.woff2": "/keymap-editor/static/media/fa-v4compatibility.afac89562a5301459069.woff2",
+    "index.html": "/keymap-editor/index.html",
+    "main.d77f6d65.css.map": "/keymap-editor/static/css/main.d77f6d65.css.map",
+    "main.14e44220.js.map": "/keymap-editor/static/js/main.14e44220.js.map"
   },
   "entrypoints": [
-    "static/css/main.ed9528ef.css",
-    "static/js/main.31e8da1d.js"
+    "static/css/main.d77f6d65.css",
+    "static/js/main.14e44220.js"
   ]
 }
