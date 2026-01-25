@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/keymap-editor/static/css/main.d77f6d65.css",
-    "main.js": "/keymap-editor/static/js/main.14e44220.js",
+    "main.js": "/keymap-editor/static/js/main.b658d9a7.js",
     "static/media/fa-solid-900.ttf": "/keymap-editor/static/media/fa-solid-900.e615bbcb258550973c16.ttf",
     "static/media/fa-brands-400.ttf": "/keymap-editor/static/media/fa-brands-400.b823fc0dbb5a5f0c21bb.ttf",
     "static/media/fa-solid-900.woff2": "/keymap-editor/static/media/fa-solid-900.59edf72a325ac2048d60.woff2",
@@ -12,10 +12,10 @@
     "static/media/fa-v4compatibility.woff2": "/keymap-editor/static/media/fa-v4compatibility.afac89562a5301459069.woff2",
     "index.html": "/keymap-editor/index.html",
     "main.d77f6d65.css.map": "/keymap-editor/static/css/main.d77f6d65.css.map",
-    "main.14e44220.js.map": "/keymap-editor/static/js/main.14e44220.js.map"
+    "main.b658d9a7.js.map": "/keymap-editor/static/js/main.b658d9a7.js.map"
   },
   "entrypoints": [
     "static/css/main.d77f6d65.css",
-    "static/js/main.14e44220.js"
+    "static/js/main.b658d9a7.js"
   ]
 }
