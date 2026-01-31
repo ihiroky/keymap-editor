@@ -31,12 +31,15 @@
 .code { padding: 0px 4px; margin-left: -2px; margin-right: -2px; }
 
 .code {
-	cursor: pointer;
 	display: inline-block;
 	box-sizing: content-box;
 	min-width: 0.5em;
 	text-align: center;
 	border-radius: 4px;
+}
+
+.code[data-clickable="true"] {
+	cursor: pointer;
 }
 .code.highlight {
 	background-color: white !important;
@@ -58,9 +61,13 @@
 }
 
 .behaviour-binding:hover {
-  cursor: pointer;
   color: var(--hover-selection) !important;
   background-color: white;
   border-radius: 5px 0;
   opacity: 1;
+}
+
+.key[data-selected="true"] {
+  outline: 3px solid var(--selection);
+  outline-offset: 2px;
 }

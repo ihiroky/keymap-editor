@@ -4,16 +4,19 @@ import isEmpty from 'lodash/isEmpty'
 import keyBy from 'lodash/keyBy'
 import times from 'lodash/times'
 import PropTypes from 'prop-types'
-import { useContext, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 
 import KeyboardLayout from './KeyboardLayout'
 import LayerSelector from './LayerSelector'
+import KeyEditPane from './Keys/KeyEditPane'
 import { getKeyBoundingBox } from '../key-units'
 import { DefinitionsContext, SearchContext } from '../providers'
+import styles from './styles.module.css'
 
 function Keyboard(props) {
   const { layout, keymap, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
+  const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
   const {keycodes, behaviours} = useContext(DefinitionsContext)
 
   const availableLayers = useMemo(() => isEmpty(keymap) ? [] : (
@@ -89,6 +92,32 @@ function Keyboard(props) {
     }
   }, [boundingBox])
 
+  const activeBindings = useMemo(() => layout.map((_, i) => (
+    get(keymap, ['layers', activeLayer, i], { value: '&none', params: [] })
+  )), [layout, keymap, activeLayer])
+
+  useEffect(() => {
+    if (selectedKeyIndex === null) {
+      return
+    }
+    if (selectedKeyIndex >= layout.length) {
+      setSelectedKeyIndex(null)
+    }
+  }, [selectedKeyIndex, layout.length, setSelectedKeyIndex])
+
+  const selectedKey = useMemo(() => {
+    if (selectedKeyIndex === null) {
+      return null
+    }
+
+    const label = get(layout, [selectedKeyIndex, 'label'])
+    return {
+      index: selectedKeyIndex,
+      label: label || `Key ${selectedKeyIndex + 1}`,
+      binding: activeBindings[selectedKeyIndex]
+    }
+  }, [selectedKeyIndex, activeBindings, layout])
+
   const handleCreateLayer = useMemo(() => function () {
     const layer = keymap.layers.length
     const binding = '&trans'
@@ -111,6 +140,28 @@ function Keyboard(props) {
 
     onUpdate({ ...keymap, layers })
   }, [keymap, onUpdate])
+
+  const handleSelectKey = useMemo(() => function(keyIndex) {
+    setSelectedKeyIndex(keyIndex)
+  }, [setSelectedKeyIndex])
+
+  const handleApplyBinding = useMemo(() => function(updatedBinding) {
+    if (selectedKeyIndex === null) {
+      return
+    }
+    const updatedLayer = [
+      ...activeBindings.slice(0, selectedKeyIndex),
+      updatedBinding,
+      ...activeBindings.slice(selectedKeyIndex + 1)
+    ]
+
+    handleUpdateLayer(activeLayer, updatedLayer)
+  }, [
+    activeBindings,
+    activeLayer,
+    selectedKeyIndex,
+    handleUpdateLayer
+  ])
 
   const handleRenameLayer = useMemo(() => function (layerName) {
     const layer_names = [
@@ -138,24 +189,36 @@ function Keyboard(props) {
 
   return (
     <>
-      <LayerSelector
-        layers={keymap.layer_names}
-        activeLayer={activeLayer}
-        onSelect={setActiveLayer}
-        onNewLayer={handleCreateLayer}
-        onRenameLayer={handleRenameLayer}
-        onDeleteLayer={handleDeleteLayer}
-      />
       <SearchContext.Provider value={{ getSearchTargets, sources }}>
-        <div style={getWrapperStyle()}>
-          {isReady() && (
-            <KeyboardLayout
-              data-layer={activeLayer}
-              layout={layout}
-              bindings={keymap.layers[activeLayer]}
-              onUpdate={event => handleUpdateLayer(activeLayer, event)}
+        <div className={styles.workspace}>
+          <div className={styles['keyboard-pane']}>
+            <LayerSelector
+              layers={keymap.layer_names}
+              activeLayer={activeLayer}
+              onSelect={setActiveLayer}
+              onNewLayer={handleCreateLayer}
+              onRenameLayer={handleRenameLayer}
+              onDeleteLayer={handleDeleteLayer}
             />
-          )}
+            <div className={styles['keyboard-wrapper']} style={getWrapperStyle()}>
+              {isReady() && (
+                <KeyboardLayout
+                  data-layer={activeLayer}
+                  layout={layout}
+                  bindings={activeBindings}
+                  selectedKeyIndex={selectedKeyIndex}
+                  onSelectKey={handleSelectKey}
+                  onUpdate={event => handleUpdateLayer(activeLayer, event)}
+                />
+              )}
+            </div>
+          </div>
+          <KeyEditPane
+            className={styles['side-pane']}
+            selectedKey={selectedKey}
+            onApply={handleApplyBinding}
+            onClose={() => setSelectedKeyIndex(null)}
+          />
         </div>
       </SearchContext.Provider>
     </>

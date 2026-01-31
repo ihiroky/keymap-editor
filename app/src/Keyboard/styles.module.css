@@ -3,6 +3,27 @@
   z-index: 2;
 }
 
+.workspace {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 20px 40px 40px;
+}
+
+.keyboard-pane {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.keyboard-wrapper {
+  position: relative;
+}
+
+.side-pane {
+  flex: 0 0 320px;
+}
+
 .layer-selector ul {
   display: inline-block;
 	list-style-type: none;

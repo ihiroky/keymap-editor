@@ -1,8 +1,6 @@
-import cloneDeep from 'lodash/cloneDeep'
 import get from 'lodash/get'
-import pick from 'lodash/pick'
 import PropTypes from 'prop-types'
-import { useContext, useState } from 'react'
+import { useContext } from 'react'
 
 import { SearchContext } from '../../providers'
 import { getBehaviourParams } from '../../keymap'
@@ -10,23 +8,13 @@ import { getKeyStyles } from '../../key-units'
 
 import KeyParamlist from './KeyParamlist'
 import * as keyPropTypes from './keyPropTypes'
-import {
-  createPromptMessage,
-  hydrateTree,
-  isSimple,
-  isComplex,
-  makeIndex
-} from './util'
+import { hydrateTree, isSimple, isComplex, makeIndex } from './util'
 import styles from './styles.module.css'
 
-import Modal from '../../Common/Modal'
-import ValuePicker from '../../ValuePicker'
-
 function Key(props) {
-  const { getSearchTargets, sources } = useContext(SearchContext)
+  const { sources } = useContext(SearchContext)
   const { position, rotation, size } = props
-  const { label, value, params, onUpdate } = props
-  const [editing, setEditing] = useState(null)
+  const { label, value, params, selected, onSelect } = props
 
   const bind = value
   const behaviour = get(sources.behaviours, bind)
@@ -46,37 +34,6 @@ function Key(props) {
     event.target.classList.remove(styles.highlight)
   }
 
-  function handleSelectCode(event) {
-    const editing = pick(event, ['target', 'codeIndex', 'code', 'param'])
-    editing.targets = getSearchTargets(editing.param, value)
-    setEditing(editing)
-  }
-  function handleSelectBehaviour(event) {
-    event.stopPropagation()
-    setEditing({
-      target: event.target,
-      targets: getSearchTargets('behaviour', value),
-      codeIndex: 0,
-      code: value,
-      param: 'behaviour'
-    })
-  }
-  function handleSelectValue(source) {
-    const { codeIndex } = editing
-    const updated = cloneDeep(normalized)
-    const index = makeIndex(updated)
-    const targetCode = index[codeIndex]
-
-    targetCode.value = source.code
-    targetCode.params = []
-    index.forEach(node => {
-      delete node.source
-    })
-
-    setEditing(null)
-    onUpdate(pick(updated, ['value', 'params']))
-  }
-
   return (
     <div
       className={styles.key}
@@ -85,14 +42,15 @@ function Key(props) {
       data-h={size.h}
       data-simple={isSimple(normalized)}
       data-long={isComplex(normalized, behaviourParams)}
+      data-selected={selected ? 'true' : 'false'}
       style={positioningStyle}
       onMouseOver={onMouseOver}
       onMouseLeave={onMouseLeave}
+      onClick={onSelect}
     >
     {behaviour ? (
       <span
         className={styles['behaviour-binding']}
-        onClick={handleSelectBehaviour}
       >
         {behaviour.code}
       </span>
@@ -102,22 +60,8 @@ function Key(props) {
       index={index}
       params={behaviourParams}
       values={normalized.params}
-      onSelect={handleSelectCode}
+      onSelect={undefined}
     />
-    {editing && (
-      <Modal>
-        <ValuePicker
-          target={editing.target}
-          value={editing.code}
-          param={editing.param}
-          choices={editing.targets}
-          prompt={createPromptMessage(editing.param)}
-          searchKey="code"
-          onSelect={handleSelectValue}
-          onCancel={() => setEditing(null)}
-        />
-      </Modal>
-    )}
   </div>
   )
 }
@@ -139,7 +83,8 @@ Key.propTypes = {
   label: PropTypes.string,
   value: keyPropTypes.value.isRequired,
   params: PropTypes.arrayOf(keyPropTypes.node),
-  onUpdate: PropTypes.func.isRequired
+  selected: PropTypes.bool,
+  onSelect: PropTypes.func
 }
 
 export default Key
