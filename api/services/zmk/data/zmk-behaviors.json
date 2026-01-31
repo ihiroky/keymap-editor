@@ -65,7 +65,38 @@
     "code": "&kp",
     "name": "Key Press",
     "params": ["code"],
-    "includes": ["#include <dt-bindings/zmk/keys.h>"]
+    "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
+  },
+  {
+    "code": "&mkp",
+    "name": "Mouse Key Press",
+    "params": ["command"],
+    "includes": ["#include <dt-bindings/zmk/pointing.h>"],
+    "commands": [{
+      "code": "MB1",
+      "description": "Left click."
+    }, {
+      "code": "LCLK",
+      "description": "Left click."
+    }, {
+      "code": "MB2",
+      "description": "Right click."
+    }, {
+      "code": "RCLK",
+      "description": "Right click."
+    },{
+      "code": "MB3",
+      "description": "Middle click."
+    }, {
+      "code": "MCLK",
+      "description": "Middle click."
+    },{
+      "code": "MB4",
+      "description": "Mouse button 4."
+    }, {
+      "code": "MB5",
+      "description": "Mouse button 5."
+    }]
   },
   {
     "code": "&key_repeat",
@@ -126,6 +157,11 @@
   {
     "code": "&reset",
     "name": "Reset",
+    "params": []
+  },
+  {
+    "code": "&sys_reset",
+    "name": "System Reset",
     "params": []
   },
   {
