@@ -65,6 +65,30 @@ const authenticate = (req, res, next) => {
   next()
 }
 
+const safeDecodeURIComponent = (v) => {
+  if (typeof v !== 'string') {
+    return v
+  }
+
+  try {
+    return decodeURIComponent(v)
+  } catch {
+    return v
+  }
+}
+
+const getRepositoryFromParams = (params) => {
+  if (params.repository) {
+    return safeDecodeURIComponent(params.repository)
+  }
+
+  if (params.owner && params.repo) {
+    return `${safeDecodeURIComponent(params.owner)}/${safeDecodeURIComponent(params.repo)}`
+  }
+
+  return null
+}
+
 const getInstallation = async (req, res, next) => {
   const { user } = req
   const { sub: username, oauth_access_token: userToken } = user
@@ -82,7 +106,8 @@ const getInstallation = async (req, res, next) => {
 }
 
 const getBranches = async (req, res, next) => {
-  const { installationId, repository } = req.params
+  const { installationId } = req.params
+  const repository = getRepositoryFromParams(req.params)
 
   try {
     const { data: { token: installationToken } } = await createInstallationToken(installationId)
@@ -95,7 +120,8 @@ const getBranches = async (req, res, next) => {
 }
 
 const getKeyboardFiles = async (req, res, next) => {
-  const { installationId, repository } = req.params
+  const { installationId } = req.params
+  const repository = getRepositoryFromParams(req.params)
   const { branch } = req.query
 
   try {
@@ -128,11 +154,12 @@ const getKeyboardFiles = async (req, res, next) => {
 }
 
 const updateKeyboardFiles = async (req, res, next) => {
-  const { installationId, repository, branch } = req.params
+  const { installationId, branch } = req.params
+  const repository = getRepositoryFromParams(req.params)
   const { keymap, layout } = req.body
 
   try {
-    await commitChanges(installationId, repository, branch, layout, keymap)
+    await commitChanges(installationId, repository, safeDecodeURIComponent(branch), layout, keymap)
   } catch (err) {
     return next(err)
   }
@@ -145,9 +172,16 @@ const receiveWebhook = (req, res) => {
 }
 
 router.get('/authorize', authorize)
+// Support both styles:
+// - /installation/:installationId/:repository/branches (repo is a single segment; may contain %2F)
+// - /installation/:installationId/:owner/:repo/branches (repo is split into two segments by upstream decoding)
+router.get('/installation/:installationId/:owner/:repo/branches', authenticate, getBranches)
 router.get('/installation/:installationId/:repository/branches', authenticate, getBranches)
 router.get('/installation', authenticate, getInstallation)
+router.get('/keyboard-files/:installationId/:owner/:repo', authenticate, getKeyboardFiles)
 router.get('/keyboard-files/:installationId/:repository', authenticate, getKeyboardFiles)
+// Branch names can contain slashes, so accept the remainder as :branch(*) when owner/repo are split.
+router.post('/keyboard-files/:installationId/:owner/:repo/:branch(*)', authenticate, updateKeyboardFiles)
 router.post('/keyboard-files/:installationId/:repository/:branch', authenticate, updateKeyboardFiles)
 router.post('/webhook', receiveWebhook)
 router.use(handleError)

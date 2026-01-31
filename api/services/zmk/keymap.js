@@ -161,6 +161,7 @@ function validateKeymapJson(keymap) {
             errors.push(`Value at "${keyPath}" must be a string`)
           } else {
             const bind = key.match(/^&.+?\b/)
+            console.log('bind', JSON.stringify(bind), keyPath)
             if (!(bind && bind[0] in behavioursByBind)) {
               errors.push(`Key bind at "${keyPath}" has invalid behaviour`)
             }
