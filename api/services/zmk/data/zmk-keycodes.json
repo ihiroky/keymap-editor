@@ -2849,7 +2849,8 @@
   },
   {
     "names": ["LEFT_CONTROL", "LCTRL", "LC(code)"],
-    "description": "Left Control",
+    "symbol": "⎈",
+    "description": "Left Control ⎈",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=88",
@@ -2922,7 +2923,8 @@
   },
   {
     "names": ["RIGHT_CONTROL", "RCTRL", "RC(code)"],
-    "description": "Right Control",
+    "symbol": "⎈",
+    "description": "Right Control ⎈",
     "context": "Keyboard",
     "clarify": false,
     "documentation": "https://usb.org/sites/default/files/hut1_2.pdf#page=88",

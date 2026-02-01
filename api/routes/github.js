@@ -13,7 +13,7 @@ const {
   commitChanges
 } = require('../services/github')
 const { createInstallationToken } = require('../services/github/auth')
-const { MissingRepoFile, findCodeKeymap } = require('../services/github/files')
+const { MissingRepoFile } = require('../services/github/files')
 const { parseKeymap, validateKeymapJson, KeymapValidationError } = require('../services/zmk/keymap')
 const { validateInfoJson, InfoValidationError } = require('../services/zmk/layout')
 

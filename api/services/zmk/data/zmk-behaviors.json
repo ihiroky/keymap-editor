@@ -99,6 +99,44 @@
     }]
   },
   {
+    "code": "&mmv",
+    "name": "Mouse Move",
+    "params": ["command"],
+    "includes": ["#include <dt-bindings/zmk/pointing.h>"],
+    "commands": [{
+      "code": "MOVE_UP",
+      "description": "Move mouse up."
+    }, {
+      "code": "MOVE_DOWN",
+      "description": "Move mouse down."
+    }, {
+      "code": "MOVE_LEFT",
+      "description": "Move mouse left."
+    }, {
+      "code": "MOVE_RIGHT",
+      "description": "Move mouse right."
+    }]
+  },
+  {
+    "code": "&msc",
+    "name": "Mouse Scroll",
+    "params": ["command"],
+    "includes": ["#include <dt-bindings/zmk/pointing.h>"],
+    "commands": [{
+      "code": "SCRL_UP",
+      "description": "Scroll mouse up."
+    }, {
+      "code": "SCRL_DOWN",
+      "description": "Scroll mouse down."
+    }, {
+      "code": "SCRL_LEFT",
+      "description": "Scroll mouse left."
+    }, {
+      "code": "SCRL_RIGHT",
+      "description": "Scroll mouse right."
+    }]
+  },
+  {
     "code": "&key_repeat",
     "name": "Key Repeat",
     "params": []
