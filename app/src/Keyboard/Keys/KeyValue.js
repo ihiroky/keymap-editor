@@ -16,6 +16,9 @@ function KeyValue(props) {
   const icon = source?.faIcon && <Icon name={source.faIcon} />
 
   const handleClick = useMemo(() => function (event) {
+    if (!onSelect) {
+      return
+    }
     event.stopPropagation()
     onSelect({
       target: event.target,
@@ -29,7 +32,8 @@ function KeyValue(props) {
     <span
       className={styles.code}
       title={title}
-      onClick={handleClick}
+      data-clickable={onSelect ? 'true' : 'false'}
+      onClick={onSelect ? handleClick : undefined}
     >
       {icon || text || <NullKey />}
     </span>
@@ -41,7 +45,7 @@ KeyValue.propTypes = {
   param: keyPropTypes.param.isRequired,
   value: keyPropTypes.value.isRequired,
   source: keyPropTypes.source,
-  onSelect: PropTypes.func.isRequired
+  onSelect: PropTypes.func
 }
 
 export default KeyValue

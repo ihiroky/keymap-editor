@@ -41,7 +41,7 @@ KeyParamlist.propTypes = {
   params: PropTypes.arrayOf(keyPropTypes.param).isRequired,
   values: PropTypes.arrayOf(keyPropTypes.node).isRequired,
   source: keyPropTypes.source,
-  onSelect: PropTypes.func.isRequired
+  onSelect: PropTypes.func
 }
 
 export default KeyParamlist

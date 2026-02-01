@@ -21,25 +21,26 @@ class KeymapValidationError extends Error {
 const behaviours = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/zmk-behaviors.json')))
 const behavioursByBind = keyBy(behaviours, 'code')
 
-function encodeBindValue(parsed) {
+function encodeBindValue
+(parsed) {
   const params = (parsed.params || []).map(encodeBindValue)
   const paramString = params.length > 0 ? `(${params.join(',')})` : ''
   return parsed.value + paramString
 }
 
-function encodeKeyBinding(parsed) {
+function encodeKeyBinding (parsed) {
   const { value, params } = parsed
 
   return `${value} ${params.map(encodeBindValue).join(' ')}`.trim()
 }
 
-function encodeKeymap(parsedKeymap) {
+function encodeKeymap (parsedKeymap) {
   return Object.assign({}, parsedKeymap, {
     layers: parsedKeymap.layers.map(layer => layer.map(encodeKeyBinding))
   })
 }
 
-function getBehavioursUsed(keymap) {
+function getBehavioursUsed (keymap) {
   const keybinds = flatten(keymap.layers)
   return uniq(map(keybinds, 'value'))
 }
@@ -49,15 +50,15 @@ function getBehavioursUsed(keymap) {
  * @param {String} binding
  * @returns {Object}
  */
-function parseKeyBinding(binding) {
+function parseKeyBinding (binding) {
   const paramsPattern = /\((.+)\)/
 
-  function parse(code) {
+  function parse (code) {
     const value = code.replace(paramsPattern, '')
     const params = get(code.match(paramsPattern), '[1]', '').split(',')
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
-    .map(parse)
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .map(parse)
 
     return { value, params }
   }
@@ -72,7 +73,7 @@ function parseKeyBinding(binding) {
 
 function parseKeymap (keymap) {
   return Object.assign({}, keymap, {
-    layers: keymap.layers.map(layer =>  {
+    layers: keymap.layers.map(layer => {
       return layer.map(parseKeyBinding)
     })
   })
@@ -86,7 +87,7 @@ function generateKeymap (layout, keymap, template) {
   }
 }
 
-function renderTemplate(template, params) {
+function renderTemplate (template, params) {
   const includesPattern = /\{\{\s*behaviour_includes\s*\}\}/
   const layersPattern = /\{\{\s*rendered_layers\s*\}\}/
 
@@ -139,7 +140,7 @@ function generateKeymapJSON (layout, keymap, encoded) {
   return base.replace('"layers": null', `"layers": [\n    ${layers.join(', ')}\n  ]`)
 }
 
-function validateKeymapJson(keymap) {
+function validateKeymapJson (keymap) {
   const errors = []
 
   if (typeof keymap !== 'object' || keymap === null) {
@@ -147,13 +148,13 @@ function validateKeymapJson(keymap) {
   } else if (!Array.isArray(keymap.layers)) {
     errors.push('keymap must include "layers" array')
   } else {
-    for (let i in keymap.layers) {
+    for (const i in keymap.layers) {
       const layer = keymap.layers[i]
 
       if (!Array.isArray(layer)) {
         errors.push(`Layer at layers[${i}] must be an array`)
       } else {
-        for (let j in layer) {
+        for (const j in layer) {
           const key = layer[j]
           const keyPath = `layers[${i}][${j}]`
 

@@ -15,7 +15,7 @@ const size = key => {
 }
 
 function KeyboardLayout(props) {
-  const { layout, bindings, onUpdate } = props
+  const { layout, bindings, onUpdate, onSelectKey, selectedKeyIndex } = props
   const normalized = layout.map((_, i) => (
     bindings[i] || {
       value: '&none',
@@ -42,6 +42,8 @@ function KeyboardLayout(props) {
           label={key.label}
           value={normalized[i].value}
           params={normalized[i].params}
+          selected={selectedKeyIndex === i}
+          onSelect={onSelectKey ? () => onSelectKey(i) : undefined}
           onUpdate={bind => handleUpdateBind(i, bind)}
         />
       ))}
@@ -52,7 +54,9 @@ function KeyboardLayout(props) {
 KeyboardLayout.propTypes = {
   layout: PropTypes.array.isRequired,
   bindings: PropTypes.array.isRequired,
-  onUpdate: PropTypes.func.isRequired
+  onUpdate: PropTypes.func.isRequired,
+  onSelectKey: PropTypes.func,
+  selectedKeyIndex: PropTypes.number
 }
 
 export default KeyboardLayout
