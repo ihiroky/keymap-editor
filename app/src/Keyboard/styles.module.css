@@ -20,8 +20,8 @@
   position: relative;
 }
 
-.side-pane {
-  flex: 0 0 320px;
+.floating-pane {
+  pointer-events: auto;
 }
 
 .layer-selector ul {

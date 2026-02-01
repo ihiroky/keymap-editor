@@ -18,6 +18,9 @@ function Keyboard(props) {
   const [activeLayer, setActiveLayer] = useState(0)
   const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
   const {keycodes, behaviours} = useContext(DefinitionsContext)
+  const editPaneWidth = 340
+  const editPaneGap = 12
+  const wrapperPadding = 40
 
   const availableLayers = useMemo(() => isEmpty(keymap) ? [] : (
     keymap.layers.map((_, i) => ({
@@ -71,8 +74,8 @@ function Keyboard(props) {
     return searchTargets[param]
   }, [searchTargets, sources])
 
-  const boundingBox = useMemo(() => function () {
-    return layout.map(key => getKeyBoundingBox(
+  const layoutBounds = useMemo(() => (
+    layout.map(key => getKeyBoundingBox(
       { x: key.x, y: key.y },
       { u: key.u || key.w || 1, h: key.h || 1 },
       { x: key.rx, y: key.ry, a: key.r }
@@ -80,17 +83,14 @@ function Keyboard(props) {
       x: Math.max(x, max.x),
       y: Math.max(y, max.y)
     }), { x: 0, y: 0 })
-  }, [layout])
+  ), [layout])
 
-  const getWrapperStyle = useMemo(() => function () {
-    const bbox = boundingBox()
-    return {
-      width: `${bbox.x}px`,
-      height: `${bbox.y}px`,
-      margin: '0 auto',
-      padding: '40px'
-    }
-  }, [boundingBox])
+  const wrapperStyle = useMemo(() => ({
+    width: `${layoutBounds.x}px`,
+    height: `${layoutBounds.y}px`,
+    margin: '0 auto',
+    padding: `${wrapperPadding}px`
+  }), [layoutBounds, wrapperPadding])
 
   const activeBindings = useMemo(() => layout.map((_, i) => (
     get(keymap, ['layers', activeLayer, i], { value: '&none', params: [] })
@@ -117,6 +117,76 @@ function Keyboard(props) {
       binding: activeBindings[selectedKeyIndex]
     }
   }, [selectedKeyIndex, activeBindings, layout])
+
+  const selectedKeyBounds = useMemo(() => {
+    if (selectedKeyIndex === null) {
+      return null
+    }
+    const key = layout[selectedKeyIndex]
+    if (!key) {
+      return null
+    }
+    return getKeyBoundingBox(
+      { x: key.x, y: key.y },
+      { u: key.u || key.w || 1, h: key.h || 1 },
+      { x: key.rx, y: key.ry, a: key.r }
+    )
+  }, [selectedKeyIndex, layout])
+
+  const editPaneStyle = useMemo(() => {
+    if (!selectedKeyBounds) {
+      return null
+    }
+
+    const containerWidth = layoutBounds.x + wrapperPadding * 2
+    const containerHeight = layoutBounds.y + wrapperPadding * 2
+    const paneWidth = Math.min(editPaneWidth, Math.max(0, containerWidth - editPaneGap * 2))
+    const keyMinX = selectedKeyBounds.min.x + wrapperPadding
+    const keyMaxX = selectedKeyBounds.max.x + wrapperPadding
+    const keyMinY = selectedKeyBounds.min.y + wrapperPadding
+    const keyMaxY = selectedKeyBounds.max.y + wrapperPadding
+
+    const spaceRight = containerWidth - keyMaxX
+    const spaceLeft = keyMinX
+    const spaceBelow = containerHeight - keyMaxY
+    const spaceAbove = keyMinY
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+    const safeLeft = value => clamp(
+      value,
+      editPaneGap,
+      Math.max(editPaneGap, containerWidth - paneWidth - editPaneGap)
+    )
+
+    let left = safeLeft(keyMinX)
+    let top = Math.max(editPaneGap, keyMinY)
+
+    if (spaceRight >= paneWidth + editPaneGap) {
+      left = keyMaxX + editPaneGap
+      top = Math.max(editPaneGap, keyMinY)
+    } else if (spaceLeft >= paneWidth + editPaneGap) {
+      left = Math.max(editPaneGap, keyMinX - editPaneGap - paneWidth)
+      top = Math.max(editPaneGap, keyMinY)
+    } else if (spaceBelow >= editPaneGap) {
+      left = safeLeft(keyMinX)
+      top = keyMaxY + editPaneGap
+    } else if (spaceAbove >= editPaneGap) {
+      left = safeLeft(keyMinX)
+      top = Math.max(editPaneGap, keyMinY - editPaneGap)
+    }
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      '--key-edit-pane-width': `${paneWidth}px`
+    }
+  }, [
+    selectedKeyBounds,
+    layoutBounds,
+    wrapperPadding,
+    editPaneWidth,
+    editPaneGap
+  ])
 
   const handleCreateLayer = useMemo(() => function () {
     const layer = keymap.layers.length
@@ -200,7 +270,7 @@ function Keyboard(props) {
               onRenameLayer={handleRenameLayer}
               onDeleteLayer={handleDeleteLayer}
             />
-            <div className={styles['keyboard-wrapper']} style={getWrapperStyle()}>
+            <div className={styles['keyboard-wrapper']} style={wrapperStyle}>
               {isReady() && (
                 <KeyboardLayout
                   data-layer={activeLayer}
@@ -211,14 +281,17 @@ function Keyboard(props) {
                   onUpdate={event => handleUpdateLayer(activeLayer, event)}
                 />
               )}
+              {selectedKey && editPaneStyle && (
+                <KeyEditPane
+                  className={styles['floating-pane']}
+                  style={editPaneStyle}
+                  selectedKey={selectedKey}
+                  onApply={handleApplyBinding}
+                  onClose={() => setSelectedKeyIndex(null)}
+                />
+              )}
             </div>
           </div>
-          <KeyEditPane
-            className={styles['side-pane']}
-            selectedKey={selectedKey}
-            onApply={handleApplyBinding}
-            onClose={() => setSelectedKeyIndex(null)}
-          />
         </div>
       </SearchContext.Provider>
     </>

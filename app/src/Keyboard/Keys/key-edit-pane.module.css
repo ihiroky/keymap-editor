@@ -1,12 +1,25 @@
 .panel {
-  position: sticky;
-  top: 20px;
+  position: absolute;
+  top: 0;
+  left: 0;
   background: white;
   border-radius: 10px;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
   padding: 16px;
   max-height: calc(100vh - 40px);
   overflow: auto;
+  width: var(--key-edit-pane-width, 340px);
+  max-width: calc(100% - 24px);
+  z-index: 5;
+  box-sizing: border-box;
+}
+
+.panel button {
+  color: #555;
+}
+
+.panel .apply {
+  color: white;
 }
 
 .header {
@@ -53,6 +66,11 @@
   gap: 10px;
 }
 
+.param-list > .param-row + .param-row {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 8px;
+}
+
 .param-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -80,6 +98,8 @@
   padding: 6px 8px;
   cursor: pointer;
   font-size: 12px;
+  justify-self: end;
+  text-align: right;
 }
 
 .param-value:hover {
@@ -90,6 +110,11 @@
 .param-children {
   grid-column: 1 / -1;
   margin-top: 6px;
+}
+
+.param-children > .param-row + .param-row {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 8px;
 }
 
 .actions {
@@ -123,4 +148,7 @@
 
 .picker {
   margin-top: 12px;
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
 }

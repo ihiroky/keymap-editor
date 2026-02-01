@@ -25,7 +25,10 @@ function getParamLabel(param) {
 }
 
 function getValueLabel(node) {
-  const display = get(node, 'source.symbol') || get(node, 'source.code') || node?.value
+  const display = get(node, 'source.description') ||
+    get(node, 'source.code') ||
+    get(node, 'source.symbol') ||
+    node?.value
   if (display === undefined || display === null || display === '') {
     return 'Select'
   }
@@ -51,10 +54,19 @@ function normalizeDraft(draft, sources) {
 }
 
 function KeyEditPane(props) {
-  const { selectedKey, onApply, onClose, className } = props
+  const { selectedKey, onApply, onClose, className, style } = props
   const { getSearchTargets, sources } = useContext(SearchContext)
   const [draft, setDraft] = useState(null)
   const [picker, setPicker] = useState(null)
+  const isPickerForPath = useMemo(() => function(path) {
+    if (!picker || !picker.path) {
+      return false
+    }
+    if (picker.path.length !== path.length) {
+      return false
+    }
+    return picker.path.every((value, index) => value === path[index])
+  }, [picker])
 
   useEffect(() => {
     if (!selectedKey) {
@@ -62,6 +74,7 @@ function KeyEditPane(props) {
       setPicker(null)
       return
     }
+
     setDraft(cloneDeep(selectedKey.binding))
     setPicker(null)
   }, [selectedKey])
@@ -88,12 +101,8 @@ function KeyEditPane(props) {
     return JSON.stringify(draft) !== JSON.stringify(selectedKey.binding)
   }, [draft, selectedKey])
 
-  const openPicker = useMemo(() => function(param, path, value) {
-    setPicker({
-      param,
-      path,
-      value
-    })
+  const openPicker = useMemo(() => function(param, path, value, node) {
+    setPicker({ param, path, value, node })
   }, [])
 
   const updateParamAtPath = useMemo(() => function(path, value) {
@@ -104,6 +113,17 @@ function KeyEditPane(props) {
 
       const next = cloneDeep(prev)
       let node = next
+      const isObject = value && typeof value === 'object'
+      const paramNode = isObject && Object.prototype.hasOwnProperty.call(value, 'value')
+        ? cloneDeep({
+          value: value.value,
+          params: Array.isArray(value.params) && value.params.every(param => param && typeof param === 'object' && 'value' in param)
+            ? value.params
+            : []
+        })
+        : isObject && Object.prototype.hasOwnProperty.call(value, 'code')
+          ? { value: value.code, params: [] }
+          : { value, params: [] }
 
       path.forEach((index, step) => {
         if (!node.params) {
@@ -113,7 +133,7 @@ function KeyEditPane(props) {
           node.params[index] = { value: undefined, params: [] }
         }
         if (step === path.length - 1) {
-          node.params[index] = { value, params: [] }
+          node.params[index] = paramNode
         } else {
           node = node.params[index]
         }
@@ -131,7 +151,7 @@ function KeyEditPane(props) {
     if (picker.param === 'behaviour') {
       setDraft(normalizeDraft({ value: choice.code, params: [] }, sources))
     } else {
-      updateParamAtPath(picker.path, choice.code)
+      updateParamAtPath(picker.path, choice)
     }
 
     setPicker(null)
@@ -169,7 +189,7 @@ function KeyEditPane(props) {
           <button
             type="button"
             className={styles['param-value']}
-            onClick={() => openPicker(param, path, node?.value)}
+            onClick={() => openPicker(param, path, node?.value, node)}
           >
             {getValueLabel(node)}
           </button>
@@ -183,14 +203,36 @@ function KeyEditPane(props) {
               )}
             </div>
           )}
+          {picker && isPickerForPath(path) && draft && (
+            <div className={styles.picker}>
+              <ValuePicker
+                target={{}}
+                value={String(picker.value ?? '')}
+                param={picker.param}
+                currentNode={picker.node}
+                choices={getSearchTargets(picker.param, draft.value) || []}
+                prompt={createPromptMessage(picker.param)}
+                searchKey="code"
+                onSelect={handleSelectValue}
+                onCancel={() => setPicker(null)}
+              />
+            </div>
+          )}
         </div>
       )
     })
-  }, [openPicker])
+  }, [
+    openPicker,
+    picker,
+    isPickerForPath,
+    draft,
+    getSearchTargets,
+    handleSelectValue
+  ])
 
   if (!selectedKey) {
     return (
-      <aside className={`${styles.panel} ${className || ''}`}>
+      <aside className={`${styles.panel} ${className || ''}`} style={style}>
         <p className={styles.empty}>Select a key to edit.</p>
       </aside>
     )
@@ -200,11 +242,12 @@ function KeyEditPane(props) {
     ? `${behaviour.code} | ${behaviour.name || 'Unnamed'}`
     : 'Select'
 
+    console.log('render KeyEditPane', { draft, picker,normalized, behaviourParams })
   return (
-    <aside className={`${styles.panel} ${className || ''}`}>
+    <aside className={`${styles.panel} ${className || ''}`} style={style}>
       <div className={styles.header}>
         <div>
-          <div className={styles.title}>Key Editor</div>
+          <div className={styles.title}>Edit Keymap</div>
           <div className={styles.subtitle}>{selectedKey.label}</div>
         </div>
         <button type="button" className={styles.close} onClick={onClose}>
@@ -214,13 +257,31 @@ function KeyEditPane(props) {
 
       <section className={styles.section}>
         <h3>Behavior</h3>
-        <button
-          type="button"
-          className={styles['param-value']}
-          onClick={() => openPicker('behaviour', [], draft?.value)}
-        >
-          {behaviourLabel}
-        </button>
+        <div className={styles['param-row']}>
+          <div className={styles['param-label']}>Value</div>
+          <button
+            type="button"
+            className={styles['param-value']}
+            onClick={() => openPicker('behaviour', [], draft?.value)}
+          >
+            {behaviourLabel}
+          </button>
+        </div>
+        {picker && picker.param === 'behaviour' && draft && (
+          <div className={styles.picker}>
+            <ValuePicker
+              target={{}}
+              value={String(picker.value ?? '')}
+              param={picker.param}
+              currentNode={picker.node}
+              choices={getSearchTargets(picker.param, draft.value) || []}
+              prompt={createPromptMessage(picker.param)}
+              searchKey="code"
+              onSelect={handleSelectValue}
+              onCancel={() => setPicker(null)}
+            />
+          </div>
+        )}
       </section>
 
       <section className={styles.section}>
@@ -233,21 +294,6 @@ function KeyEditPane(props) {
           <p className={styles.empty}>No parameters.</p>
         )}
       </section>
-
-      {picker && draft && (
-        <div className={styles.picker}>
-          <ValuePicker
-            target={{}}
-            value={String(picker.value ?? '')}
-            param={picker.param}
-            choices={getSearchTargets(picker.param, draft.value) || []}
-            prompt={createPromptMessage(picker.param)}
-            searchKey="code"
-            onSelect={handleSelectValue}
-            onCancel={() => setPicker(null)}
-          />
-        </div>
-      )}
 
       <div className={styles.actions}>
         <button
@@ -268,6 +314,7 @@ function KeyEditPane(props) {
 
 KeyEditPane.propTypes = {
   className: PropTypes.string,
+  style: PropTypes.object,
   selectedKey: PropTypes.shape({
     index: PropTypes.number.isRequired,
     label: PropTypes.string.isRequired,
