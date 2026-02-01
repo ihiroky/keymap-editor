@@ -152,15 +152,31 @@ function parseDts (content) {
   return { includes, nodes, order }
 }
 
-function extractKeymapLayers (keymapNode) {
+function normalizeSensorBindings(sensorBindings, sensorCount) {
+  const hasCount = Number.isInteger(sensorCount)
+  if (!hasCount) {
+    return sensorBindings
+  }
+
+  const normalized = Array.isArray(sensorBindings) ? sensorBindings.slice(0, sensorCount) : []
+  while (normalized.length < sensorCount) {
+    normalized.push('&none')
+  }
+
+  return normalized
+}
+
+function extractKeymapLayers (keymapNode, options = {}) {
   if (!keymapNode || !keymapNode.children) {
     return null
   }
 
   const layerNames = []
   const layers = []
+  const sensorLayers = []
   const layerDetails = {}
   const order = keymapNode.order.length ? keymapNode.order : Object.keys(keymapNode.children)
+  const sensorCount = options.sensorCount
 
   for (const name of order) {
     const layerNode = keymapNode.children[name]
@@ -184,9 +200,13 @@ function extractKeymapLayers (keymapNode) {
       : Array.isArray(sensorBindingsRaw)
         ? sensorBindingsRaw.map(value => String(value))
         : undefined
+    const normalizedSensorBindings = normalizeSensorBindings(sensorBindings, sensorCount)
 
     layerNames.push(name)
     layers.push(bindings)
+    if (normalizedSensorBindings) {
+      sensorLayers.push(normalizedSensorBindings)
+    }
     layerDetails[name] = {
       properties: layerNode.properties,
       bindings,
@@ -198,20 +218,23 @@ function extractKeymapLayers (keymapNode) {
     return null
   }
 
-  return { layerNames, layers, layerDetails }
+  return { layerNames, layers, sensorLayers, layerDetails }
 }
 
-function parseKeymapCode (content) {
+function parseKeymapCode (content, options = {}) {
   const dts = parseDts(content)
   const keymapNode = dts.nodes['/']?.children?.keymap
-  const extracted = extractKeymapLayers(keymapNode)
+  const extracted = extractKeymapLayers(keymapNode, options)
   if (!extracted) {
     return null
   }
 
   return Object.assign({}, KEYMAP_ROOT, {
     layer_names: extracted.layerNames,
-    layers: extracted.layers
+    layers: extracted.layers,
+    sensor_layers: extracted.sensorLayers && extracted.sensorLayers.length
+      ? extracted.sensorLayers
+      : undefined
   })
 }
 

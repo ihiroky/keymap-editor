@@ -26,23 +26,26 @@ function KeyboardPicker(props) {
   const [source, setSource] = useState(defaultSource)
 
   const handleKeyboardSelected = useMemo(() => function (event) {
-    const { layout, keymap, ...rest } = event
+    const { layout, keymap, sensors, ...rest } = event
 
     const layerNames = keymap.layer_names || keymap.layers.map((_, i) => `Layer ${i}`)
     Object.assign(keymap, {
       layer_names: layerNames
     })
 
-    onSelect({ source, layout, keymap, ...rest })
+    onSelect({ source, layout, keymap, sensors, ...rest })
   }, [onSelect, source])
 
   const fetchLocalKeyboard = useMemo(() => async function() {
-    const [layout, keymap] = await Promise.all([
+    const [layoutResponse, keymap] = await Promise.all([
       loadLayout(),
       loadKeymap()
     ])
 
-    handleKeyboardSelected({ source, layout, keymap })
+    const layout = layoutResponse?.layout || layoutResponse
+    const sensors = layoutResponse?.sensors || []
+
+    handleKeyboardSelected({ source, layout, keymap, sensors })
   }, [source, handleKeyboardSelected])
 
   useEffect(() => {

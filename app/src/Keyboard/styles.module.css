@@ -20,6 +20,78 @@
   position: relative;
 }
 
+.sensor-list {
+  margin: 24px auto 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background-color: rgba(245, 245, 245, 0.7);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sensor-title {
+  flex-basis: 100%;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.5);
+  margin-bottom: 2px;
+}
+
+.sensor-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 140px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.sensor-label {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.sensor-binding {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #444;
+}
+
+.sensor-behaviour {
+  font-size: 11px;
+  font-variant: small-caps;
+  opacity: 0.6;
+}
+
+.sensor-item:hover {
+  border-color: var(--hover-selection);
+  background-color: var(--hover-selection);
+  color: white;
+}
+
+.sensor-item:hover .sensor-label,
+.sensor-item:hover .sensor-binding,
+.sensor-item:hover .sensor-behaviour {
+  color: white;
+}
+
+.sensor-item[data-selected="true"] {
+  outline: 3px solid var(--selection);
+  outline-offset: 2px;
+}
+
 .floating-pane {
   pointer-events: auto;
 }

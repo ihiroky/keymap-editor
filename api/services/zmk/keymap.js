@@ -34,14 +34,27 @@ function encodeKeyBinding (parsed) {
   return `${value} ${params.map(encodeBindValue).join(' ')}`.trim()
 }
 
+function encodeLayerBindings (layers) {
+  return layers.map(layer => layer.map(encodeKeyBinding))
+}
+
 function encodeKeymap (parsedKeymap) {
-  return Object.assign({}, parsedKeymap, {
-    layers: parsedKeymap.layers.map(layer => layer.map(encodeKeyBinding))
+  const encoded = Object.assign({}, parsedKeymap, {
+    layers: encodeLayerBindings(parsedKeymap.layers)
   })
+
+  if (Array.isArray(parsedKeymap.sensor_layers)) {
+    encoded.sensor_layers = encodeLayerBindings(parsedKeymap.sensor_layers)
+  }
+
+  return encoded
 }
 
 function getBehavioursUsed (keymap) {
-  const keybinds = flatten(keymap.layers)
+  const keybinds = flatten([
+    ...(keymap.layers || []),
+    ...(keymap.sensor_layers || [])
+  ])
   return uniq(map(keybinds, 'value'))
 }
 
@@ -72,11 +85,19 @@ function parseKeyBinding (binding) {
 }
 
 function parseKeymap (keymap) {
-  return Object.assign({}, keymap, {
+  const parsed = Object.assign({}, keymap, {
     layers: keymap.layers.map(layer => {
       return layer.map(parseKeyBinding)
     })
   })
+
+  if (Array.isArray(keymap.sensor_layers)) {
+    parsed.sensor_layers = keymap.sensor_layers.map(layer => {
+      return layer.map(parseKeyBinding)
+    })
+  }
+
+  return parsed
 }
 
 function generateKeymap (layout, keymap, template) {
@@ -97,13 +118,17 @@ function renderTemplate (template, params) {
       linePrefix: '',
       columnSeparator: ' '
     })
+    const sensorLayer = params.sensorLayers?.[i]
+    const renderedSensors = Array.isArray(sensorLayer) && sensorLayer.length > 0
+      ? `            sensor-bindings = <${sensorLayer.join(' ')}>;\n`
+      : ''
 
     return `
         ${name.replace(/[^a-zA-Z0-9_]/g, '_')} {
             bindings = <
 ${rendered}
             >;
-        };
+${renderedSensors}        };
 `
   })
 
@@ -122,7 +147,8 @@ function generateKeymapCode (layout, keymap, encoded, template) {
     layout,
     behaviourHeaders,
     layers: encoded.layers,
-    layerNames: names
+    layerNames: names,
+    sensorLayers: encoded.sensor_layers
   })
 }
 

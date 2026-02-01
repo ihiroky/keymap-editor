@@ -15,6 +15,7 @@ const {
 const { createInstallationToken } = require('../services/github/auth')
 const { MissingRepoFile } = require('../services/github/files')
 const { parseKeymap, validateKeymapJson, KeymapValidationError } = require('../services/zmk/keymap')
+const { parseKeymapCode } = require('../services/zmk/keymap-code')
 const { validateInfoJson, InfoValidationError } = require('../services/zmk/layout')
 
 const router = Router()
@@ -125,9 +126,23 @@ const getKeyboardFiles = async (req, res, next) => {
   const { branch } = req.query
 
   try {
-    const { info, keymap } = await fetchKeyboardFiles(installationId, repository, branch)
+    const { info, keymap, codeKeymap } = await fetchKeyboardFiles(installationId, repository, branch)
     validateInfoJson(info)
     validateKeymapJson(keymap)
+
+    const sensorCount = Array.isArray(info?.sensors) ? info.sensors.length : 0
+    if (codeKeymap) {
+      const parsedCode = parseKeymapCode(codeKeymap, { sensorCount })
+      if (parsedCode?.sensor_layers) {
+        keymap.sensor_layers = parsedCode.sensor_layers
+      }
+    }
+
+    if (!Array.isArray(keymap.sensor_layers) && sensorCount > 0) {
+      keymap.sensor_layers = Array.from({ length: keymap.layers.length }, () => (
+        Array.from({ length: sensorCount }, () => '&none')
+      ))
+    }
 
     res.json({
       info,

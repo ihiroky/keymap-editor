@@ -182,9 +182,13 @@ function KeyEditPane(props) {
       return style
     }
 
+    const baseTransform = style?.transform
+    const dragTransform = `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+    const transform = [baseTransform, dragTransform].filter(Boolean).join(' ')
+
     return {
       ...style,
-      transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+      transform
     }
   }, [dragOffset, selectedKey, style])
 

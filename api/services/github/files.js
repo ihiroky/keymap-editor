@@ -58,9 +58,10 @@ function normalizeRepoInfo (info) {
 async function fetchKeyboardFiles (installationId, repository, branch) {
   const { data: { token: installationToken } } = await auth.createInstallationToken(installationId)
   const { data: info } = await fetchInfoFile(installationToken, repository, branch)
-  const keymap = await fetchKeymap(installationToken, repository, branch)
-  const originalCodeKeymap = await findCodeKeymap(installationToken, repository, branch)
-  return { info, keymap, originalCodeKeymap }
+  const sensorCount = Array.isArray(info?.sensors) ? info.sensors.length : 0
+  const keymap = await fetchKeymap(installationToken, repository, branch, { sensorCount })
+  const codeKeymap = await fetchCodeKeymapContent(installationToken, repository, branch)
+  return { info, keymap, codeKeymap }
 }
 
 async function fetchInfoFile (installationToken, repository, branch) {
@@ -78,13 +79,13 @@ async function fetchInfoFile (installationToken, repository, branch) {
   return fetchFile(installationToken, repository, 'config/info.json', { raw: true, branch })
 }
 
-async function fetchKeymap (installationToken, repository, branch) {
+async function fetchKeymap (installationToken, repository, branch, options = {}) {
   try {
     const { data : keymap } = await fetchFile(installationToken, repository, 'config/keymap.json', { raw: true, branch })
     return keymap
   } catch (err) {
     if (err instanceof MissingRepoFile) {
-      const converted = await convertKeymapFromCode(installationToken, repository, branch)
+      const converted = await convertKeymapFromCode(installationToken, repository, branch, options)
       if (converted) {
         return converted
       }
@@ -132,6 +133,20 @@ async function findCodeKeymap (installationToken, repository, branch) {
   return originalCodeKeymap
 }
 
+async function fetchCodeKeymapContent (installationToken, repository, branch) {
+  try {
+    const originalCodeKeymap = await findCodeKeymap(installationToken, repository, branch)
+    const { data: content } = await fetchFile(installationToken, repository, originalCodeKeymap.path, { branch, raw: true })
+    return content
+  } catch (err) {
+    if (err instanceof MissingRepoFile) {
+      return null
+    }
+
+    throw err
+  }
+}
+
 async function findCodeKeymapTemplate (installationToken, repository, branch) {
   // Assume that the relevant files are under `config/` and not a complicated
   // directory structure, and that there are fewer than 1000 files in this path
@@ -146,11 +161,11 @@ async function findCodeKeymapTemplate (installationToken, repository, branch) {
 }
 
 
-async function convertKeymapFromCode (installationToken, repository, branch) {
+async function convertKeymapFromCode (installationToken, repository, branch, options = {}) {
   try {
     const originalCodeKeymap = await findCodeKeymap(installationToken, repository, branch)
     const { data: content } = await fetchFile(installationToken, repository, originalCodeKeymap.path, { branch, raw: true })
-    return parseKeymapCode(content)
+    return parseKeymapCode(content, options)
   } catch (err) {
     if (err instanceof MissingRepoFile) {
       return null

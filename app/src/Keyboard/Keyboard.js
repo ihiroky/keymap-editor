@@ -4,23 +4,29 @@ import isEmpty from 'lodash/isEmpty'
 import keyBy from 'lodash/keyBy'
 import times from 'lodash/times'
 import PropTypes from 'prop-types'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import KeyboardLayout from './KeyboardLayout'
 import LayerSelector from './LayerSelector'
 import KeyEditPane from './Keys/KeyEditPane'
+import KeyParamlist from './Keys/KeyParamlist'
 import { getKeyBoundingBox } from '../key-units'
+import { getBehaviourParams } from '../keymap'
+import { hydrateTree, makeIndex } from './Keys/util'
 import { DefinitionsContext, SearchContext } from '../providers'
 import styles from './styles.module.css'
 
 function Keyboard(props) {
-  const { layout, keymap, onUpdate } = props
+  const { layout, keymap, sensors, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
   const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
+  const [selectedSensorIndex, setSelectedSensorIndex] = useState(null)
+  const [sensorAnchor, setSensorAnchor] = useState(null)
   const {keycodes, behaviours} = useContext(DefinitionsContext)
   const editPaneWidth = 340
   const editPaneGap = 12
   const wrapperPadding = 40
+  const keyboardPaneRef = useRef(null)
 
   const availableLayers = useMemo(() => isEmpty(keymap) ? [] : (
     keymap.layers.map((_, i) => ({
@@ -92,9 +98,139 @@ function Keyboard(props) {
     padding: `${wrapperPadding}px`
   }), [layoutBounds, wrapperPadding])
 
+  const sensorListStyle = useMemo(() => ({
+    width: `${layoutBounds.x + wrapperPadding * 2}px`
+  }), [layoutBounds, wrapperPadding])
+
   const activeBindings = useMemo(() => layout.map((_, i) => (
     get(keymap, ['layers', activeLayer, i], { value: '&none', params: [] })
   )), [layout, keymap, activeLayer])
+
+  const sensorCount = useMemo(() => {
+    if (Array.isArray(sensors) && sensors.length > 0) {
+      return sensors.length
+    }
+    return get(keymap, ['sensor_layers', 0, 'length'], 0)
+  }, [keymap, sensors])
+
+  const activeSensorBindings = useMemo(() => {
+    const layer = get(keymap, ['sensor_layers', activeLayer], null)
+    if (!Array.isArray(layer)) {
+      return []
+    }
+
+    return layer.map(binding => {
+      if (!binding) {
+        return { value: '&none', params: [] }
+      }
+      if (typeof binding === 'string' || typeof binding === 'number') {
+        return { value: binding, params: [] }
+      }
+      return binding
+    })
+  }, [keymap, activeLayer])
+
+  const sensorEditPaneStyle = useMemo(() => {
+    if (selectedSensorIndex === null || !sensorAnchor) {
+      return null
+    }
+
+    const containerWidth = layoutBounds.x + wrapperPadding * 2
+    const paneWidth = Math.min(editPaneWidth, Math.max(0, containerWidth - editPaneGap * 2))
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+    const safeLeft = value => clamp(
+      value,
+      editPaneGap,
+      Math.max(editPaneGap, containerWidth - paneWidth - editPaneGap)
+    )
+
+    const left = safeLeft(sensorAnchor.left)
+    const top = Math.max(editPaneGap, sensorAnchor.top)
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      transform: `translate3d(0, calc(-100% - ${editPaneGap}px), 0)`,
+      '--key-edit-pane-width': `${paneWidth}px`
+    }
+  }, [
+    selectedSensorIndex,
+    sensorAnchor,
+    layoutBounds,
+    wrapperPadding,
+    editPaneWidth,
+    editPaneGap
+  ])
+
+  const handleSelectSensor = useMemo(() => function(sensorIndex, event) {
+    setSelectedSensorIndex(sensorIndex)
+    setSelectedKeyIndex(null)
+
+    if (event?.currentTarget && keyboardPaneRef.current) {
+      const buttonRect = event.currentTarget.getBoundingClientRect()
+      const paneRect = keyboardPaneRef.current.getBoundingClientRect()
+      setSensorAnchor({
+        left: buttonRect.left - paneRect.left,
+        top: buttonRect.top - paneRect.top,
+        width: buttonRect.width,
+        height: buttonRect.height
+      })
+    } else {
+      setSensorAnchor(null)
+    }
+  }, [setSelectedSensorIndex, setSelectedKeyIndex, setSensorAnchor])
+
+  const sensorList = useMemo(() => {
+    if (!activeSensorBindings.length) {
+      return null
+    }
+
+    return activeSensorBindings.map((binding, sensorIndex) => {
+      const sensor = sensors?.[sensorIndex]
+      const sensorLabel = sensor?.name || sensor?.identifier || `Sensor ${sensorIndex + 1}`
+      const behaviour = get(sources.behaviours, binding.value)
+      if (!behaviour) {
+        return (
+          <button
+            key={`sensor-${sensorIndex}`}
+            type="button"
+            className={styles['sensor-item']}
+            onClick={event => handleSelectSensor(sensorIndex, event)}
+            data-selected={selectedSensorIndex === sensorIndex ? 'true' : 'false'}
+          >
+            <div className={styles['sensor-label']}>{sensorLabel}</div>
+            <div className={styles['sensor-binding']}>{binding.value}</div>
+          </button>
+        )
+      }
+
+      const behaviourParams = getBehaviourParams(binding.params, behaviour)
+      const normalized = hydrateTree(binding.value, binding.params, sources)
+      const paramIndex = makeIndex(normalized)
+
+      return (
+        <button
+          key={`sensor-${sensorIndex}`}
+          type="button"
+          className={styles['sensor-item']}
+          onClick={event => handleSelectSensor(sensorIndex, event)}
+          data-selected={selectedSensorIndex === sensorIndex ? 'true' : 'false'}
+        >
+          <div className={styles['sensor-label']}>{sensorLabel}</div>
+          <div className={styles['sensor-binding']}>
+            <span className={styles['sensor-behaviour']}>{behaviour.code}</span>
+            <KeyParamlist
+              root={true}
+              index={paramIndex}
+              params={behaviourParams}
+              values={normalized.params}
+              onSelect={undefined}
+            />
+          </div>
+        </button>
+      )
+    })
+  }, [activeSensorBindings, sensors, sources, handleSelectSensor, selectedSensorIndex])
 
   useEffect(() => {
     if (selectedKeyIndex === null) {
@@ -104,6 +240,16 @@ function Keyboard(props) {
       setSelectedKeyIndex(null)
     }
   }, [selectedKeyIndex, layout.length, setSelectedKeyIndex])
+
+  useEffect(() => {
+    if (selectedSensorIndex === null) {
+      setSensorAnchor(null)
+      return
+    }
+    if (selectedSensorIndex >= activeSensorBindings.length) {
+      setSelectedSensorIndex(null)
+    }
+  }, [selectedSensorIndex, activeSensorBindings.length, setSelectedSensorIndex, setSensorAnchor])
 
   const selectedKey = useMemo(() => {
     if (selectedKeyIndex === null) {
@@ -117,6 +263,20 @@ function Keyboard(props) {
       binding: activeBindings[selectedKeyIndex]
     }
   }, [selectedKeyIndex, activeBindings, layout])
+
+  const selectedSensor = useMemo(() => {
+    if (selectedSensorIndex === null) {
+      return null
+    }
+
+    const sensor = sensors?.[selectedSensorIndex]
+    const label = sensor?.name || sensor?.identifier || `Sensor ${selectedSensorIndex + 1}`
+    return {
+      index: selectedSensorIndex,
+      label,
+      binding: activeSensorBindings[selectedSensorIndex]
+    }
+  }, [selectedSensorIndex, sensors, activeSensorBindings])
 
   const selectedKeyBounds = useMemo(() => {
     if (selectedKeyIndex === null) {
@@ -192,13 +352,22 @@ function Keyboard(props) {
     const layer = keymap.layers.length
     const binding = '&trans'
     const makeKeycode = () => ({ value: binding, params: [] })
+    const makeSensorBinding = () => ({ value: '&none', params: [] })
 
     const newLayer = times(layout.length, makeKeycode)
     const updatedLayerNames = [ ...keymap.layer_names, `Layer #${layer}` ]
     const layers = [ ...keymap.layers, newLayer ]
+    const sensor_layers = Array.isArray(keymap.sensor_layers)
+      ? [ ...keymap.sensor_layers, times(sensorCount, makeSensorBinding) ]
+      : undefined
 
-    onUpdate({ ...keymap, layer_names: updatedLayerNames, layers })
-  }, [keymap, layout, onUpdate])
+    const nextKeymap = { ...keymap, layer_names: updatedLayerNames, layers }
+    if (sensor_layers !== undefined) {
+      nextKeymap.sensor_layers = sensor_layers
+    }
+
+    onUpdate(nextKeymap)
+  }, [keymap, layout, onUpdate, sensorCount])
 
   const handleUpdateLayer = useMemo(() => function(layerIndex, updatedLayer) {
     const original = keymap.layers
@@ -213,7 +382,10 @@ function Keyboard(props) {
 
   const handleSelectKey = useMemo(() => function(keyIndex) {
     setSelectedKeyIndex(keyIndex)
-  }, [setSelectedKeyIndex])
+    setSelectedSensorIndex(null)
+    setSensorAnchor(null)
+  }, [setSelectedKeyIndex, setSelectedSensorIndex, setSensorAnchor])
+
 
   const handleApplyBinding = useMemo(() => function(updatedBinding) {
     if (selectedKeyIndex === null) {
@@ -233,6 +405,38 @@ function Keyboard(props) {
     handleUpdateLayer
   ])
 
+  const handleApplySensorBinding = useMemo(() => function(updatedBinding) {
+    if (selectedSensorIndex === null || sensorCount === 0) {
+      return
+    }
+
+    const makeSensorBinding = () => ({ value: '&none', params: [] })
+    const baseSensorLayers = Array.isArray(keymap.sensor_layers)
+      ? keymap.sensor_layers
+      : Array.from({ length: keymap.layers.length }, () => times(sensorCount, makeSensorBinding))
+
+    const layer = baseSensorLayers[activeLayer] || times(sensorCount, makeSensorBinding)
+    const updatedLayer = [
+      ...layer.slice(0, selectedSensorIndex),
+      updatedBinding,
+      ...layer.slice(selectedSensorIndex + 1)
+    ]
+
+    const sensor_layers = [
+      ...baseSensorLayers.slice(0, activeLayer),
+      updatedLayer,
+      ...baseSensorLayers.slice(activeLayer + 1)
+    ]
+
+    onUpdate({ ...keymap, sensor_layers })
+  }, [
+    selectedSensorIndex,
+    sensorCount,
+    keymap,
+    activeLayer,
+    onUpdate
+  ])
+
   const handleRenameLayer = useMemo(() => function (layerName) {
     const layer_names = [
       ...keymap.layer_names.slice(0, activeLayer),
@@ -249,19 +453,27 @@ function Keyboard(props) {
 
     const layers = [...keymap.layers]
     layers.splice(layerIndex, 1)
+    const sensor_layers = Array.isArray(keymap.sensor_layers) ? [...keymap.sensor_layers] : undefined
+    if (sensor_layers !== undefined) {
+      sensor_layers.splice(layerIndex, 1)
+    }
 
     if (activeLayer > layers.length - 1) {
       setActiveLayer(Math.max(0, layers.length - 1))
     }
 
-    onUpdate({ ...keymap, layers, layer_names })
+    const nextKeymap = { ...keymap, layers, layer_names }
+    if (sensor_layers !== undefined) {
+      nextKeymap.sensor_layers = sensor_layers
+    }
+    onUpdate(nextKeymap)
   }, [keymap, activeLayer, setActiveLayer, onUpdate])
 
   return (
     <>
       <SearchContext.Provider value={{ getSearchTargets, sources }}>
         <div className={styles.workspace}>
-          <div className={styles['keyboard-pane']}>
+          <div className={styles['keyboard-pane']} ref={keyboardPaneRef}>
             <LayerSelector
               layers={keymap.layer_names}
               activeLayer={activeLayer}
@@ -291,6 +503,21 @@ function Keyboard(props) {
                 />
               )}
             </div>
+            {sensorList && (
+              <div className={styles['sensor-list']} style={sensorListStyle}>
+                <div className={styles['sensor-title']}>Sensors</div>
+                {sensorList}
+              </div>
+            )}
+            {selectedSensor && sensorEditPaneStyle && (
+              <KeyEditPane
+                className={styles['floating-pane']}
+                style={sensorEditPaneStyle}
+                selectedKey={selectedSensor}
+                onApply={handleApplySensorBinding}
+                onClose={() => setSelectedSensorIndex(null)}
+              />
+            )}
           </div>
         </div>
       </SearchContext.Provider>
@@ -300,6 +527,7 @@ function Keyboard(props) {
 
 Keyboard.propTypes = {
   layout: PropTypes.array.isRequired,
+  sensors: PropTypes.array,
   keymap: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired
 }

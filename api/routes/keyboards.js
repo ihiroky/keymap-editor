@@ -5,7 +5,10 @@ const router = Router()
 
 router.get('/behaviors', (req, res) => res.json(zmk.loadBehaviors()))
 router.get('/keycodes', (req, res) => res.json(zmk.loadKeycodes()))
-router.get('/layout', (req, res) => res.json(zmk.loadLayout()))
+router.get('/layout', (req, res) => res.json({
+  layout: zmk.loadLayout(),
+  sensors: zmk.loadSensors()
+}))
 router.get('/keymap', (req, res) => res.json(zmk.loadKeymap()))
 router.post('/keymap', (req, res) => {
   const keymap = req.body
