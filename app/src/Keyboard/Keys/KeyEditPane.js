@@ -1,7 +1,7 @@
 import cloneDeep from 'lodash/cloneDeep'
 import get from 'lodash/get'
 import PropTypes from 'prop-types'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import { SearchContext } from '../../providers'
 import { getBehaviourParams } from '../../keymap'
@@ -58,6 +58,10 @@ function KeyEditPane(props) {
   const { getSearchTargets, sources } = useContext(SearchContext)
   const [draft, setDraft] = useState(null)
   const [picker, setPicker] = useState(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStateRef = useRef(null)
+  const rafRef = useRef(null)
   const isPickerForPath = useMemo(() => function(path) {
     if (!picker || !picker.path) {
       return false
@@ -77,6 +81,7 @@ function KeyEditPane(props) {
 
     setDraft(cloneDeep(selectedKey.binding))
     setPicker(null)
+    setDragOffset({ x: 0, y: 0 })
   }, [selectedKey])
 
   const behaviour = useMemo(() => (
@@ -172,6 +177,83 @@ function KeyEditPane(props) {
     onApply(normalizeDraft(cloneDeep(draft), sources))
   }, [draft, onApply, sources])
 
+  const paneStyle = useMemo(() => {
+    if (!selectedKey) {
+      return style
+    }
+
+    return {
+      ...style,
+      transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+    }
+  }, [dragOffset, selectedKey, style])
+
+  const handlePointerMove = useMemo(() => function(event) {
+    const dragState = dragStateRef.current
+    if (!dragState) {
+      return
+    }
+
+    const nextX = dragState.originX + (event.clientX - dragState.startX)
+    const nextY = dragState.originY + (event.clientY - dragState.startY)
+
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+    }
+
+    rafRef.current = requestAnimationFrame(() => {
+      setDragOffset({ x: nextX, y: nextY })
+    })
+  }, [])
+
+  const stopDragging = useMemo(() => function() {
+    dragStateRef.current = null
+    setIsDragging(false)
+  }, [])
+
+  const handlePointerUp = useMemo(() => function() {
+    if (!dragStateRef.current) {
+      return
+    }
+    stopDragging()
+  }, [stopDragging])
+
+  const handlePointerDown = useMemo(() => function(event) {
+    if (event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    dragStateRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: dragOffset.x,
+      originY: dragOffset.y
+    }
+    setIsDragging(true)
+  }, [dragOffset])
+
+  useEffect(() => {
+    if (!isDragging) {
+      return
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [handlePointerMove, handlePointerUp, isDragging])
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
+
   const renderParams = useMemo(() => function(params, values, pathPrefix, depth) {
     return params.map((param, i) => {
       const path = [...pathPrefix, i]
@@ -242,13 +324,26 @@ function KeyEditPane(props) {
     ? `${behaviour.code} | ${behaviour.name || 'Unnamed'}`
     : 'Select'
 
-    console.log('render KeyEditPane', { draft, picker,normalized, behaviourParams })
   return (
-    <aside className={`${styles.panel} ${className || ''}`} style={style}>
+    <aside
+      className={`${styles.panel} ${isDragging ? styles.dragging : ''} ${className || ''}`}
+      style={paneStyle}
+    >
       <div className={styles.header}>
-        <div>
-          <div className={styles.title}>Edit Keymap</div>
-          <div className={styles.subtitle}>{selectedKey.label}</div>
+        <div className={styles['header-info']}>
+          <button
+            type="button"
+            className={styles['drag-handle']}
+            onPointerDown={handlePointerDown}
+            aria-label="Drag to move"
+            title="Drag to move"
+          />
+            <div>
+              <div className={styles.title}>
+                Edit Keymap
+              </div>
+              <div className={styles.subtitle}>{selectedKey.label}</div>
+            </div>
         </div>
         <button type="button" className={styles.close} onClick={onClose}>
           x
