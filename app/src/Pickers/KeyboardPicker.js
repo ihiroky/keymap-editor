@@ -7,10 +7,12 @@ import { loadLayout } from '../layout.js'
 import { loadKeymap } from '../keymap.js'
 import Selector from "../Common/Selector"
 import GithubPicker from './Github/Picker'
+import BrowserFilePicker from './BrowserFile/Picker'
 
 const sourceChoices = compact([
   config.enableLocal ? { id: 'local', name: 'Local' } : null,
-  config.enableGitHub ? { id: 'github', name: 'GitHub' } : null
+  config.enableGitHub ? { id: 'github', name: 'GitHub' } : null,
+  config.enableBrowserFile ? { id: 'browser-file', name: 'Browser File' } : null
 ])
 
 const selectedSource = localStorage.getItem('selectedSource')
@@ -26,14 +28,14 @@ function KeyboardPicker(props) {
   const [source, setSource] = useState(defaultSource)
 
   const handleKeyboardSelected = useMemo(() => function (event) {
-    const { layout, keymap, sensors, ...rest } = event
+    const { layout, keymap, sensors, sourceContext = {}, ...rest } = event
 
     const layerNames = keymap.layer_names || keymap.layers.map((_, i) => `Layer ${i}`)
     Object.assign(keymap, {
       layer_names: layerNames
     })
 
-    onSelect({ source, layout, keymap, sensors, ...rest })
+    onSelect({ source, layout, keymap, sensors, sourceContext, ...rest })
   }, [onSelect, source])
 
   const fetchLocalKeyboard = useMemo(() => async function() {
@@ -64,12 +66,16 @@ function KeyboardPicker(props) {
         choices={sourceChoices}
         onUpdate={value => {
           setSource(value)
-          onSelect(value)
+          onSelect({ source: value, sourceContext: {} })
         }}
       />
 
       {source === 'github' && (
         <GithubPicker onSelect={handleKeyboardSelected} />
+      )}
+
+      {source === 'browser-file' && (
+        <BrowserFilePicker onSelect={handleKeyboardSelected} />
       )}
     </div>
   )

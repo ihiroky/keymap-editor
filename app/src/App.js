@@ -13,6 +13,31 @@ import Keyboard from './Keyboard/Keyboard'
 import GitHubLink from './GitHubLink'
 import Loader from './Common/Loader'
 import github from './Pickers/Github/api'
+const { generateKeymap } = require('./shared/zmk/keymap')
+
+function getBrowserFileDownloadName (browserFile) {
+  if (browserFile?.baseName) {
+    return `${browserFile.baseName}.keymap`
+  }
+
+  if (typeof browserFile?.fileName === 'string' && browserFile.fileName.toLowerCase().endsWith('.keymap')) {
+    return browserFile.fileName
+  }
+
+  return 'keymap.keymap'
+}
+
+function downloadTextFile (text, fileName) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const url = window.URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  setTimeout(() => window.URL.revokeObjectURL(url), 0)
+}
 
 function App() {
   const [definitions, setDefinitions] = useState(null)
@@ -23,6 +48,7 @@ function App() {
   const [keymap, setKeymap] = useState(null)
   const [editingKeymap, setEditingKeymap] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   function handleCompile() {
     fetch(`${config.apiBaseUrl}/keymap`, {
@@ -38,12 +64,18 @@ function App() {
     const { repository, branch } = sourceOther.github
 
     ;(async function () {
-      setSaving(true)
-      await github.commitChanges(repository, branch, layout, editingKeymap, sensors)
-      setSaving(false)
+      try {
+        setSaving(true)
+        setSaveError(null)
+        await github.commitChanges(repository, branch, layout, editingKeymap, sensors)
 
-      setKeymap(editingKeymap)
-      setEditingKeymap(null)
+        setKeymap(editingKeymap)
+        setEditingKeymap(null)
+      } catch (err) {
+        setSaveError(err?.message || String(err))
+      }
+
+      setSaving(false)
     })()
   }, [
     layout,
@@ -51,6 +83,76 @@ function App() {
     editingKeymap,
     sourceOther,
     setSaving,
+    setKeymap,
+    setEditingKeymap
+  ])
+
+  const handleSaveBrowserFile = useMemo(() => function() {
+    const browserFile = sourceOther?.browserFile
+
+    ;(async function () {
+      const currentKeymap = editingKeymap || keymap
+      if (!currentKeymap) {
+        return
+      }
+
+      try {
+        setSaving(true)
+        setSaveError(null)
+
+        const generated = generateKeymap(layout, currentKeymap, undefined, {
+          sensors,
+          behaviours: definitions?.behaviours || []
+        })
+
+        let writeError = null
+        if (browserFile?.writeCapable && browserFile?.keymapHandle) {
+          try {
+            const writable = browserFile.keymapHandle
+            const permissionOptions = { mode: 'readwrite' }
+
+            if (typeof writable.queryPermission === 'function') {
+              const permission = await writable.queryPermission(permissionOptions)
+              if (permission !== 'granted' && typeof writable.requestPermission === 'function') {
+                const requested = await writable.requestPermission(permissionOptions)
+                if (requested !== 'granted') {
+                  throw new Error('Write permission denied for the selected file')
+                }
+              }
+            }
+
+            const writeStream = await writable.createWritable()
+            await writeStream.write(generated.code)
+            await writeStream.close()
+          } catch (err) {
+            writeError = err
+          }
+        }
+
+        if (writeError || !browserFile?.writeCapable || !browserFile?.keymapHandle) {
+          downloadTextFile(generated.code, getBrowserFileDownloadName(browserFile))
+          if (writeError) {
+            setSaveError(`Saved as download because direct write failed: ${writeError?.message || String(writeError)}`)
+          }
+        }
+
+        setKeymap(currentKeymap)
+        setEditingKeymap(null)
+      } catch (err) {
+        setSaveError(err?.message || String(err))
+      }
+
+      setSaving(false)
+    })()
+  }, [
+    sourceOther,
+    layout,
+    sensors,
+    keymap,
+    editingKeymap,
+    definitions,
+    setSaving,
+    setSaveError,
     setKeymap,
     setEditingKeymap
   ])
@@ -64,13 +166,15 @@ function App() {
     setSensors(sensors || [])
     setKeymap(keymap)
     setEditingKeymap(null)
+    setSaveError(null)
   }, [
     setSource,
     setSourceOther,
     setLayout,
     setSensors,
     setKeymap,
-    setEditingKeymap
+    setEditingKeymap,
+    setSaveError
   ])
 
   const initialize = useMemo(() => {
@@ -104,14 +208,30 @@ function App() {
           {source === 'github' && (
             <button
               title="Commit keymap changes to GitHub repository"
-              disabled={!editingKeymap}
+              disabled={!editingKeymap || saving}
               onClick={handleCommitChanges}
             >
               {saving ? 'Saving' : 'Commit Changes'}
               {saving && <Spinner />}
             </button>
           )}
+          {source === 'browser-file' && (
+            <button
+              title={sourceOther?.browserFile?.writeCapable ? 'Save keymap to selected local file (falls back to download if write fails)' : 'Save keymap as download'}
+              disabled={!editingKeymap || saving}
+              onClick={handleSaveBrowserFile}
+            >
+              {saving ? 'Saving' : 'Save Browser File'}
+              {saving && <Spinner />}
+            </button>
+          )}
         </div>
+        {source === 'browser-file' && sourceOther?.browserFile?.writeCapable === false && (
+          <p>Direct file write is unavailable in this browser. Save will download the .keymap file.</p>
+        )}
+        {saveError && (
+          <p>{saveError}</p>
+        )}
         <DefinitionsContext.Provider value={definitions}>
           {layout && keymap && (
             <Keyboard
