@@ -5556,7 +5556,7 @@
   },
   {
     "names": ["JP_EXCLAMATION"],
-    "symbol": "! (JP)",
+    "symbol": "!",
     "description": "Exclamation Mark (!) for JP Keyboard",
     "context": "Keyboard",
     "clarify": false,

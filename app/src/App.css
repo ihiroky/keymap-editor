@@ -15,29 +15,6 @@ html, body {
 	margin: 0;
 }
 
-#actions {
-	position: absolute;
-	bottom: 5px;
-	right: 20px;
-}
-
-#actions button {
-  cursor: pointer;
-  background-color: var(--hover-selection);
-  color: white;
-
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  padding: 5px;
-  margin: 2px;
-}
-
-#actions button[disabled] {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
 .github-link {
   display: inline-block;
   position: absolute;

@@ -1,6 +1,6 @@
 import '@fortawesome/fontawesome-free/css/all.css'
 import keyBy from 'lodash/keyBy'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import * as config from './config'
 import './App.css';
@@ -50,7 +50,7 @@ function App() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
 
-  function handleCompile() {
+  const handleCompile = useCallback(() => {
     fetch(`${config.apiBaseUrl}/keymap`, {
       method: 'POST',
       headers: {
@@ -58,7 +58,7 @@ function App() {
       },
       body: JSON.stringify(editingKeymap || keymap)
     })
-  }
+  }, [editingKeymap, keymap])
 
   const handleCommitChanges = useMemo(() => function() {
     const { repository, branch } = sourceOther.github
@@ -195,37 +195,66 @@ function App() {
     setEditingKeymap(keymap)
   }, [setEditingKeymap])
 
+  const saveControl = useMemo(() => {
+    if (source === 'local') {
+      return {
+        title: 'Save keymap changes locally',
+        disabled: !editingKeymap || saving,
+        onClick: handleCompile,
+        content: (
+          <>
+            {saving ? 'Saving' : 'Save Local'}
+            {saving && <Spinner />}
+          </>
+        )
+      }
+    }
+
+    if (source === 'github') {
+      return {
+        title: 'Commit keymap changes to GitHub repository',
+        disabled: !editingKeymap || saving,
+        onClick: handleCommitChanges,
+        content: (
+          <>
+            {saving ? 'Saving' : 'Commit Changes'}
+            {saving && <Spinner />}
+          </>
+        )
+      }
+    }
+
+    if (source === 'browser-file') {
+      return {
+        title: sourceOther?.browserFile?.writeCapable
+          ? 'Save keymap to selected local file (falls back to download if write fails)'
+          : 'Save keymap as download',
+        disabled: !editingKeymap || saving,
+        onClick: handleSaveBrowserFile,
+        content: (
+          <>
+            {saving ? 'Saving' : 'Save Browser File'}
+            {saving && <Spinner />}
+          </>
+        )
+      }
+    }
+
+    return null
+  }, [
+    source,
+    sourceOther,
+    editingKeymap,
+    saving,
+    handleCompile,
+    handleCommitChanges,
+    handleSaveBrowserFile
+  ])
+
   return (
     <>
       <Loader load={initialize}>
         <KeyboardPicker onSelect={handleKeyboardSelected} />
-        <div id="actions">
-          {source === 'local' && (
-            <button disabled={!editingKeymap} onClick={handleCompile}>
-              Save Local
-            </button>
-          )}
-          {source === 'github' && (
-            <button
-              title="Commit keymap changes to GitHub repository"
-              disabled={!editingKeymap || saving}
-              onClick={handleCommitChanges}
-            >
-              {saving ? 'Saving' : 'Commit Changes'}
-              {saving && <Spinner />}
-            </button>
-          )}
-          {source === 'browser-file' && (
-            <button
-              title={sourceOther?.browserFile?.writeCapable ? 'Save keymap to selected local file (falls back to download if write fails)' : 'Save keymap as download'}
-              disabled={!editingKeymap || saving}
-              onClick={handleSaveBrowserFile}
-            >
-              {saving ? 'Saving' : 'Save Browser File'}
-              {saving && <Spinner />}
-            </button>
-          )}
-        </div>
         {source === 'browser-file' && sourceOther?.browserFile?.writeCapable === false && (
           <p>Direct file write is unavailable in this browser. Save will download the .keymap file.</p>
         )}
@@ -239,6 +268,7 @@ function App() {
               sensors={sensors}
               keymap={editingKeymap || keymap}
               onUpdate={handleUpdateKeymap}
+              saveControl={saveControl}
             />
           )}
         </DefinitionsContext.Provider>
