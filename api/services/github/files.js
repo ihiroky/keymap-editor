@@ -205,12 +205,6 @@ async function commitChanges (installationId, repository, branch, layout, keymap
           mode: MODE_FILE,
           type: 'blob',
           content: generatedKeymap.code
-        },
-        {
-          path: 'config/keymap.json',
-          mode: MODE_FILE,
-          type: 'blob',
-          content: generatedKeymap.json
         }
       ]
     }

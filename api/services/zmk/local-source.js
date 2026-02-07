@@ -139,7 +139,6 @@ function exportKeymap (generatedKeymap, flash, callback) {
     : findKeymapFile()
 
   fs.existsSync(keymapPath) || fs.mkdirSync(keymapPath)
-  fs.writeFileSync(path.join(keymapPath, 'keymap.json'), generatedKeymap.json)
   fs.writeFileSync(path.join(keymapPath, keymapFile), generatedKeymap.code)
 
   // Note: This isn't really helpful. In the QMK version I had this actually
