@@ -7,6 +7,7 @@ const {
   loadBehaviors,
   loadKeycodes,
   loadLayout,
+  loadSensors,
   loadKeymap,
   exportKeymap
 } = require('./local-source')
@@ -17,6 +18,7 @@ module.exports = {
   loadBehaviors,
   loadKeycodes,
   loadLayout,
+  loadSensors,
   loadKeymap,
   exportKeymap
 }

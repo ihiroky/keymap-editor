@@ -272,5 +272,10 @@
     "code": "&none",
     "name": "None",
     "params": []
+  },
+  {
+    "code": "&inc_dec_kp",
+    "name": "Encoder Inc/Dec Key Press",
+    "params": ["code", "code"]
   }
 ]

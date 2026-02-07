@@ -19,6 +19,7 @@ function App() {
   const [source, setSource] = useState(null)
   const [sourceOther, setSourceOther] = useState(null)
   const [layout, setLayout] = useState(null)
+  const [sensors, setSensors] = useState([])
   const [keymap, setKeymap] = useState(null)
   const [editingKeymap, setEditingKeymap] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -38,7 +39,7 @@ function App() {
 
     ;(async function () {
       setSaving(true)
-      await github.commitChanges(repository, branch, layout, editingKeymap)
+      await github.commitChanges(repository, branch, layout, editingKeymap, sensors)
       setSaving(false)
 
       setKeymap(editingKeymap)
@@ -46,6 +47,7 @@ function App() {
     })()
   }, [
     layout,
+    sensors,
     editingKeymap,
     sourceOther,
     setSaving,
@@ -54,17 +56,19 @@ function App() {
   ])
 
   const handleKeyboardSelected = useMemo(() => function(event) {
-    const { source, layout, keymap, ...other } = event
+    const { source, layout, keymap, sensors, ...other } = event
 
     setSource(source)
     setSourceOther(other)
     setLayout(layout)
+    setSensors(sensors || [])
     setKeymap(keymap)
     setEditingKeymap(null)
   }, [
     setSource,
     setSourceOther,
     setLayout,
+    setSensors,
     setKeymap,
     setEditingKeymap
   ])
@@ -112,6 +116,7 @@ function App() {
           {layout && keymap && (
             <Keyboard
               layout={layout}
+              sensors={sensors}
               keymap={editingKeymap || keymap}
               onUpdate={handleUpdateKeymap}
             />

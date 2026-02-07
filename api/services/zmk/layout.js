@@ -8,11 +8,12 @@ class InfoValidationError extends Error {
   }
 }
 
-function renderTable (layout, layer, opts={}) {
+function renderTable (layout, layer, opts = {}) {
   const {
     useQuotes = false,
     linePrefix = '',
-    columnSeparator = ','
+    columnSeparator = ',',
+    align = 'right'
   } = opts
   const minWidth = useQuotes ? 9 : 7
   const table = layer.reduce((map, code, i) => {
@@ -30,12 +31,12 @@ function renderTable (layout, layer, opts={}) {
   }, [])
 
   const columns = Math.max(...table.map(row => row.length))
-  const columnIndices = '.'.repeat(columns-1).split('.').map((_, i) => i)
+  const columnIndices = '.'.repeat(columns - 1).split('.').map((_, i) => i)
   const columnWidths = columnIndices.map(i => Math.max(
     ...table.map(row => (
-      (row[i] || []).length
-      + columnSeparator.length
-      + (useQuotes ? 2 : 0) // wrapping with quotes adds 2 characters
+      (row[i] || []).length +
+      columnSeparator.length +
+      (useQuotes ? 2 : 0) // wrapping with quotes adds 2 characters
     ))
   ))
 
@@ -43,19 +44,22 @@ function renderTable (layout, layer, opts={}) {
     const isLastRow = rowIndex === table.length - 1
     return linePrefix + columnIndices.map(i => {
       const noMoreValues = row.slice(i).every(col => col === undefined)
-      const noFollowingValues = row.slice(i+1).every(col => col === undefined)
+      const noFollowingValues = row.slice(i + 1).every(col => col === undefined)
       const padding = Math.max(minWidth, columnWidths[i])
 
       if (noMoreValues) return ''
       if (!row[i]) return ' '.repeat(padding + 1)
-      const column =  (useQuotes ? `"${row[i]}"` : row[i]).padStart(padding)
+      const raw = useQuotes ? `"${row[i]}"` : row[i]
+      const column = align === 'left'
+        ? raw.padEnd(padding)
+        : raw.padStart(padding)
       const suffix = (isLastRow && noFollowingValues) ? '' : columnSeparator
       return column + suffix
     }).join('').replace(/\s+$/, '')
   }).join('\n')
 }
 
-function validateInfoJson(info) {
+function validateInfoJson (info) {
   const errors = []
 
   if (typeof info !== 'object' || info === null) {
@@ -67,7 +71,7 @@ function validateInfoJson(info) {
   } else if (Object.values(info.layouts).length === 0) {
     errors.push('layouts must define at least one layout')
   } else {
-    for (let name in info.layouts) {
+    for (const name in info.layouts) {
       const layout = info.layouts[name]
       if (typeof layout !== 'object' || layout === null) {
         errors.push(`layout ${name} must be an object`)
@@ -79,7 +83,7 @@ function validateInfoJson(info) {
           key?.col !== undefined
         ))
 
-        for (let i in layout.layout) {
+        for (const i in layout.layout) {
           const key = layout.layout[i]
           const keyPath = `layouts[${name}].layout[${i}]`
 
@@ -93,12 +97,12 @@ function validateInfoJson(info) {
             if (!isNumber(key.y)) {
               errors.push(`Key definition at ${keyPath} must include "y" position`)
             }
-            for (let prop of optionalNumberProps) {
+            for (const prop of optionalNumberProps) {
               if (prop in key && !isNumber(key[prop])) {
                 errors.push(`Key definition at ${keyPath} optional "${prop}" must be number`)
               }
             }
-            for (let prop of ['row', 'col']) {
+            for (const prop of ['row', 'col']) {
               if (anyKeyHasPosition && !(prop in key)) {
                 errors.push(`Key definition at ${keyPath} is missing "${prop}"`)
               } else if (prop in key && (!Number.isInteger(key[prop]) || key[prop] < 0)) {

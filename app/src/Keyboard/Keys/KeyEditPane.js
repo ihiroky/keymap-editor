@@ -162,29 +162,30 @@ function KeyEditPane(props) {
     setPicker(null)
   }, [picker, updateParamAtPath, sources])
 
-  const handleReset = useMemo(() => function() {
-    if (!selectedKey) {
-      return
-    }
-    setDraft(cloneDeep(selectedKey.binding))
-    setPicker(null)
-  }, [selectedKey])
+  const handleCancel = useMemo(() => function() {
+    onClose()
+  }, [onClose])
 
   const handleApply = useMemo(() => function() {
     if (!draft) {
       return
     }
     onApply(normalizeDraft(cloneDeep(draft), sources))
-  }, [draft, onApply, sources])
+    onClose()
+  }, [draft, onApply, onClose, sources])
 
   const paneStyle = useMemo(() => {
     if (!selectedKey) {
       return style
     }
 
+    const baseTransform = style?.transform
+    const dragTransform = `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+    const transform = [baseTransform, dragTransform].filter(Boolean).join(' ')
+
     return {
       ...style,
-      transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+      transform
     }
   }, [dragOffset, selectedKey, style])
 
@@ -331,6 +332,12 @@ function KeyEditPane(props) {
     >
       <div className={styles.header}>
         <div className={styles['header-info']}>
+          <div className={styles['header-text']}>
+            <div className={styles.title}>
+              Edit Keymap
+            </div>
+            <div className={styles.subtitle}>{selectedKey.label}</div>
+          </div>
           <button
             type="button"
             className={styles['drag-handle']}
@@ -338,16 +345,7 @@ function KeyEditPane(props) {
             aria-label="Drag to move"
             title="Drag to move"
           />
-            <div>
-              <div className={styles.title}>
-                Edit Keymap
-              </div>
-              <div className={styles.subtitle}>{selectedKey.label}</div>
-            </div>
         </div>
-        <button type="button" className={styles.close} onClick={onClose}>
-          x
-        </button>
       </div>
 
       <section className={styles.section}>
@@ -399,8 +397,8 @@ function KeyEditPane(props) {
         >
           Apply
         </button>
-        <button type="button" onClick={handleReset}>
-          Reset
+        <button type="button" onClick={handleCancel}>
+          Cancel
         </button>
       </div>
     </aside>
