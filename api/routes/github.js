@@ -174,10 +174,17 @@ const getKeyboardFiles = async (req, res, next) => {
 const updateKeyboardFiles = async (req, res, next) => {
   const { installationId, branch } = req.params
   const repository = getRepositoryFromParams(req.params)
-  const { keymap, layout } = req.body
+  const { keymap, layout, sensors } = req.body
 
   try {
-    await commitChanges(installationId, repository, safeDecodeURIComponent(branch), layout, keymap)
+    await commitChanges(
+      installationId,
+      repository,
+      safeDecodeURIComponent(branch),
+      layout,
+      keymap,
+      sensors
+    )
   } catch (err) {
     return next(err)
   }

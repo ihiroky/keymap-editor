@@ -175,11 +175,20 @@ async function convertKeymapFromCode (installationToken, repository, branch, opt
   }
 }
 
-async function commitChanges (installationId, repository, branch, layout, keymap) {
+async function commitChanges (installationId, repository, branch, layout, keymap, sensors) {
   const { data: { token: installationToken } } = await auth.createInstallationToken(installationId)
   const template = await findCodeKeymapTemplate(installationToken, repository, branch)
+  let sensorConfig = Array.isArray(sensors) ? sensors : null
+  if (!sensorConfig) {
+    try {
+      const { data: info } = await fetchInfoFile(installationToken, repository, branch)
+      sensorConfig = Array.isArray(info?.sensors) ? info.sensors : []
+    } catch {
+      sensorConfig = []
+    }
+  }
 
-  const generatedKeymap = zmk.generateKeymap(layout, keymap, template)
+  const generatedKeymap = zmk.generateKeymap(layout, keymap, template, { sensors: sensorConfig })
 
   const originalCodeKeymap = await findCodeKeymap(installationToken, repository, branch)
   const { data: {sha, commit} } = await api.request({ url: `/repos/${repository}/commits/${branch}`, token: installationToken })

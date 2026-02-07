@@ -14,7 +14,8 @@ router.get('/keymap', (req, res) => res.json(zmk.loadKeymap()))
 router.post('/keymap', (req, res) => {
   const keymap = req.body
   const layout = zmk.loadLayout()
-  const generatedKeymap = zmk.generateKeymap(layout, keymap)
+  const sensors = zmk.loadSensors()
+  const generatedKeymap = zmk.generateKeymap(layout, keymap, undefined, { sensors })
   if (debug) {
     console.log('export', JSON.stringify(generatedKeymap.code, null, 2))
     res.send()

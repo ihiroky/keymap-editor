@@ -87,6 +87,24 @@
   color: white;
 }
 
+.sensor-item:disabled {
+  cursor: not-allowed;
+  border-color: rgba(0, 0, 0, 0.08);
+  background-color: #ececec;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.sensor-item:disabled .sensor-label,
+.sensor-item:disabled .sensor-binding,
+.sensor-item:disabled .sensor-behaviour {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.sensor-item:disabled:hover {
+  border-color: rgba(0, 0, 0, 0.08);
+  background-color: #ececec;
+}
+
 .sensor-item[data-selected="true"] {
   outline: 3px solid var(--selection);
   outline-offset: 2px;

@@ -113,14 +113,40 @@ function parseKeymap (keymap) {
   return parsed
 }
 
-function generateKeymap (layout, keymap, template) {
+function isSensorEditable (sensor) {
+  if (!sensor || typeof sensor !== 'object') {
+    return false
+  }
+
+  const compatible = sensor.compatible
+  const hasCompatible = typeof compatible === 'string'
+    ? compatible.trim().length > 0
+    : compatible !== undefined && compatible !== null
+
+  return hasCompatible || sensor.enabled === true
+}
+
+function filterEditableSensorBindings (sensorLayer, sensors) {
+  if (!Array.isArray(sensorLayer)) {
+    return sensorLayer
+  }
+  if (!Array.isArray(sensors) || sensors.length === 0) {
+    return sensorLayer
+  }
+
+  return sensorLayer.filter((binding, index) => (
+    isSensorEditable(sensors[index])
+  ))
+}
+
+function generateKeymap (layout, keymap, template, options = {}) {
   const editorTemplate = keymap?.[EDITOR_METADATA_KEY]?.template
   const sanitized = stripEditorMetadata(keymap)
   const encoded = encodeKeymap(sanitized)
   const templateToUse = template || editorTemplate || defaults.keymapTemplate
 
   return {
-    code: generateKeymapCode(layout, sanitized, encoded, templateToUse),
+    code: generateKeymapCode(layout, sanitized, encoded, templateToUse, options),
     json: generateKeymapJSON(layout, sanitized, encoded)
   }
 }
@@ -206,9 +232,13 @@ function renderLayers (params) {
     const name = i === 0 ? 'default_layer' : `layer_${params.layerNames[i] || i}`
     const rendered = renderTable(params.layout, layer, {
       linePrefix: '',
-      columnSeparator: ' '
+      columnSeparator: ' ',
+      align: 'left'
     })
-    const sensorLayer = params.sensorLayers?.[i]
+    const sensorLayer = filterEditableSensorBindings(
+      params.sensorLayers?.[i],
+      params.sensors
+    )
     const renderedSensors = Array.isArray(sensorLayer) && sensorLayer.length > 0
       ? `            sensor-bindings = <${sensorLayer.join(' ')}>;\n`
       : ''
@@ -250,9 +280,16 @@ function renderTemplate (template, params) {
   return output
 }
 
-function generateKeymapCode (layout, keymap, encoded, template) {
+function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
   const { layer_names: names = [] } = keymap
-  const behaviourHeaders = flatten(getBehavioursUsed(keymap).map(
+  const keymapForIncludes = Array.isArray(keymap.sensor_layers)
+    ? Object.assign({}, keymap, {
+      sensor_layers: keymap.sensor_layers.map(layer => (
+        filterEditableSensorBindings(layer, options.sensors)
+      ))
+    })
+    : keymap
+  const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
 
@@ -261,7 +298,8 @@ function generateKeymapCode (layout, keymap, encoded, template) {
     behaviourHeaders,
     layers: encoded.layers,
     layerNames: names,
-    sensorLayers: encoded.sensor_layers
+    sensorLayers: encoded.sensor_layers,
+    sensors: options.sensors
   })
 }
 

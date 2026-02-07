@@ -39,7 +39,7 @@ function App() {
 
     ;(async function () {
       setSaving(true)
-      await github.commitChanges(repository, branch, layout, editingKeymap)
+      await github.commitChanges(repository, branch, layout, editingKeymap, sensors)
       setSaving(false)
 
       setKeymap(editingKeymap)
@@ -47,6 +47,7 @@ function App() {
     })()
   }, [
     layout,
+    sensors,
     editingKeymap,
     sourceOther,
     setSaving,

@@ -121,7 +121,7 @@ export class API extends EventEmitter {
     }
   }
 
-  commitChanges(repo, branch, layout, keymap) {
+  commitChanges(repo, branch, layout, keymap, sensors) {
     const installation = encodeURIComponent(this.repoInstallationMap[repo])
     const repository = encodeURIComponent(repo)
 
@@ -129,7 +129,7 @@ export class API extends EventEmitter {
       url: `/github/keyboard-files/${installation}/${repository}/${encodeURIComponent(branch)}`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      data: { layout, keymap }
+      data: { layout, keymap, sensors }
     })
   }
 }
