@@ -66,8 +66,14 @@ function Keyboard(props) {
   }, [keycodes, behaviours, keymap])
 
   const searchTargets = useMemo(() => {
+    const sortedBehaviours = [...behaviours].sort((a, b) => (
+      String(a?.code || '').localeCompare(String(b?.code || ''), undefined, {
+        sensitivity: 'base'
+      })
+    ))
+
     return {
-      behaviour: behaviours,
+      behaviour: sortedBehaviours,
       layer: availableLayers,
       mod: filter(keycodes, 'isModifier'),
       code: keycodes
