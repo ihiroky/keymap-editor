@@ -41,11 +41,22 @@
       "code": "BT_CLR",
       "description": "Clear bond information between the keyboard and host for the selected profile."
     }, {
+      "code": "BT_CLR_ALL",
+      "description": "Clear bond information between the keyboard and host for all profiles."
+    }, {
       "code": "BT_NXT",
       "description": "Switch to the next profile, cycling through to the first one when the end is reached."
     }, {
       "code": "BT_PRV",
       "description": "Switch to the previous profile, cycling through to the last one when the beginning is reached."
+    }, {
+      "code": "BT_DISC",
+      "description": "Disconnect from the selected profile.",
+      "additionalParams": [{
+        "name": "index",
+        "type": "integer",
+        "enum": [0, 1, 2, 3, 4]
+      }]
     }, {
       "code": "BT_SEL",
       "description": "Select the 0-indexed profile by number. Please note: this definition must include a number as an argument in the keymap to work correctly. eg. BT_SEL 0",
@@ -68,8 +79,14 @@
     "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
   },
   {
+    "code": "&kt",
+    "name": "Key Toggle",
+    "params": ["code"],
+    "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
+  },
+  {
     "code": "&mkp",
-    "name": "Mouse Key Press",
+    "name": "Mouse Button Press",
     "params": ["command"],
     "includes": ["#include <dt-bindings/zmk/pointing.h>"],
     "commands": [{
@@ -144,7 +161,8 @@
   {
     "code": "&lt",
     "name": "Layer Tap",
-    "params": ["layer", "code"]
+    "params": ["layer", "code"],
+    "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
   },
   {
     "code": "&mo",
@@ -154,19 +172,20 @@
   {
     "code": "&mt",
     "name": "Mod Tap",
-    "params": ["mod", "code"]
+    "params": ["mod", "code"],
+    "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
   },
   {
     "code": "&out",
-    "name": "Output selection",
+    "name": "Output Selection",
     "params": ["command"],
     "includes": ["#include <dt-bindings/zmk/outputs.h>"],
     "commands": [{
       "code": "OUT_BLE",
-      "description": "Prefer sending to USB"
+      "description": "Prefer sending to the current Bluetooth profile"
     }, {
       "code": "OUT_USB",
-      "description": "Prefer sending to the current bluetooth profile"
+      "description": "Prefer sending to USB"
     }, {
       "code": "OUT_TOG",
       "description": "Toggle between USB and BLE"
@@ -175,7 +194,13 @@
   {
     "code": "&sk",
     "name": "Sticky Key",
-    "params": ["code"]
+    "params": ["code"],
+    "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
+  },
+  {
+    "code": "&gresc",
+    "name": "Grave Escape",
+    "params": []
   },
   {
     "code": "&sl",
@@ -193,28 +218,29 @@
     "params": ["layer"]
   },
   {
-    "code": "&reset",
+    "code": "&sys_reset",
     "name": "Reset",
     "params": []
   },
   {
-    "code": "&sys_reset",
-    "name": "System Reset",
-    "params": []
-  },
-  {
     "code": "&bootloader",
-    "name": "Bootloader",
+    "name": "Bootloader Reset",
     "params": []
   },
   {
     "code": "&rgb_ug",
-    "name": "RGB underglow control",
+    "name": "RGB Underglow",
     "params": ["command"],
     "includes": ["#include <dt-bindings/zmk/rgb.h>"],
     "commands": [{
       "code": "RGB_TOG",
       "description": "Toggles the RGB feature on and off"
+    }, {
+      "code": "RGB_ON",
+      "description": "Turns on the RGB feature"
+    }, {
+      "code": "RGB_OFF",
+      "description": "Turns off the RGB feature"
     }, {
       "code": "RGB_HUI",
       "description": "Increases the hue of the RGB feature"
@@ -244,12 +270,15 @@
       "description": "Cycles the RGB feature's effect forwards"
     }, {
       "code": "RGB_EFR",
-      "description": "Cycles the RGB feature's effect reverse"
+      "description": "Cycles the RGB feature's effect in reverse"
+    }, {
+      "code": "RGB_COLOR_HSB",
+      "description": "Sets the RGB feature's color using HSB values"
     }]
   },
   {
     "code": "&ext_power",
-    "name": "External power management",
+    "name": "External Power Control",
     "params": ["command"],
     "includes": ["#include <dt-bindings/zmk/ext_power.h>"],
     "commands": [{
@@ -264,6 +293,16 @@
     }]
   },
   {
+    "code": "&soft_off",
+    "name": "Soft Off",
+    "params": []
+  },
+  {
+    "code": "&studio_unlock",
+    "name": "ZMK Studio Unlock",
+    "params": []
+  },
+  {
     "code": "&trans",
     "name": "Transparent",
     "params": []
@@ -276,6 +315,7 @@
   {
     "code": "&inc_dec_kp",
     "name": "Encoder Inc/Dec Key Press",
-    "params": ["code", "code"]
+    "params": ["code", "code"],
+    "includes": ["#include <dt-bindings/zmk/keys.h>", "#include \"keys_jp.h\""]
   }
 ]
