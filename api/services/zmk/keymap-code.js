@@ -4,10 +4,164 @@ const KEYMAP_ROOT = {
   layout: 'unknown'
 }
 
+const EDITOR_METADATA_KEY = '__keymap_editor'
+
 function stripComments (content) {
   return content
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '')
+}
+
+function isIdentifierChar (char) {
+  return typeof char === 'string' && char.length === 1 && /[A-Za-z0-9_-]/.test(char)
+}
+
+function findKeymapBlockRange (content) {
+  let inLineComment = false
+  let inBlockComment = false
+  let inString = false
+
+  const length = content.length
+  for (let i = 0; i < length; i += 1) {
+    const char = content[i]
+    const next = content[i + 1]
+
+    if (inLineComment) {
+      if (char === '\n') {
+        inLineComment = false
+      }
+      continue
+    }
+
+    if (inBlockComment) {
+      if (char === '*' && next === '/') {
+        inBlockComment = false
+        i += 1
+      }
+      continue
+    }
+
+    if (inString) {
+      if (char === '"' && content[i - 1] !== '\\') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '/' && next === '/') {
+      inLineComment = true
+      i += 1
+      continue
+    }
+
+    if (char === '/' && next === '*') {
+      inBlockComment = true
+      i += 1
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === 'k' && content.slice(i, i + 6) === 'keymap') {
+      const prev = content[i - 1]
+      const nextChar = content[i + 6]
+      if (isIdentifierChar(prev) || isIdentifierChar(nextChar) || prev === '&' || prev === '/') {
+        continue
+      }
+
+      let cursor = i + 6
+      while (cursor < length && /\s/.test(content[cursor])) {
+        cursor += 1
+      }
+      if (content[cursor] !== '{') {
+        continue
+      }
+
+      let depth = 1
+      let j = cursor + 1
+      let blockLineComment = false
+      let blockComment = false
+      let blockString = false
+      for (; j < length; j += 1) {
+        const current = content[j]
+        const upcoming = content[j + 1]
+
+        if (blockLineComment) {
+          if (current === '\n') {
+            blockLineComment = false
+          }
+          continue
+        }
+
+        if (blockComment) {
+          if (current === '*' && upcoming === '/') {
+            blockComment = false
+            j += 1
+          }
+          continue
+        }
+
+        if (blockString) {
+          if (current === '"' && content[j - 1] !== '\\') {
+            blockString = false
+          }
+          continue
+        }
+
+        if (current === '/' && upcoming === '/') {
+          blockLineComment = true
+          j += 1
+          continue
+        }
+
+        if (current === '/' && upcoming === '*') {
+          blockComment = true
+          j += 1
+          continue
+        }
+
+        if (current === '"') {
+          blockString = true
+          continue
+        }
+
+        if (current === '{') {
+          depth += 1
+        } else if (current === '}') {
+          depth -= 1
+          if (depth === 0) {
+            let end = j + 1
+            while (end < length && /\s/.test(content[end])) {
+              end += 1
+            }
+            if (content[end] === ';') {
+              end += 1
+            }
+            return { start: i, end }
+          }
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+function extractKeymapTemplate (content) {
+  const range = findKeymapBlockRange(content)
+  if (!range) {
+    return null
+  }
+
+  const { start, end } = range
+  const lineStart = content.lastIndexOf('\n', start - 1) + 1
+  const prefix = content.slice(lineStart, start)
+  const effectiveStart = /^[ \t]*$/.test(prefix) ? lineStart : start
+
+  return `${content.slice(0, effectiveStart)}{{rendered_keymap}}${content.slice(end)}`
 }
 
 function extractBlockWithIndex (content, startIndex) {
@@ -229,13 +383,20 @@ function parseKeymapCode (content, options = {}) {
     return null
   }
 
-  return Object.assign({}, KEYMAP_ROOT, {
+  const template = extractKeymapTemplate(content)
+  const parsed = Object.assign({}, KEYMAP_ROOT, {
     layer_names: extracted.layerNames,
     layers: extracted.layers,
     sensor_layers: extracted.sensorLayers && extracted.sensorLayers.length
       ? extracted.sensorLayers
       : undefined
   })
+
+  if (template) {
+    parsed[EDITOR_METADATA_KEY] = { template, source: 'code' }
+  }
+
+  return parsed
 }
 
 module.exports = {

@@ -127,8 +127,16 @@ function findKeymapFile () {
 }
 
 function exportKeymap (generatedKeymap, flash, callback) {
-  const keymapPath = path.join(ZMK_PATH, 'config')
-  const keymapFile = findKeymapFile()
+  const localInfo = getLocalZmkConfigInfo()
+  const localRepoPath = localInfo
+    ? path.join(localInfo.rootPath, localInfo.configDir.name)
+    : null
+  const keymapPath = localInfo
+    ? path.join(localRepoPath, 'config')
+    : path.join(ZMK_PATH, 'config')
+  const keymapFile = localInfo
+    ? `${localInfo.suffix}.keymap`
+    : findKeymapFile()
 
   fs.existsSync(keymapPath) || fs.mkdirSync(keymapPath)
   fs.writeFileSync(path.join(keymapPath, 'keymap.json'), generatedKeymap.json)
@@ -139,7 +147,12 @@ function exportKeymap (generatedKeymap, flash, callback) {
   // environment proved to be more complex than I had patience for, so for now
   // I'm writing changes to a zmk-config repo and counting on the predefined
   // GitHub action to actually compile.
-  return childProcess.execFile('git', ['status'], { cwd: ZMK_PATH }, callback)
+  return childProcess.execFile(
+    'git',
+    ['status'],
+    { cwd: localRepoPath || ZMK_PATH },
+    callback
+  )
 }
 
 module.exports = {

@@ -136,6 +136,9 @@ const getKeyboardFiles = async (req, res, next) => {
       if (parsedCode?.sensor_layers) {
         keymap.sensor_layers = parsedCode.sensor_layers
       }
+      if (parsedCode?.__keymap_editor?.template) {
+        keymap.__keymap_editor = parsedCode.__keymap_editor
+      }
     }
 
     if (!Array.isArray(keymap.sensor_layers) && sensorCount > 0) {
