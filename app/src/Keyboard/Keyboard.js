@@ -30,7 +30,7 @@ function isSensorEditable(sensor) {
 }
 
 function Keyboard(props) {
-  const { layout, keymap, sensors, onUpdate } = props
+  const { layout, keymap, sensors, onUpdate, saveControl } = props
   const [activeLayer, setActiveLayer] = useState(0)
   const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
   const [selectedSensorIndex, setSelectedSensorIndex] = useState(null)
@@ -560,6 +560,19 @@ function Keyboard(props) {
                 {sensorList}
               </div>
             )}
+            {saveControl && (
+              <div className={styles['save-actions']} style={sensorListStyle}>
+                <button
+                  type="button"
+                  className={styles['save-button']}
+                  title={saveControl.title}
+                  disabled={saveControl.disabled}
+                  onClick={saveControl.onClick}
+                >
+                  {saveControl.content}
+                </button>
+              </div>
+            )}
             {selectedSensor && sensorEditPaneStyle && (
               <KeyEditPane
                 className={styles['floating-pane']}
@@ -580,7 +593,13 @@ Keyboard.propTypes = {
   layout: PropTypes.array.isRequired,
   sensors: PropTypes.array,
   keymap: PropTypes.object.isRequired,
-  onUpdate: PropTypes.func.isRequired
+  onUpdate: PropTypes.func.isRequired,
+  saveControl: PropTypes.shape({
+    title: PropTypes.string,
+    disabled: PropTypes.bool,
+    onClick: PropTypes.func,
+    content: PropTypes.node
+  })
 }
 
 export default Keyboard

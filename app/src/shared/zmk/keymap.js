@@ -211,7 +211,20 @@ function insertIncludes (template, includeBlock) {
 
 function renderLayers (params) {
   return params.layers.map((layer, i) => {
-    const name = i === 0 ? 'default_layer' : `layer_${params.layerNames[i] || i}`
+    const rawName = params.layerNames[i]
+    let sanitizedRawName = String(rawName ?? i)
+      .replace(/[^a-zA-Z0-9_]/g, '_')
+      .replace(/^_+|_+$/g, '')
+    const fallbackName = String(i)
+    if (!sanitizedRawName) {
+      sanitizedRawName = fallbackName
+    }
+    const normalizedName = /^[0-9]/.test(sanitizedRawName)
+      ? `_${sanitizedRawName}`
+      : sanitizedRawName
+    const name = i === 0
+      ? 'default_layer'
+      : normalizedName
     const rendered = renderTable(params.layout, layer, {
       linePrefix: '',
       columnSeparator: ' ',
@@ -226,7 +239,7 @@ function renderLayers (params) {
       : ''
 
     return `
-        ${name.replace(/[^a-zA-Z0-9_]/g, '_')} {
+        ${name} {
             bindings = <
 ${rendered}
             >;

@@ -110,6 +110,27 @@
   outline-offset: 2px;
 }
 
+.save-actions {
+  margin: 12px auto 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.save-button {
+  cursor: pointer;
+  background-color: var(--hover-selection);
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 10px;
+}
+
+.save-button[disabled] {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
 .floating-pane {
   pointer-events: auto;
 }
@@ -125,6 +146,8 @@
 	background-color: rgba(201, 201, 201, 0.85);
 	color: darkgray;
 	border-radius: 15px;
+  display: flex;
+  align-items: center;
   height: 30px;
 	padding: 0px;
 	margin: 4px 2px;
@@ -139,29 +162,31 @@
 	color: white;
 }
 
-.layer-selector li * {
-  display: inline-block;
-}
 .layer-selector li .index {
-  overflow: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   width: 30px;
   height: 30px;
-  line-height: 30px;
-  text-align: center;
 }
-.layer-selector li .name {
+.layer-selector li span.name {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
   overflow: hidden;
-  width: 0;
+  white-space: nowrap;
+  max-width: 0;
   height: 30px;
-  line-height: 30px;
-  padding: 0;
+  line-height: 1;
+  padding: 0 0 0 0;
   font-variant: small-caps;
+  transition: max-width .15s ease-in, padding .15s ease-in;
 }
 
-.layer-selector:hover li .name,
-.layer-selector[data-renaming="true"] li .name {
-  transition: .15s ease-in;
-  width: 120px;
+.layer-selector:hover li span.name,
+.layer-selector[data-renaming="true"] li span.name {
+  max-width: 40vw;
   padding: 0 0 0 10px;
 }
 
@@ -184,9 +209,12 @@
 }
 
 .layer-selector .delete {
-  float: right;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 30px;
-  line-height: 30px;
+  line-height: 1;
   width: 30px;
 }
 
