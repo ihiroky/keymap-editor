@@ -86,6 +86,9 @@ function GithubPicker(props) {
 
     onSelect({
       github: { repository, branch },
+      sourceContext: {
+        github: { repository, branch }
+      },
       ...response
     })
   }, [
