@@ -138,6 +138,12 @@
   gap: 8px;
 }
 
+.emptyHint {
+  margin: 0;
+  color: #556;
+  font-size: 13px;
+}
+
 .errors,
 .warnings,
 .note {
