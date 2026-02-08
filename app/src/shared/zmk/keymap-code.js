@@ -7,6 +7,7 @@ const KEYMAP_ROOT = {
 const EDITOR_METADATA_KEY = '__keymap_editor'
 const RENDERED_KEYMAP = '{{rendered_keymap}}'
 const RENDERED_BEHAVIOR_OVERRIDES = '{{rendered_behavior_overrides}}'
+const RENDERED_COMBO_DEFINITIONS = '{{rendered_combo_definitions}}'
 const RENDERED_MACRO_DEFINITIONS = '{{rendered_macro_definitions}}'
 const RENDERED_BEHAVIOR_DEFINITIONS = '{{rendered_behavior_definitions}}'
 const CHILDREN_SNIPPET_ROOT_NAME = '__keymap_editor_children_root'
@@ -213,10 +214,20 @@ function normalizeAngleValue (value) {
   return trimmed
 }
 
+function parseTokenArrayValue (source) {
+  return String(source || '')
+    .trim()
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(Boolean)
+    .map(token => normalizeAngleValue(token))
+}
+
 function parsePropertyValue (rawValue, propertyName = '') {
   const trimmed = rawValue.trim()
   const normalizedPropertyName = String(propertyName || '').trim()
   const isBindingsProperty = normalizedPropertyName === 'bindings' || normalizedPropertyName === 'sensor-bindings'
+  const isTokenArrayProperty = normalizedPropertyName === 'key-positions' || normalizedPropertyName === 'layers'
 
   const quoted = trimmed.match(/^"([\s\S]*)"$/)
   if (quoted) {
@@ -224,6 +235,17 @@ function parsePropertyValue (rawValue, propertyName = '') {
   }
 
   const angleMatches = Array.from(trimmed.matchAll(/<([^>]+)>/g))
+  if (isTokenArrayProperty) {
+    const tokenSource = angleMatches.length
+      ? angleMatches.map(match => String(match[1] || '').trim()).join(' ')
+      : trimmed
+
+    return {
+      value: parseTokenArrayValue(tokenSource),
+      type: 'token-array'
+    }
+  }
+
   if (isBindingsProperty) {
     const bindingSource = angleMatches.length
       ? angleMatches.map(match => normalizeAngleValue(match[1])).join(' ')
@@ -663,6 +685,7 @@ function extractKeymapTemplate (content) {
 
   const preserved = stripCommentsPreserveWidth(content)
   const topBlocks = findBlocks(preserved)
+  const comboDefinitionsRange = findNamedBlockRange(content, 'combos')
   const macroDefinitionsRange = findNamedBlockRange(content, 'macros')
   const behaviorDefinitionsRange = findNamedBlockRange(content, 'behaviors')
 
@@ -672,6 +695,10 @@ function extractKeymapTemplate (content) {
 
   if (macroDefinitionsRange) {
     ranges.push({ ...macroDefinitionsRange, replacement: RENDERED_MACRO_DEFINITIONS })
+  }
+
+  if (comboDefinitionsRange) {
+    ranges.push({ ...comboDefinitionsRange, replacement: RENDERED_COMBO_DEFINITIONS })
   }
 
   if (behaviorDefinitionsRange) {
@@ -688,6 +715,7 @@ function extractKeymapTemplate (content) {
 
   let template = applyRanges(content, ranges)
   template = insertPlaceholderAtTopLevel(template, RENDERED_BEHAVIOR_OVERRIDES)
+  template = insertPlaceholderBeforeKeymap(template, RENDERED_COMBO_DEFINITIONS)
   template = insertPlaceholderBeforeKeymap(template, RENDERED_MACRO_DEFINITIONS)
   template = insertPlaceholderBeforeKeymap(template, RENDERED_BEHAVIOR_DEFINITIONS)
 
@@ -703,6 +731,10 @@ function parseKeymapCode (content, options = {}) {
   }
 
   const rootNode = dts.nodes['/']
+  const comboDefinitionsNode = rootNode?.children?.combos
+  const combos = Array.isArray(comboDefinitionsNode?.childNodes)
+    ? comboDefinitionsNode.childNodes.map(toBehaviorNode)
+    : []
   const macroDefinitionsNode = rootNode?.children?.macros
   const macroDefinitions = Array.isArray(macroDefinitionsNode?.childNodes)
     ? macroDefinitionsNode.childNodes.map(toBehaviorNode)
@@ -722,6 +754,7 @@ function parseKeymapCode (content, options = {}) {
     sensor_layers: extracted.sensorLayers && extracted.sensorLayers.length
       ? extracted.sensorLayers
       : undefined,
+    combos,
     behavior_overrides: behaviorOverrides,
     behavior_definitions: [...macroDefinitions, ...behaviorDefinitions]
   })

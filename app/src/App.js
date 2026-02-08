@@ -12,6 +12,7 @@ import Spinner from './Common/Spinner'
 import Keyboard from './Keyboard/Keyboard'
 import BehaviorEditor from './Behavior/BehaviorEditor'
 import MacroEditor from './Macro/MacroEditor'
+import ComboEditor from './Combo/ComboEditor'
 import GitHubLink from './GitHubLink'
 import Loader from './Common/Loader'
 import github from './Pickers/Github/api'
@@ -55,6 +56,7 @@ function normalizeKeymapShape(keymap) {
 
   return {
     ...keymap,
+    combos: Array.isArray(keymap.combos) ? keymap.combos : [],
     behavior_overrides: Array.isArray(keymap.behavior_overrides) ? keymap.behavior_overrides : [],
     behavior_definitions: Array.isArray(keymap.behavior_definitions) ? keymap.behavior_definitions : []
   }
@@ -430,7 +432,7 @@ function App() {
 
     if (source === 'local') {
       return {
-        title: 'Save keymap/behavior/macro changes locally',
+        title: 'Save keymap/behavior/macro/combo changes locally',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleCompile,
         content: (
@@ -444,7 +446,7 @@ function App() {
 
     if (source === 'github') {
       return {
-        title: 'Commit keymap/behavior/macro changes to GitHub repository',
+        title: 'Commit keymap/behavior/macro/combo changes to GitHub repository',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleCommitChanges,
         content: (
@@ -459,8 +461,8 @@ function App() {
     if (source === 'browser-file') {
       return {
         title: sourceOther?.browserFile?.writeCapable
-          ? 'Save keymap/behavior/macro to selected local file (falls back to download if write fails)'
-          : 'Save keymap/behavior/macro as download',
+          ? 'Save keymap/behavior/macro/combo to selected local file (falls back to download if write fails)'
+          : 'Save keymap/behavior/macro/combo as download',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleSaveBrowserFile,
         content: (
@@ -516,6 +518,13 @@ function App() {
               >
                 Macro
               </button>
+              <button
+                type="button"
+                className={`editor-tab ${activeTab === 'combo' ? 'active' : ''}`}
+                onClick={() => setActiveTab('combo')}
+              >
+                Combo
+              </button>
             </div>
             {saveControl && (
               <button
@@ -560,6 +569,16 @@ function App() {
               behaviorTypes={definitions?.behaviourTypes || []}
               availableBehaviours={mergedBehaviours}
               onUpdate={handleUpdateMacroDefinitions}
+            />
+          )}
+
+          {layout && currentKeymap && activeTab === 'combo' && (
+            <ComboEditor
+              keymap={currentKeymap}
+              layout={layout}
+              availableBehaviours={mergedBehaviours}
+              keycodes={definitions?.keycodes || []}
+              onUpdate={handleUpdateKeymap}
             />
           )}
         </DefinitionsContext.Provider>
