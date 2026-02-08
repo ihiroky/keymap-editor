@@ -316,6 +316,10 @@ function validateNodes (definitions, overrides, typeByCompatible, overrideTypeBy
       errors.push(`${ref}: label must match ^[A-Za-z_][A-Za-z0-9_]*$`)
     }
 
+    if (!node.name || !String(node.name).trim()) {
+      errors.push(`${ref}: node name is required`)
+    }
+
     const compatible = node.properties?.compatible || node.compatible
     if (!compatible) {
       errors.push(`${ref}: compatible is required`)
@@ -342,7 +346,12 @@ function validateNodes (definitions, overrides, typeByCompatible, overrideTypeBy
 
   overrides.forEach((node, index) => {
     const ref = `Override ${index + 1}`
-    if (!node.name || !node.name.startsWith('&')) {
+    if (!node.name || !String(node.name).trim()) {
+      errors.push(`${ref}: override name is required`)
+      return
+    }
+
+    if (!node.name.startsWith('&')) {
       errors.push(`${ref}: name must start with &`)
       return
     }
@@ -522,6 +531,25 @@ function BehaviorEditor (props) {
 
     return knownKeys.filter(key => Object.prototype.hasOwnProperty.call(selectedNode.properties || {}, key))
   }, [selectedNode, knownKeys])
+
+  const requiredKnownKeys = useMemo(() => (
+    knownKeys.filter(key => {
+      const spec = selectedSpecMap[key]
+      return Boolean(spec?.required) || Object.prototype.hasOwnProperty.call(spec || {}, 'fixed')
+    })
+  ), [knownKeys, selectedSpecMap])
+
+  const optionalKnownKeys = useMemo(() => (
+    knownKeys.filter(key => !requiredKnownKeys.includes(key))
+  ), [knownKeys, requiredKnownKeys])
+
+  const requiredKnownPresentKeys = useMemo(() => (
+    requiredKnownKeys.filter(key => knownPresentKeys.includes(key))
+  ), [requiredKnownKeys, knownPresentKeys])
+
+  const optionalKnownPresentKeys = useMemo(() => (
+    optionalKnownKeys.filter(key => knownPresentKeys.includes(key))
+  ), [optionalKnownKeys, knownPresentKeys])
 
   const missingKnownKeys = useMemo(() => (
     knownKeys.filter(key => !knownPresentKeys.includes(key))
@@ -917,139 +945,174 @@ function BehaviorEditor (props) {
               <div>{selection.kind === 'definition' ? 'Definition' : 'Override'}</div>
             </div>
 
-            {selection.kind === 'definition' && (
+            <div className={styles.group}>
+              <div className={styles.groupTitle}>Required Properties</div>
+              {selection.kind === 'definition' && (
+                <div className={styles.formRow}>
+                  <label>Label</label>
+                  <input
+                    type="text"
+                    value={selectedNode.label || ''}
+                    onChange={event => {
+                      const input = sanitizeLabel(event.target.value)
+                      updateSelectedNode(current => {
+                        const next = cloneNode(current)
+                        next.label = input
+                        next.bind = `&${input}`
+                        if (!next.name || !next.name.startsWith('&')) {
+                          next.name = `${input}_node`
+                        }
+                        return next
+                      })
+                    }}
+                  />
+                </div>
+              )}
+
               <div className={styles.formRow}>
-                <label>Label</label>
+                <label>{selection.kind === 'definition' ? 'Node Name' : 'Override Name'}</label>
                 <input
                   type="text"
-                  value={selectedNode.label || ''}
+                  value={selectedNode.name || ''}
                   onChange={event => {
-                    const input = sanitizeLabel(event.target.value)
+                    const value = event.target.value
                     updateSelectedNode(current => {
                       const next = cloneNode(current)
-                      next.label = input
-                      next.bind = `&${input}`
-                      if (!next.name || !next.name.startsWith('&')) {
-                        next.name = `${input}_node`
+                      next.name = value
+                      if (selection.kind === 'override') {
+                        next.bind = value
                       }
                       return next
                     })
                   }}
                 />
               </div>
-            )}
 
-            <div className={styles.formRow}>
-              <label>{selection.kind === 'definition' ? 'Node Name' : 'Override Name'}</label>
-              <input
-                type="text"
-                value={selectedNode.name || ''}
-                onChange={event => {
-                  const value = event.target.value
-                  updateSelectedNode(current => {
-                    const next = cloneNode(current)
-                    next.name = value
-                    if (selection.kind === 'override') {
-                      next.bind = value
-                    }
-                    return next
-                  })
-                }}
-              />
+              {selection.kind === 'override' && overrideBindChoices.length > 0 && (
+                <div className={styles.formRow}>
+                  <label>Known Override</label>
+                  <select
+                    value={overrideBindChoices.includes(selectedNode.name) ? selectedNode.name : ''}
+                    onChange={event => {
+                      const value = event.target.value
+                      updateSelectedNode(current => {
+                        const next = cloneNode(current)
+                        next.name = value
+                        next.bind = value
+                        const type = overrideTypeByBind[value]
+                        return type
+                          ? ensureOverrideDefaults(next, type, behaviourChoices)
+                          : next
+                      })
+                    }}
+                  >
+                    <option value="">(custom)</option>
+                    {overrideBindChoices.map(bind => (
+                      <option key={`override-bind-${bind}`} value={bind}>{bind}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {selection.kind === 'definition' && (
+                <div className={styles.formRow}>
+                  <label>Compatible</label>
+                  <select
+                    value={selectedNode.properties?.compatible || ''}
+                    onChange={event => {
+                      const compatible = event.target.value
+                      updateSelectedNode(current => {
+                        const next = cloneNode(current)
+                        next.compatible = compatible
+                        next.properties.compatible = compatible
+                        next.property_types.compatible = 'string'
+                        if (!next.property_order.includes('compatible')) {
+                          next.property_order.unshift('compatible')
+                        }
+
+                        const type = typeByCompatible[compatible]
+                        return type
+                          ? ensureDefinitionTypeDefaults(next, type, behaviourChoices)
+                          : next
+                      })
+                    }}
+                  >
+                    <option value="">(none)</option>
+                    {behaviorTypes.map(type => (
+                      <option key={type.compatible} value={type.compatible}>
+                        {type.displayName} ({type.compatible})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {requiredKnownPresentKeys.length === 0 && (
+                <p className={styles.emptyHint}>No required known properties.</p>
+              )}
+              {requiredKnownPresentKeys.map(key => {
+                const spec = selectedSpecMap[key]
+                const removable = isKnownPropertyRemovable(key)
+                const required = Boolean(spec?.required)
+                const fixed = spec && Object.prototype.hasOwnProperty.call(spec, 'fixed')
+
+                return (
+                  <div className={styles.knownRow} key={`required-known-${key}`}>
+                    <div className={styles.knownLabel}>
+                      <span>{key}</span>
+                      {required && <small>required</small>}
+                      {fixed && <small>fixed</small>}
+                    </div>
+                    <div className={styles.knownInput}>{renderKnownInput(selectedNode, key)}</div>
+                    <button
+                      type="button"
+                      onClick={() => removeKnownProperty(key)}
+                      disabled={!removable}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )
+              })}
             </div>
 
-            {selection.kind === 'override' && overrideBindChoices.length > 0 && (
-              <div className={styles.formRow}>
-                <label>Known Override</label>
-                <select
-                  value={overrideBindChoices.includes(selectedNode.name) ? selectedNode.name : ''}
-                  onChange={event => {
-                    const value = event.target.value
-                    updateSelectedNode(current => {
-                      const next = cloneNode(current)
-                      next.name = value
-                      next.bind = value
-                      const type = overrideTypeByBind[value]
-                      return type
-                        ? ensureOverrideDefaults(next, type, behaviourChoices)
-                        : next
-                    })
-                  }}
-                >
-                  <option value="">(custom)</option>
-                  {overrideBindChoices.map(bind => (
-                    <option key={`override-bind-${bind}`} value={bind}>{bind}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className={styles.group}>
+              <div className={styles.groupTitle}>Optional Properties</div>
+              {optionalKnownPresentKeys.length === 0 && (
+                <p className={styles.emptyHint}>No optional properties added.</p>
+              )}
+              {optionalKnownPresentKeys.map(key => {
+                const spec = selectedSpecMap[key]
+                const removable = isKnownPropertyRemovable(key)
+                const required = Boolean(spec?.required)
+                const fixed = spec && Object.prototype.hasOwnProperty.call(spec, 'fixed')
 
-            {selection.kind === 'definition' && (
-              <div className={styles.formRow}>
-                <label>Compatible</label>
-                <select
-                  value={selectedNode.properties?.compatible || ''}
-                  onChange={event => {
-                    const compatible = event.target.value
-                    updateSelectedNode(current => {
-                      const next = cloneNode(current)
-                      next.compatible = compatible
-                      next.properties.compatible = compatible
-                      next.property_types.compatible = 'string'
-                      if (!next.property_order.includes('compatible')) {
-                        next.property_order.unshift('compatible')
-                      }
-
-                      const type = typeByCompatible[compatible]
-                      return type
-                        ? ensureDefinitionTypeDefaults(next, type, behaviourChoices)
-                        : next
-                    })
-                  }}
-                >
-                  <option value="">(none)</option>
-                  {behaviorTypes.map(type => (
-                    <option key={type.compatible} value={type.compatible}>
-                      {type.displayName} ({type.compatible})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {knownPresentKeys.length > 0 && (
-              <div className={styles.group}>
-                <div className={styles.groupTitle}>Known Properties</div>
-                {knownPresentKeys.map(key => {
-                  const spec = selectedSpecMap[key]
-                  const removable = isKnownPropertyRemovable(key)
-                  const required = Boolean(spec?.required)
-                  const fixed = spec && Object.prototype.hasOwnProperty.call(spec, 'fixed')
-
-                  return (
-                    <div className={styles.knownRow} key={`known-${key}`}>
-                      <div className={styles.knownLabel}>
-                        <span>{key}</span>
-                        {required && <small>required</small>}
-                        {fixed && <small>fixed</small>}
-                      </div>
-                      <div className={styles.knownInput}>{renderKnownInput(selectedNode, key)}</div>
-                      <button
-                        type="button"
-                        onClick={() => removeKnownProperty(key)}
-                        disabled={!removable}
-                      >
-                        Remove
-                      </button>
+                return (
+                  <div className={styles.knownRow} key={`optional-known-${key}`}>
+                    <div className={styles.knownLabel}>
+                      <span>{key}</span>
+                      {required && <small>required</small>}
+                      {fixed && <small>fixed</small>}
                     </div>
-                  )
-                })}
-              </div>
-            )}
+                    <div className={styles.knownInput}>{renderKnownInput(selectedNode, key)}</div>
+                    <button
+                      type="button"
+                      onClick={() => removeKnownProperty(key)}
+                      disabled={!removable}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
 
-            {missingKnownKeys.length > 0 && (
-              <div className={styles.group}>
-                <div className={styles.groupTitle}>Add Known Property</div>
+            <div className={styles.group}>
+              <div className={styles.groupTitle}>Add Known Properties</div>
+              {missingKnownKeys.length === 0 && (
+                <p className={styles.emptyHint}>No known properties left to add.</p>
+              )}
+              {missingKnownKeys.length > 0 && (
                 <div className={styles.addKnownList}>
                   {missingKnownKeys.map(key => (
                     <button
@@ -1061,8 +1124,8 @@ function BehaviorEditor (props) {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className={styles.group}>
               <div className={styles.groupTitle}>Raw Properties</div>

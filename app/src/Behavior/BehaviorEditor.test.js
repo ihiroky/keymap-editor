@@ -55,18 +55,33 @@ function createDefinitionNode () {
   }
 }
 
-function renderEditor (onUpdate = jest.fn()) {
+function createOverrideNode (overrides = {}) {
+  return {
+    label: null,
+    name: '&mt',
+    bind: '&mt',
+    compatible: '',
+    properties: {},
+    property_types: {},
+    property_order: [],
+    children: [],
+    ...overrides
+  }
+}
+
+function renderEditor (options = {}) {
+  const onUpdate = options.onUpdate || jest.fn()
   const keymap = {
     layers: [],
     sensor_layers: [],
-    behavior_definitions: [createDefinitionNode()],
-    behavior_overrides: []
+    behavior_definitions: options.behaviorDefinitions || [createDefinitionNode()],
+    behavior_overrides: options.behaviorOverrides || []
   }
 
   render(
     <BehaviorEditor
       keymap={keymap}
-      behaviorTypes={[createBehaviorType()]}
+      behaviorTypes={options.behaviorTypes || [createBehaviorType()]}
       availableBehaviours={[
         { code: '&none', name: 'None' },
         { code: '&kp', name: 'Key Press' }
@@ -79,6 +94,14 @@ function renderEditor (onUpdate = jest.fn()) {
 }
 
 describe('BehaviorEditor children DSL', () => {
+  test('shows section headings for required and optional known properties', () => {
+    renderEditor()
+
+    expect(screen.getByText('Required Properties')).toBeTruthy()
+    expect(screen.getByText('Optional Properties')).toBeTruthy()
+    expect(screen.getByText('Add Known Properties')).toBeTruthy()
+  })
+
   test('shows parse errors live and disables apply', () => {
     renderEditor()
 
@@ -111,5 +134,27 @@ describe('BehaviorEditor children DSL', () => {
     expect(nextKeymap.behavior_definitions[0].children).toHaveLength(1)
     expect(nextKeymap.behavior_definitions[0].children[0].label).toBe('child_label')
     expect(nextKeymap.behavior_definitions[0].children[0].name).toBe('child_node')
+  })
+
+  test('allows custom override name even when known override choices exist', () => {
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [],
+      behaviorOverrides: [createOverrideNode({ name: '&custom', bind: '&custom' })],
+      behaviorTypes: [{
+        ...createBehaviorType(),
+        overrideBinds: ['&mt']
+      }]
+    })
+
+    expect(screen.queryByText('Override 1: known override is required')).toBeNull()
+    expect(screen.getByRole('option', { name: '(custom)' })).toBeTruthy()
+
+    const knownOverrideSelect = screen.getByRole('combobox')
+    fireEvent.change(knownOverrideSelect, { target: { value: '&mt' } })
+
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    const nextKeymap = onUpdate.mock.calls[0][0]
+    expect(nextKeymap.behavior_overrides[0].name).toBe('&mt')
+    expect(nextKeymap.behavior_overrides[0].bind).toBe('&mt')
   })
 })
