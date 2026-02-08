@@ -6,6 +6,7 @@ const map = require('lodash/map')
 const uniq = require('lodash/uniq')
 
 const { renderTable } = require('./layout')
+const { isMacroCompatible } = require('./macro-helpers')
 const defaults = require('./defaults')
 
 const EDITOR_METADATA_KEY = '__keymap_editor'
@@ -450,6 +451,32 @@ function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible) {
   return `    behaviors {\n${children}    };\n`
 }
 
+function splitMacroAndBehaviorDefinitions (nodes) {
+  const normalized = Array.isArray(nodes) ? nodes : []
+  const macroDefinitions = []
+  const behaviorDefinitions = []
+
+  for (const node of normalized) {
+    const compatible = node?.properties?.compatible || node?.compatible
+    if (isMacroCompatible(compatible)) {
+      macroDefinitions.push(node)
+    } else {
+      behaviorDefinitions.push(node)
+    }
+  }
+
+  return { macroDefinitions, behaviorDefinitions }
+}
+
+function renderMacroDefinitions (nodes, behaviourTypeByCompatible) {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return ''
+  }
+
+  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible)).join('')
+  return `    macros {\n${children}    };\n`
+}
+
 function renderBehaviorChildrenSnippet (nodes, behaviourTypes = []) {
   const normalized = normalizeBehaviorList(nodes)
   if (!normalized.length) {
@@ -493,12 +520,15 @@ function renderTemplate (template, params) {
   const layersPattern = /\{\{\s*rendered_layers\s*\}\}/
   const keymapPattern = /\{\{\s*rendered_keymap\s*\}\}/
   const overridesPattern = /\{\{\s*rendered_behavior_overrides\s*\}\}/
+  const macroDefinitionsPattern = /\{\{\s*rendered_macro_definitions\s*\}\}/
   const definitionsPattern = /\{\{\s*rendered_behavior_definitions\s*\}\}/
 
   const renderedLayers = renderLayers(params)
   const renderedKeymap = KEYMAP_BLOCK_TEMPLATE.replace(layersPattern, renderedLayers)
+  const splitDefinitions = splitMacroAndBehaviorDefinitions(params.behaviorDefinitions)
   const renderedBehaviorOverrides = renderBehaviorOverrides(params.behaviorOverrides, params.behaviourTypeByCompatible)
-  const renderedBehaviorDefinitions = renderBehaviorDefinitions(params.behaviorDefinitions, params.behaviourTypeByCompatible)
+  const renderedMacroDefinitions = renderMacroDefinitions(splitDefinitions.macroDefinitions, params.behaviourTypeByCompatible)
+  const renderedBehaviorDefinitions = renderBehaviorDefinitions(splitDefinitions.behaviorDefinitions, params.behaviourTypeByCompatible)
 
   const { block: includeBlock, withoutIncludes } = normalizeIncludes(template, params.behaviourHeaders)
   let output = withoutIncludes
@@ -521,6 +551,12 @@ function renderTemplate (template, params) {
     output = output.replace(overridesPattern, renderedBehaviorOverrides)
   } else {
     output = insertBeforeRoot(output, renderedBehaviorOverrides)
+  }
+
+  if (macroDefinitionsPattern.test(output)) {
+    output = output.replace(macroDefinitionsPattern, renderedMacroDefinitions)
+  } else {
+    output = insertBeforeKeymap(output, renderedMacroDefinitions)
   }
 
   if (definitionsPattern.test(output)) {

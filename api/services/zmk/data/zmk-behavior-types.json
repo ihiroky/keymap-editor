@@ -182,6 +182,84 @@
     "defaultLabelHints": ["macro", "mcr"]
   },
   {
+    "compatible": "zmk,behavior-macro-one-param",
+    "displayName": "Macro (1 Param)",
+    "requiredProperties": ["compatible", "#binding-cells", "bindings"],
+    "optionalProperties": ["wait-ms", "tap-ms"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "bindings": "bindings",
+      "wait-ms": "int",
+      "tap-ms": "int"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-macro-one-param"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 1
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "minItems": 1
+      },
+      "wait-ms": {
+        "type": "int"
+      },
+      "tap-ms": {
+        "type": "int"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 1,
+    "defaultLabelHints": ["macro1", "mcr1"]
+  },
+  {
+    "compatible": "zmk,behavior-macro-two-param",
+    "displayName": "Macro (2 Param)",
+    "requiredProperties": ["compatible", "#binding-cells", "bindings"],
+    "optionalProperties": ["wait-ms", "tap-ms"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "bindings": "bindings",
+      "wait-ms": "int",
+      "tap-ms": "int"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-macro-two-param"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 2
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "minItems": 1
+      },
+      "wait-ms": {
+        "type": "int"
+      },
+      "tap-ms": {
+        "type": "int"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 2,
+    "defaultLabelHints": ["macro2", "mcr2"]
+  },
+  {
     "compatible": "zmk,behavior-sticky-key",
     "displayName": "Sticky-Key",
     "requiredProperties": ["compatible", "#binding-cells"],

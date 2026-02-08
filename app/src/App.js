@@ -11,10 +11,12 @@ import KeyboardPicker from './Pickers/KeyboardPicker'
 import Spinner from './Common/Spinner'
 import Keyboard from './Keyboard/Keyboard'
 import BehaviorEditor from './Behavior/BehaviorEditor'
+import MacroEditor from './Macro/MacroEditor'
 import GitHubLink from './GitHubLink'
 import Loader from './Common/Loader'
 import github from './Pickers/Github/api'
 const { generateKeymap } = require('./shared/zmk/keymap')
+const { mergeBehaviorDefinitions, splitBehaviorDefinitions } = require('./shared/zmk/macro-helpers')
 
 function getBrowserFileDownloadName (browserFile) {
   if (browserFile?.baseName) {
@@ -168,6 +170,31 @@ function App() {
   const [activeTab, setActiveTab] = useState('keymap')
 
   const currentKeymap = editingKeymap || keymap
+  const { macroDefinitions, behaviorDefinitions } = useMemo(() => (
+    splitBehaviorDefinitions(currentKeymap?.behavior_definitions || [])
+  ), [currentKeymap])
+
+  const behaviorEditorKeymap = useMemo(() => {
+    if (!currentKeymap) {
+      return null
+    }
+
+    return {
+      ...currentKeymap,
+      behavior_definitions: behaviorDefinitions
+    }
+  }, [currentKeymap, behaviorDefinitions])
+
+  const macroEditorKeymap = useMemo(() => {
+    if (!currentKeymap) {
+      return null
+    }
+
+    return {
+      ...currentKeymap,
+      behavior_definitions: macroDefinitions
+    }
+  }, [currentKeymap, macroDefinitions])
 
   const mergedBehaviours = useMemo(() => {
     if (!definitions || !currentKeymap) {
@@ -360,6 +387,42 @@ function App() {
     setEditingKeymap(normalized)
   }, [keymap, setEditingKeymap])
 
+  const handleUpdateBehaviorDefinitions = useMemo(() => function (nextKeymap) {
+    if (!currentKeymap) {
+      return
+    }
+
+    const mergedDefinitions = mergeBehaviorDefinitions(
+      currentKeymap.behavior_definitions || [],
+      nextKeymap.behavior_definitions || [],
+      'behavior'
+    )
+
+    handleUpdateKeymap({
+      ...currentKeymap,
+      ...nextKeymap,
+      behavior_definitions: mergedDefinitions
+    })
+  }, [currentKeymap, handleUpdateKeymap])
+
+  const handleUpdateMacroDefinitions = useMemo(() => function (nextKeymap) {
+    if (!currentKeymap) {
+      return
+    }
+
+    const mergedDefinitions = mergeBehaviorDefinitions(
+      currentKeymap.behavior_definitions || [],
+      nextKeymap.behavior_definitions || [],
+      'macro'
+    )
+
+    handleUpdateKeymap({
+      ...currentKeymap,
+      ...nextKeymap,
+      behavior_definitions: mergedDefinitions
+    })
+  }, [currentKeymap, handleUpdateKeymap])
+
   const saveControl = useMemo(() => {
     if (!currentKeymap) {
       return null
@@ -367,7 +430,7 @@ function App() {
 
     if (source === 'local') {
       return {
-        title: 'Save keymap/behavior changes locally',
+        title: 'Save keymap/behavior/macro changes locally',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleCompile,
         content: (
@@ -381,7 +444,7 @@ function App() {
 
     if (source === 'github') {
       return {
-        title: 'Commit keymap/behavior changes to GitHub repository',
+        title: 'Commit keymap/behavior/macro changes to GitHub repository',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleCommitChanges,
         content: (
@@ -396,8 +459,8 @@ function App() {
     if (source === 'browser-file') {
       return {
         title: sourceOther?.browserFile?.writeCapable
-          ? 'Save keymap/behavior to selected local file (falls back to download if write fails)'
-          : 'Save keymap/behavior as download',
+          ? 'Save keymap/behavior/macro to selected local file (falls back to download if write fails)'
+          : 'Save keymap/behavior/macro as download',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleSaveBrowserFile,
         content: (
@@ -446,6 +509,13 @@ function App() {
               >
                 Behavior
               </button>
+              <button
+                type="button"
+                className={`editor-tab ${activeTab === 'macro' ? 'active' : ''}`}
+                onClick={() => setActiveTab('macro')}
+              >
+                Macro
+              </button>
             </div>
             {saveControl && (
               <button
@@ -475,12 +545,21 @@ function App() {
             />
           )}
 
-          {layout && currentKeymap && activeTab === 'behavior' && (
+          {layout && behaviorEditorKeymap && activeTab === 'behavior' && (
             <BehaviorEditor
-              keymap={currentKeymap}
+              keymap={behaviorEditorKeymap}
               behaviorTypes={definitions?.behaviourTypes || []}
               availableBehaviours={mergedBehaviours}
-              onUpdate={handleUpdateKeymap}
+              onUpdate={handleUpdateBehaviorDefinitions}
+            />
+          )}
+
+          {layout && macroEditorKeymap && activeTab === 'macro' && (
+            <MacroEditor
+              keymap={macroEditorKeymap}
+              behaviorTypes={definitions?.behaviourTypes || []}
+              availableBehaviours={mergedBehaviours}
+              onUpdate={handleUpdateMacroDefinitions}
             />
           )}
         </DefinitionsContext.Provider>
