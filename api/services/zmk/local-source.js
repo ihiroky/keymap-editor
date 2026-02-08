@@ -18,6 +18,10 @@ function loadBehaviors () {
   return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'zmk-behaviors.json')))
 }
 
+function loadBehaviorTypes () {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'zmk-behavior-types.json')))
+}
+
 function loadKeycodes () {
   return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'zmk-keycodes.json')))
 }
@@ -117,6 +121,12 @@ function loadKeymap () {
       Array.from({ length: sensorCount }, () => '&none')
     ))
   }
+  if (!Array.isArray(keymapContent.behavior_overrides)) {
+    keymapContent.behavior_overrides = []
+  }
+  if (!Array.isArray(keymapContent.behavior_definitions)) {
+    keymapContent.behavior_definitions = []
+  }
 
   return parseKeymap(keymapContent)
 }
@@ -156,6 +166,7 @@ function exportKeymap (generatedKeymap, flash, callback) {
 
 module.exports = {
   loadBehaviors,
+  loadBehaviorTypes,
   loadKeycodes,
   loadLayout,
   loadSensors,

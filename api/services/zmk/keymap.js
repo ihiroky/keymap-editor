@@ -14,11 +14,13 @@ class KeymapValidationError extends Error {
 
 const behaviours = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/zmk-behaviors.json')))
 const behavioursByBind = keyBy(behaviours, 'code')
+const behaviourTypes = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/zmk-behavior-types.json')))
 
 function generateKeymap (layout, keymap, template, options = {}) {
   return shared.generateKeymap(layout, keymap, template, {
     ...options,
-    behaviours
+    behaviours,
+    behaviourTypes
   })
 }
 

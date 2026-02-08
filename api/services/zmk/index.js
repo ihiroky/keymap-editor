@@ -5,6 +5,7 @@ const {
 
 const {
   loadBehaviors,
+  loadBehaviorTypes,
   loadKeycodes,
   loadLayout,
   loadSensors,
@@ -16,6 +17,7 @@ module.exports = {
   parseKeyBinding,
   generateKeymap,
   loadBehaviors,
+  loadBehaviorTypes,
   loadKeycodes,
   loadLayout,
   loadSensors,

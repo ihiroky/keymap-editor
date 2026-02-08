@@ -5,8 +5,8 @@ export const param = PropTypes.oneOfType([
     ['code', 'layer', 'mod', 'command']
   ),
   PropTypes.shape({
-    enum: PropTypes.array.isRequired,
-    name: PropTypes.string.isRequired,
+    enum: PropTypes.array,
+    name: PropTypes.string,
     type: PropTypes.string.isRequired
   })
 ])

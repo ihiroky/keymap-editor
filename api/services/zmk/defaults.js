@@ -15,7 +15,10 @@ const keymapTemplate = `
 #include <behaviors.dtsi>
 {{behaviour_includes}}
 
+{{rendered_behavior_overrides}}
+
 / {
+{{rendered_behavior_definitions}}
     keymap {
         compatible = "zmk,keymap";
 

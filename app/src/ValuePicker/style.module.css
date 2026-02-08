@@ -91,6 +91,14 @@ ul.results {
 	color: black;
 }
 .results li b { color: red; }
+.results li.empty {
+  cursor: default;
+  color: rgba(255, 255, 255, 0.7);
+}
+.results li.empty:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+}
 
 .choices-counter {
   font-size: 10px;

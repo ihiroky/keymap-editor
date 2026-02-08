@@ -216,7 +216,7 @@ async function commitChanges (installationId, repository, branch, layout, keymap
     token: installationToken,
     data: {
       tree: newTreeSha,
-      message: 'Updated keymap',
+      message: 'Updated keymap/behaviors',
       parents: [sha]
     }
   })

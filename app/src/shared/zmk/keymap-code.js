@@ -5,6 +5,9 @@ const KEYMAP_ROOT = {
 }
 
 const EDITOR_METADATA_KEY = '__keymap_editor'
+const RENDERED_KEYMAP = '{{rendered_keymap}}'
+const RENDERED_BEHAVIOR_OVERRIDES = '{{rendered_behavior_overrides}}'
+const RENDERED_BEHAVIOR_DEFINITIONS = '{{rendered_behavior_definitions}}'
 
 function stripComments (content) {
   return content
@@ -12,17 +15,63 @@ function stripComments (content) {
     .replace(/\/\/.*$/gm, '')
 }
 
-function isIdentifierChar (char) {
-  return typeof char === 'string' && char.length === 1 && /[A-Za-z0-9_-]/.test(char)
+function stripCommentsPreserveWidth (content) {
+  return content
+    .replace(/\/\*[\s\S]*?\*\//g, match => match.replace(/[^\n]/g, ' '))
+    .replace(/\/\/.*$/gm, match => match.replace(/[^\n]/g, ' '))
 }
 
-function findKeymapBlockRange (content) {
+function isIdentifierChar (char) {
+  return typeof char === 'string' && char.length === 1 && /[A-Za-z0-9_#-]/.test(char)
+}
+
+function expandRangeToTerminator (content, endIndex) {
+  let end = endIndex + 1
+  while (end < content.length && /\s/.test(content[end])) {
+    end += 1
+  }
+  if (content[end] === ';') {
+    end += 1
+  }
+  while (end < content.length && /[ \t]/.test(content[end])) {
+    end += 1
+  }
+  if (content[end] === '\n') {
+    end += 1
+  }
+
+  return end
+}
+
+function normalizeRangeStart (content, start) {
+  const lineStart = content.lastIndexOf('\n', start - 1) + 1
+  const prefix = content.slice(lineStart, start)
+  return /^[ \t]*$/.test(prefix) ? lineStart : start
+}
+
+function extractBlockWithIndex (content, startIndex) {
+  let depth = 0
+  for (let i = startIndex; i < content.length; i += 1) {
+    const char = content[i]
+    if (char === '{') {
+      depth += 1
+    } else if (char === '}') {
+      depth -= 1
+      if (depth === 0) {
+        return { block: content.slice(startIndex + 1, i), end: i }
+      }
+    }
+  }
+
+  return null
+}
+
+function findNamedBlockRange (content, blockName) {
   let inLineComment = false
   let inBlockComment = false
   let inString = false
 
-  const length = content.length
-  for (let i = 0; i < length; i += 1) {
+  for (let i = 0; i < content.length; i += 1) {
     const char = content[i]
     const next = content[i + 1]
 
@@ -65,120 +114,65 @@ function findKeymapBlockRange (content) {
       continue
     }
 
-    if (char === 'k' && content.slice(i, i + 6) === 'keymap') {
-      const prev = content[i - 1]
-      const nextChar = content[i + 6]
-      if (isIdentifierChar(prev) || isIdentifierChar(nextChar) || prev === '&' || prev === '/') {
-        continue
-      }
-
-      let cursor = i + 6
-      while (cursor < length && /\s/.test(content[cursor])) {
-        cursor += 1
-      }
-      if (content[cursor] !== '{') {
-        continue
-      }
-
-      let depth = 1
-      let j = cursor + 1
-      let blockLineComment = false
-      let blockComment = false
-      let blockString = false
-      for (; j < length; j += 1) {
-        const current = content[j]
-        const upcoming = content[j + 1]
-
-        if (blockLineComment) {
-          if (current === '\n') {
-            blockLineComment = false
-          }
-          continue
-        }
-
-        if (blockComment) {
-          if (current === '*' && upcoming === '/') {
-            blockComment = false
-            j += 1
-          }
-          continue
-        }
-
-        if (blockString) {
-          if (current === '"' && content[j - 1] !== '\\') {
-            blockString = false
-          }
-          continue
-        }
-
-        if (current === '/' && upcoming === '/') {
-          blockLineComment = true
-          j += 1
-          continue
-        }
-
-        if (current === '/' && upcoming === '*') {
-          blockComment = true
-          j += 1
-          continue
-        }
-
-        if (current === '"') {
-          blockString = true
-          continue
-        }
-
-        if (current === '{') {
-          depth += 1
-        } else if (current === '}') {
-          depth -= 1
-          if (depth === 0) {
-            let end = j + 1
-            while (end < length && /\s/.test(content[end])) {
-              end += 1
-            }
-            if (content[end] === ';') {
-              end += 1
-            }
-            return { start: i, end }
-          }
-        }
-      }
+    if (char !== blockName[0] || content.slice(i, i + blockName.length) !== blockName) {
+      continue
     }
+
+    const prev = content[i - 1]
+    const nextChar = content[i + blockName.length]
+    if (isIdentifierChar(prev) || isIdentifierChar(nextChar) || prev === '&' || prev === '/') {
+      continue
+    }
+
+    let cursor = i + blockName.length
+    while (cursor < content.length && /\s/.test(content[cursor])) {
+      cursor += 1
+    }
+
+    if (content[cursor] !== '{') {
+      continue
+    }
+
+    const extracted = extractBlockWithIndex(content, cursor)
+    if (!extracted) {
+      continue
+    }
+
+    const start = normalizeRangeStart(content, i)
+    const end = expandRangeToTerminator(content, extracted.end)
+
+    return { start, end }
   }
 
   return null
 }
 
-function extractKeymapTemplate (content) {
-  const range = findKeymapBlockRange(content)
-  if (!range) {
-    return null
-  }
+function findBlocks (content) {
+  const blocks = []
+  const pattern = /(?:([A-Za-z0-9_&/-]+)\s*:\s*)?([A-Za-z0-9_&/-]+)\s*\{/g
+  let match
 
-  const { start, end } = range
-  const lineStart = content.lastIndexOf('\n', start - 1) + 1
-  const prefix = content.slice(lineStart, start)
-  const effectiveStart = /^[ \t]*$/.test(prefix) ? lineStart : start
-
-  return `${content.slice(0, effectiveStart)}{{rendered_keymap}}${content.slice(end)}`
-}
-
-function extractBlockWithIndex (content, startIndex) {
-  let depth = 0
-  for (let i = startIndex; i < content.length; i++) {
-    const char = content[i]
-    if (char === '{') {
-      depth += 1
-    } else if (char === '}') {
-      depth -= 1
-      if (depth === 0) {
-        return { block: content.slice(startIndex + 1, i), end: i }
-      }
+  while ((match = pattern.exec(content)) !== null) {
+    const label = match[1] || null
+    const name = match[2]
+    const braceIndex = content.indexOf('{', match.index)
+    const extracted = extractBlockWithIndex(content, braceIndex)
+    if (!extracted) {
+      break
     }
+
+    const end = expandRangeToTerminator(content, extracted.end)
+    blocks.push({
+      label,
+      name,
+      content: extracted.block,
+      start: match.index,
+      end
+    })
+    pattern.lastIndex = end
   }
 
-  return null
+  return blocks
 }
 
 function parseBindings (bindingsBlock) {
@@ -221,71 +215,107 @@ function parsePropertyValue (rawValue) {
   const trimmed = rawValue.trim()
   const quoted = trimmed.match(/^"([\s\S]*)"$/)
   if (quoted) {
-    return quoted[1]
+    return { value: quoted[1], type: 'string' }
   }
 
   const angleMatches = Array.from(trimmed.matchAll(/<([^>]+)>/g))
   if (angleMatches.length) {
     const values = angleMatches.map(match => normalizeAngleValue(match[1]))
-    return values.length === 1 ? values[0] : values
+    return {
+      value: values.length === 1 ? values[0] : values,
+      type: angleMatches.length > 1 ? 'bindings' : 'angle'
+    }
   }
 
-  return normalizeAngleValue(trimmed)
+  return {
+    value: normalizeAngleValue(trimmed),
+    type: 'token'
+  }
 }
 
 function parseProperties (content) {
   const properties = {}
-  const pattern = /([A-Za-z0-9_-]+)\s*=\s*([^;]+);/g
-  let match
+  const propertyTypes = {}
+  const ordered = []
 
-  while ((match = pattern.exec(content)) !== null) {
-    properties[match[1]] = parsePropertyValue(match[2])
+  const assignments = []
+  const assignmentPattern = /([A-Za-z0-9_#-]+)\s*=\s*([^;]+);/g
+  let match
+  while ((match = assignmentPattern.exec(content)) !== null) {
+    assignments.push({
+      index: match.index,
+      name: match[1],
+      rawValue: match[2],
+      assignment: true
+    })
   }
 
-  return properties
-}
+  const withoutAssignments = content.replace(assignmentPattern, assignment => (
+    assignment.replace(/[^\n]/g, ' ')
+  ))
 
-function findBlocks (content) {
-  const blocks = []
-  const pattern = /([A-Za-z0-9_&/-]+)\s*\{/g
-  let match
+  const booleans = []
+  const booleanPattern = /([A-Za-z0-9_#-]+)\s*;/g
+  while ((match = booleanPattern.exec(withoutAssignments)) !== null) {
+    booleans.push({
+      index: match.index,
+      name: match[1],
+      assignment: false
+    })
+  }
 
-  while ((match = pattern.exec(content)) !== null) {
-    const name = match[1]
-    const braceIndex = content.indexOf('{', match.index)
-    const extracted = extractBlockWithIndex(content, braceIndex)
-    if (!extracted) {
-      break
+  for (const property of [...assignments, ...booleans].sort((a, b) => a.index - b.index)) {
+    ordered.push(property.name)
+    if (property.assignment) {
+      const parsed = parsePropertyValue(property.rawValue)
+      properties[property.name] = parsed.value
+      propertyTypes[property.name] = parsed.type
+    } else {
+      properties[property.name] = true
+      propertyTypes[property.name] = 'boolean'
     }
-
-    blocks.push({ name, content: extracted.block, start: match.index, end: extracted.end })
-    pattern.lastIndex = extracted.end + 1
   }
 
-  return blocks
+  return { properties, propertyTypes, propertyOrder: ordered }
 }
 
 function stripBlocks (content, blocks) {
   let result = content
   const sorted = [...blocks].sort((a, b) => b.start - a.start)
   for (const block of sorted) {
-    result = result.slice(0, block.start) + ' ' + result.slice(block.end + 1)
+    result = result.slice(0, block.start) + ' ' + result.slice(block.end)
   }
   return result
 }
 
 function parseNode (content) {
   const blocks = findBlocks(content)
+  const childNodes = []
   const children = {}
   const order = []
 
   for (const block of blocks) {
-    children[block.name] = parseNode(block.content)
+    const node = parseNode(block.content)
+    childNodes.push({
+      label: block.label,
+      name: block.name,
+      node
+    })
+    children[block.name] = node
     order.push(block.name)
   }
 
-  const properties = parseProperties(stripBlocks(content, blocks))
-  return { properties, children, order }
+  const stripped = stripBlocks(content, blocks)
+  const { properties, propertyTypes, propertyOrder } = parseProperties(stripped)
+
+  return {
+    properties,
+    propertyTypes,
+    propertyOrder,
+    childNodes,
+    children,
+    order
+  }
 }
 
 function parseDts (content) {
@@ -298,15 +328,23 @@ function parseDts (content) {
   const blocks = findBlocks(withoutIncludes)
   const nodes = {}
   const order = []
+  const entries = []
+
   for (const block of blocks) {
-    nodes[block.name] = parseNode(block.content)
+    const node = parseNode(block.content)
+    nodes[block.name] = node
     order.push(block.name)
+    entries.push({
+      label: block.label,
+      name: block.name,
+      node
+    })
   }
 
-  return { includes, nodes, order }
+  return { includes, nodes, order, entries }
 }
 
-function normalizeSensorBindings(sensorBindings, sensorCount) {
+function normalizeSensorBindings (sensorBindings, sensorCount) {
   const hasCount = Number.isInteger(sensorCount)
   if (!hasCount) {
     return sensorBindings
@@ -375,6 +413,99 @@ function extractKeymapLayers (keymapNode, options = {}) {
   return { layerNames, layers, sensorLayers, layerDetails }
 }
 
+function toBehaviorNode (entry) {
+  const { node } = entry
+  const bind = entry.name.startsWith('&')
+    ? entry.name
+    : entry.label
+      ? `&${entry.label}`
+      : `&${entry.name}`
+
+  return {
+    label: entry.label || null,
+    name: entry.name,
+    bind,
+    compatible: node.properties?.compatible || null,
+    properties: node.properties || {},
+    property_types: node.propertyTypes || {},
+    property_order: node.propertyOrder || [],
+    children: (node.childNodes || []).map(toBehaviorNode)
+  }
+}
+
+function applyRanges (content, ranges) {
+  let output = content
+  const sorted = [...ranges]
+    .filter(range => typeof range.start === 'number' && typeof range.end === 'number' && range.end > range.start)
+    .sort((a, b) => b.start - a.start)
+
+  for (const range of sorted) {
+    output = output.slice(0, range.start) + range.replacement + output.slice(range.end)
+  }
+
+  return output
+}
+
+function insertPlaceholderBeforeKeymap (template, placeholder) {
+  if (template.includes(placeholder)) {
+    return template
+  }
+
+  const index = template.indexOf(RENDERED_KEYMAP)
+  if (index !== -1) {
+    return `${template.slice(0, index)}${placeholder}\n\n${template.slice(index)}`
+  }
+
+  return `${template.trimEnd()}\n\n${placeholder}\n`
+}
+
+function insertPlaceholderAtTopLevel (template, placeholder) {
+  if (template.includes(placeholder)) {
+    return template
+  }
+
+  const rootMatch = template.match(/^\s*\/\s*\{/m)
+  if (rootMatch && typeof rootMatch.index === 'number') {
+    const index = rootMatch.index
+    return `${template.slice(0, index)}${placeholder}\n\n${template.slice(index)}`
+  }
+
+  return `${placeholder}\n\n${template}`
+}
+
+function extractKeymapTemplate (content) {
+  const keymapRange = findNamedBlockRange(content, 'keymap')
+  if (!keymapRange) {
+    return null
+  }
+
+  const preserved = stripCommentsPreserveWidth(content)
+  const topBlocks = findBlocks(preserved)
+  const behaviorDefinitionsRange = findNamedBlockRange(content, 'behaviors')
+
+  const ranges = [
+    { ...keymapRange, replacement: RENDERED_KEYMAP }
+  ]
+
+  if (behaviorDefinitionsRange) {
+    ranges.push({ ...behaviorDefinitionsRange, replacement: RENDERED_BEHAVIOR_DEFINITIONS })
+  }
+
+  for (const block of topBlocks) {
+    if (!block.name.startsWith('&')) {
+      continue
+    }
+    const start = normalizeRangeStart(content, block.start)
+    ranges.push({ start, end: block.end, replacement: '' })
+  }
+
+  let template = applyRanges(content, ranges)
+  template = insertPlaceholderAtTopLevel(template, RENDERED_BEHAVIOR_OVERRIDES)
+  template = insertPlaceholderBeforeKeymap(template, RENDERED_BEHAVIOR_DEFINITIONS)
+
+  return template
+}
+
 function parseKeymapCode (content, options = {}) {
   const dts = parseDts(content)
   const keymapNode = dts.nodes['/']?.children?.keymap
@@ -383,13 +514,24 @@ function parseKeymapCode (content, options = {}) {
     return null
   }
 
+  const rootNode = dts.nodes['/']
+  const behaviorDefinitionsNode = rootNode?.children?.behaviors
+  const behaviorDefinitions = Array.isArray(behaviorDefinitionsNode?.childNodes)
+    ? behaviorDefinitionsNode.childNodes.map(toBehaviorNode)
+    : []
+  const behaviorOverrides = dts.entries
+    .filter(entry => entry.name.startsWith('&'))
+    .map(toBehaviorNode)
+
   const template = extractKeymapTemplate(content)
   const parsed = Object.assign({}, KEYMAP_ROOT, {
     layer_names: extracted.layerNames,
     layers: extracted.layers,
     sensor_layers: extracted.sensorLayers && extracted.sensorLayers.length
       ? extracted.sensorLayers
-      : undefined
+      : undefined,
+    behavior_overrides: behaviorOverrides,
+    behavior_definitions: behaviorDefinitions
   })
 
   if (template) {

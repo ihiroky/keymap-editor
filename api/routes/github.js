@@ -136,6 +136,12 @@ const getKeyboardFiles = async (req, res, next) => {
       if (parsedCode?.sensor_layers) {
         keymap.sensor_layers = parsedCode.sensor_layers
       }
+      if (Array.isArray(parsedCode?.behavior_overrides)) {
+        keymap.behavior_overrides = parsedCode.behavior_overrides
+      }
+      if (Array.isArray(parsedCode?.behavior_definitions)) {
+        keymap.behavior_definitions = parsedCode.behavior_definitions
+      }
       if (parsedCode?.__keymap_editor?.template) {
         keymap.__keymap_editor = parsedCode.__keymap_editor
       }
@@ -145,6 +151,12 @@ const getKeyboardFiles = async (req, res, next) => {
       keymap.sensor_layers = Array.from({ length: keymap.layers.length }, () => (
         Array.from({ length: sensorCount }, () => '&none')
       ))
+    }
+    if (!Array.isArray(keymap.behavior_overrides)) {
+      keymap.behavior_overrides = []
+    }
+    if (!Array.isArray(keymap.behavior_definitions)) {
+      keymap.behavior_definitions = []
     }
 
     res.json({

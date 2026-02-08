@@ -92,6 +92,7 @@ function ValuePicker (props) {
   const [highlighted, setHighlighted] = useState(null)
   const [showAll, setShowAll] = useState(false)
   const isCodeParam = param === 'code'
+  const isRawParam = param && typeof param === 'object' && param.type === 'raw'
 
   const { selection: initialModifiers, base: baseNode } = useMemo(() => {
     if (!isCodeParam) {
@@ -174,8 +175,14 @@ function ValuePicker (props) {
   const handleSelectActive = useMemo(() => function() {
     if (results.length > 0 && highlighted !== null) {
       handleClickResult(results[highlighted])
+      return
     }
-  }, [results, highlighted, handleClickResult])
+
+    const candidate = String(query ?? '').trim()
+    if ((isRawParam || choices.length === 0) && candidate) {
+      onSelect({ code: candidate })
+    }
+  }, [results, highlighted, handleClickResult, query, isRawParam, choices, onSelect])
 
   const setHighlightPosition = useMemo(() => function(initial, offset) {
     if (results.length === 0) {
@@ -316,12 +323,17 @@ function ValuePicker (props) {
             )}
           </li>
         ))}
+        {results.length === 0 && (
+          <li className={style.empty}>
+            {isRawParam ? 'Press Enter to use typed value.' : 'No results.'}
+          </li>
+        )}
       </ul>
       {choices.length > searchThreshold && (
         <div className={style['choices-counter']}>
           Total choices: {choices.length}.
           {enableShowAllButton && (
-            <button onClick={setShowAll(true)}>Show all</button>
+            <button onClick={() => setShowAll(true)}>Show all</button>
           )}
         </div>
       )}

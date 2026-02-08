@@ -1,0 +1,289 @@
+[
+  {
+    "compatible": "zmk,behavior-hold-tap",
+    "displayName": "Hold-Tap",
+    "requiredProperties": ["compatible", "#binding-cells", "bindings"],
+    "optionalProperties": ["flavor", "tapping-term-ms", "quick-tap-ms", "require-prior-idle-ms", "retro-tap"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "bindings": "bindings",
+      "flavor": "token",
+      "tapping-term-ms": "int",
+      "quick-tap-ms": "int",
+      "require-prior-idle-ms": "int",
+      "retro-tap": "boolean"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-hold-tap"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 2
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "countFrom": "#binding-cells",
+        "minItems": 2
+      },
+      "flavor": {
+        "type": "select",
+        "options": [
+          "hold-preferred",
+          "balanced",
+          "tap-preferred",
+          "tap-unless-interrupted"
+        ],
+        "default": "hold-preferred"
+      },
+      "tapping-term-ms": {
+        "type": "int"
+      },
+      "quick-tap-ms": {
+        "type": "int"
+      },
+      "require-prior-idle-ms": {
+        "type": "int"
+      },
+      "retro-tap": {
+        "type": "boolean"
+      }
+    },
+    "overrideBinds": ["&mt", "&lt"],
+    "overridePropertyKeys": [
+      "bindings",
+      "flavor",
+      "tapping-term-ms",
+      "quick-tap-ms",
+      "require-prior-idle-ms",
+      "retro-tap"
+    ],
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 2,
+    "defaultLabelHints": ["ht", "mt", "lt"]
+  },
+  {
+    "compatible": "zmk,behavior-tap-dance",
+    "displayName": "Tap-Dance",
+    "requiredProperties": ["compatible", "#binding-cells", "bindings"],
+    "optionalProperties": ["tapping-term-ms"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "bindings": "bindings",
+      "tapping-term-ms": "int"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-tap-dance"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 0
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "minItems": 2
+      },
+      "tapping-term-ms": {
+        "type": "int"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 0,
+    "defaultLabelHints": ["td"]
+  },
+  {
+    "compatible": "zmk,behavior-mod-morph",
+    "displayName": "Mod-Morph",
+    "requiredProperties": ["compatible", "#binding-cells", "bindings", "mods"],
+    "optionalProperties": ["keep-mods"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "bindings": "bindings",
+      "mods": "token-array",
+      "keep-mods": "token-array"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-mod-morph"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 0
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "minItems": 2
+      },
+      "mods": {
+        "type": "token-array",
+        "required": true
+      },
+      "keep-mods": {
+        "type": "token-array"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 0,
+    "defaultLabelHints": ["mm"]
+  },
+  {
+    "compatible": "zmk,behavior-macro",
+    "displayName": "Macro",
+    "requiredProperties": ["compatible", "#binding-cells", "bindings"],
+    "optionalProperties": ["wait-ms", "tap-ms"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "bindings": "bindings",
+      "wait-ms": "int",
+      "tap-ms": "int"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-macro"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 0
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "minItems": 1
+      },
+      "wait-ms": {
+        "type": "int"
+      },
+      "tap-ms": {
+        "type": "int"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 0,
+    "defaultLabelHints": ["macro", "mcr"]
+  },
+  {
+    "compatible": "zmk,behavior-sticky-key",
+    "displayName": "Sticky-Key",
+    "requiredProperties": ["compatible", "#binding-cells"],
+    "optionalProperties": ["release-after-ms", "quick-release", "lazy"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "release-after-ms": "int",
+      "quick-release": "boolean",
+      "lazy": "boolean"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-sticky-key"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 1
+      },
+      "release-after-ms": {
+        "type": "int"
+      },
+      "quick-release": {
+        "type": "boolean"
+      },
+      "lazy": {
+        "type": "boolean"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 1,
+    "defaultLabelHints": ["sk"]
+  },
+  {
+    "compatible": "zmk,behavior-sticky-layer",
+    "displayName": "Sticky-Layer",
+    "requiredProperties": ["compatible", "#binding-cells"],
+    "optionalProperties": ["release-after-ms", "quick-release", "ignore-modifiers"],
+    "propertyTypes": {
+      "compatible": "string",
+      "#binding-cells": "int",
+      "release-after-ms": "int",
+      "quick-release": "boolean",
+      "ignore-modifiers": "boolean"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-sticky-layer"
+      },
+      "#binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 1
+      },
+      "release-after-ms": {
+        "type": "int"
+      },
+      "quick-release": {
+        "type": "boolean"
+      },
+      "ignore-modifiers": {
+        "type": "boolean"
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 1,
+    "defaultLabelHints": ["sl"]
+  },
+  {
+    "compatible": "zmk,behavior-sensor-rotate",
+    "displayName": "Sensor-Rotate",
+    "requiredProperties": ["compatible", "#sensor-binding-cells", "bindings"],
+    "optionalProperties": [],
+    "propertyTypes": {
+      "compatible": "string",
+      "#sensor-binding-cells": "int",
+      "bindings": "bindings"
+    },
+    "propertySpecs": {
+      "compatible": {
+        "type": "string",
+        "required": true,
+        "fixed": "zmk,behavior-sensor-rotate"
+      },
+      "#sensor-binding-cells": {
+        "type": "int",
+        "required": true,
+        "fixed": 0
+      },
+      "bindings": {
+        "type": "behavior-bindings",
+        "required": true,
+        "minItems": 2
+      }
+    },
+    "defaultIncludes": ["#include <behaviors.dtsi>"],
+    "defaultBindingCells": 0,
+    "defaultLabelHints": ["rot"]
+  }
+]

@@ -54,12 +54,21 @@ export function createPromptMessage(param) {
 export function hydrateTree(value, params, sources) {
   const bind = value
   const behaviour = get(sources.behaviours, bind)
+  if (!behaviour) {
+    return {
+      value,
+      source: null,
+      params: []
+    }
+  }
   const behaviourParams = getBehaviourParams(params, behaviour)
   const commands = keyBy(behaviour.commands, 'code')
 
   function getSourceValue(value, as) {
     if (as === 'command') return commands[value]
-    if (as === 'raw' || as.enum) return { code: value }
+    if (as === 'raw' || (as && typeof as === 'object' && (as.type === 'raw' || as.enum))) {
+      return { code: value }
+    }
     return sources?.[as]?.[value]
   }
 
