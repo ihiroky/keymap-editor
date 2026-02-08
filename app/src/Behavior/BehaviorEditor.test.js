@@ -78,7 +78,7 @@ function renderEditor (options = {}) {
     behavior_overrides: options.behaviorOverrides || []
   }
 
-  render(
+  const view = render(
     <BehaviorEditor
       keymap={keymap}
       behaviorTypes={options.behaviorTypes || [createBehaviorType()]}
@@ -90,7 +90,7 @@ function renderEditor (options = {}) {
     />
   )
 
-  return { onUpdate }
+  return { onUpdate, ...view }
 }
 
 describe('BehaviorEditor children DSL', () => {
@@ -156,5 +156,35 @@ describe('BehaviorEditor children DSL', () => {
     const nextKeymap = onUpdate.mock.calls[0][0]
     expect(nextKeymap.behavior_overrides[0].name).toBe('&mt')
     expect(nextKeymap.behavior_overrides[0].bind).toBe('&mt')
+  })
+
+  test('uses node compatible fallback in required compatible select', () => {
+    const node = createDefinitionNode()
+    delete node.properties.compatible
+    delete node.property_types.compatible
+    node.property_order = node.property_order.filter(key => key !== 'compatible')
+
+    renderEditor({ behaviorDefinitions: [node] })
+
+    const compatibleOption = screen.getByRole('option', { name: 'Macro (zmk,behavior-macro)' })
+    const compatibleSelect = compatibleOption.parentElement
+    expect(compatibleSelect.value).toBe('zmk,behavior-macro')
+  })
+
+  test('hides compatible from raw properties and blocks renaming raw key to compatible', () => {
+    const node = createDefinitionNode()
+    node.properties.custom_raw = 'value'
+    node.property_types.custom_raw = 'string'
+    node.property_order.push('custom_raw')
+
+    const { onUpdate } = renderEditor({ behaviorDefinitions: [node] })
+    const rawGroup = screen.getByText('Raw Properties').parentElement
+
+    expect(rawGroup.querySelector('input[value="custom_raw"]')).toBeTruthy()
+    expect(rawGroup.querySelector('input[value="compatible"]')).toBeNull()
+
+    const customKeyInput = rawGroup.querySelector('input[value="custom_raw"]')
+    fireEvent.change(customKeyInput, { target: { value: 'compatible' } })
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 })

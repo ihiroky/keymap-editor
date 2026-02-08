@@ -561,8 +561,11 @@ function BehaviorEditor (props) {
     }
 
     const hidden = new Set(knownKeys)
+    if (selection?.kind === 'definition') {
+      hidden.add('compatible')
+    }
     return Object.keys(selectedNode.properties || {}).filter(key => !hidden.has(key))
-  }, [selectedNode, knownKeys])
+  }, [selectedNode, knownKeys, selection])
 
   const availableBinds = useMemo(() => {
     const dynamicDefinitions = definitions
@@ -1018,7 +1021,7 @@ function BehaviorEditor (props) {
                 <div className={styles.formRow}>
                   <label>Compatible</label>
                   <select
-                    value={selectedNode.properties?.compatible || ''}
+                    value={selectedNode.properties?.compatible || selectedNode.compatible || ''}
                     onChange={event => {
                       const compatible = event.target.value
                       updateSelectedNode(current => {
@@ -1139,6 +1142,9 @@ function BehaviorEditor (props) {
                       onChange={event => {
                         const nextKey = event.target.value
                         if (!nextKey || nextKey === key) {
+                          return
+                        }
+                        if (selection?.kind === 'definition' && nextKey === 'compatible') {
                           return
                         }
 
