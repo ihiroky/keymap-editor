@@ -447,7 +447,7 @@ function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible) {
   }
 
   const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible)).join('')
-  return `    behaviors {\n${children}    };\n\n`
+  return `    behaviors {\n${children}    };\n`
 }
 
 function insertBeforeRoot (template, section) {

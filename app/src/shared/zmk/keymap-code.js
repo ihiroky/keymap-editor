@@ -446,6 +446,26 @@ function applyRanges (content, ranges) {
   return output
 }
 
+function trimTrailingBlankLines (value) {
+  return value.replace(/(?:\n[ \t]*)+$/, '')
+}
+
+function trimLeadingBlankLines (value) {
+  return value.replace(/^(?:[ \t]*\n)+/, '')
+}
+
+function insertSectionWithSingleBlankLine (before, section, after) {
+  const parts = []
+  if (before) {
+    parts.push(before)
+  }
+  parts.push(section)
+  if (after) {
+    parts.push(after)
+  }
+  return parts.join('\n\n')
+}
+
 function insertPlaceholderBeforeKeymap (template, placeholder) {
   if (template.includes(placeholder)) {
     return template
@@ -453,10 +473,16 @@ function insertPlaceholderBeforeKeymap (template, placeholder) {
 
   const index = template.indexOf(RENDERED_KEYMAP)
   if (index !== -1) {
-    return `${template.slice(0, index)}${placeholder}\n\n${template.slice(index)}`
+    const before = trimTrailingBlankLines(template.slice(0, index))
+    const after = trimLeadingBlankLines(template.slice(index))
+    return insertSectionWithSingleBlankLine(before, placeholder, after)
   }
 
-  return `${template.trimEnd()}\n\n${placeholder}\n`
+  return insertSectionWithSingleBlankLine(
+    trimTrailingBlankLines(template),
+    placeholder,
+    ''
+  )
 }
 
 function insertPlaceholderAtTopLevel (template, placeholder) {
@@ -467,10 +493,12 @@ function insertPlaceholderAtTopLevel (template, placeholder) {
   const rootMatch = template.match(/^\s*\/\s*\{/m)
   if (rootMatch && typeof rootMatch.index === 'number') {
     const index = rootMatch.index
-    return `${template.slice(0, index)}${placeholder}\n\n${template.slice(index)}`
+    const before = trimTrailingBlankLines(template.slice(0, index))
+    const after = trimLeadingBlankLines(template.slice(index))
+    return insertSectionWithSingleBlankLine(before, placeholder, after)
   }
 
-  return `${placeholder}\n\n${template}`
+  return insertSectionWithSingleBlankLine('', placeholder, trimLeadingBlankLines(template))
 }
 
 function extractKeymapTemplate (content) {
