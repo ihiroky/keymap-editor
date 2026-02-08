@@ -805,7 +805,7 @@ function parseBehaviorChildrenSnippet (snippet) {
   return (rootNode.childNodes || []).map(toBehaviorNode)
 }
 
-module.exports = {
+export {
   collectEditableRanges,
   parseBehaviorChildrenSnippet,
   parseKeymapCode

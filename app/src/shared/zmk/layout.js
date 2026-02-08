@@ -1,4 +1,4 @@
-const isNumber = require('lodash/isNumber')
+import isNumber from 'lodash/isNumber'
 
 class InfoValidationError extends Error {
   constructor (errors) {
@@ -148,7 +148,7 @@ function selectDefaultLayoutAndSensors (info) {
   }
 }
 
-module.exports = {
+export {
   InfoValidationError,
   renderTable,
   validateInfoJson,

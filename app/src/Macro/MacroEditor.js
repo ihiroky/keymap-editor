@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import styles from './styles.module.css'
 
-const {
+import {
   MACRO_BINDING_CELLS,
   MACRO_COMPATIBLES,
   MACRO_MODE_CONTROLS,
@@ -18,7 +18,7 @@ const {
   renderMacroBinding,
   renderRawMacroBindings,
   validateMacroCollection
-} = require('../shared/zmk/macro-helpers')
+} from '../shared/zmk/macro-helpers'
 
 function sanitizeLabel (label) {
   const cleaned = String(label || '')

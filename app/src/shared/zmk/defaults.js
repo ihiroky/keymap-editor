@@ -1,4 +1,4 @@
-const keymapTemplate = `
+export const keymapTemplate = `
 /*
  * Copyright (c) 2020 The ZMK Contributors
  *
@@ -28,7 +28,3 @@ const keymapTemplate = `
     };
 };
 `
-
-module.exports = {
-  keymapTemplate
-}
