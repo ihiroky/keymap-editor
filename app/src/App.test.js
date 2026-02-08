@@ -22,7 +22,7 @@ jest.mock('./Pickers/KeyboardPicker', () => function MockKeyboardPicker ({ onSel
   React.useEffect(() => {
     onSelect({
       source: 'local',
-      layout: { keys: [] },
+      layout: [],
       sensors: [],
       keymap: {
         layer_names: ['Base'],
@@ -52,6 +52,36 @@ jest.mock('./Pickers/KeyboardPicker', () => function MockKeyboardPicker ({ onSel
               bindings: ['&kp A', '&kp B']
             }
           }
+        ],
+        combos: [
+          {
+            name: 'combo_a',
+            properties: {
+              'timeout-ms': 30,
+              'key-positions': [0, 1],
+              bindings: ['&kp TAB'],
+              layers: [],
+              'require-prior-idle-ms': 0,
+              'slow-release': false
+            },
+            property_types: {
+              'timeout-ms': 'int',
+              'key-positions': 'token-array',
+              bindings: 'bindings',
+              layers: 'token-array',
+              'require-prior-idle-ms': 'int',
+              'slow-release': 'boolean'
+            },
+            property_order: [
+              'timeout-ms',
+              'key-positions',
+              'bindings',
+              'layers',
+              'require-prior-idle-ms',
+              'slow-release'
+            ],
+            children: []
+          }
         ]
       }
     })
@@ -66,6 +96,7 @@ jest.mock('./Keyboard/Keyboard', () => function MockKeyboard () {
 
 let mockLastBehaviorProps = null
 let mockLastMacroProps = null
+let mockLastComboProps = null
 
 jest.mock('./Behavior/BehaviorEditor', () => function MockBehaviorEditor (props) {
   mockLastBehaviorProps = props
@@ -103,13 +134,32 @@ jest.mock('./Macro/MacroEditor', () => function MockMacroEditor (props) {
   )
 })
 
+jest.mock('./Combo/ComboEditor', () => function MockComboEditor (props) {
+  mockLastComboProps = props
+  return (
+    <button
+      type='button'
+      onClick={() => {
+        const combo = props.keymap.combos[0]
+        props.onUpdate({
+          ...props.keymap,
+          combos: [{ ...combo, name: 'combo_updated' }]
+        })
+      }}
+    >
+      Combo Update
+    </button>
+  )
+})
+
 describe('App macro/behavior split integration', () => {
   beforeEach(() => {
     mockLastBehaviorProps = null
     mockLastMacroProps = null
+    mockLastComboProps = null
   })
 
-  test('shows Macro tab and splits editor keymap definitions', async () => {
+  test('shows Macro/Combo tabs and splits editor keymap definitions', async () => {
     render(<App />)
 
     await screen.findByText('Keymap')
@@ -130,6 +180,15 @@ describe('App macro/behavior split integration', () => {
 
     expect(mockLastMacroProps.keymap.behavior_definitions).toHaveLength(1)
     expect(mockLastMacroProps.keymap.behavior_definitions[0].compatible).toBe('zmk,behavior-macro')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Combo' }))
+
+    await waitFor(() => {
+      expect(mockLastComboProps).toBeTruthy()
+    })
+
+    expect(mockLastComboProps.keymap.combos).toHaveLength(1)
+    expect(mockLastComboProps.keymap.combos[0].name).toBe('combo_a')
   })
 
   test('preserves both definition groups when each editor updates', async () => {
@@ -152,6 +211,12 @@ describe('App macro/behavior split integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Behavior Update' }))
 
+    fireEvent.click(screen.getByRole('button', { name: 'Combo' }))
+    await waitFor(() => {
+      expect(mockLastComboProps).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Combo Update' }))
+
     fireEvent.click(screen.getByRole('button', { name: 'Macro' }))
     await waitFor(() => {
       expect(mockLastMacroProps.keymap.behavior_definitions[0].label).toBe('macro_updated')
@@ -160,6 +225,11 @@ describe('App macro/behavior split integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Behavior' }))
     await waitFor(() => {
       expect(mockLastBehaviorProps.keymap.behavior_definitions[0].label).toBe('td_updated')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Combo' }))
+    await waitFor(() => {
+      expect(mockLastComboProps.keymap.combos[0].name).toBe('combo_updated')
     })
   })
 })

@@ -18,6 +18,7 @@ const keymapTemplate = `
 {{rendered_behavior_overrides}}
 
 / {
+{{rendered_combo_definitions}}
 {{rendered_macro_definitions}}
 {{rendered_behavior_definitions}}
     keymap {

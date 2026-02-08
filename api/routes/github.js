@@ -142,6 +142,9 @@ const getKeyboardFiles = async (req, res, next) => {
       if (Array.isArray(parsedCode?.behavior_definitions)) {
         keymap.behavior_definitions = parsedCode.behavior_definitions
       }
+      if (Array.isArray(parsedCode?.combos)) {
+        keymap.combos = parsedCode.combos
+      }
       if (parsedCode?.__keymap_editor?.template) {
         keymap.__keymap_editor = parsedCode.__keymap_editor
       }
@@ -157,6 +160,9 @@ const getKeyboardFiles = async (req, res, next) => {
     }
     if (!Array.isArray(keymap.behavior_definitions)) {
       keymap.behavior_definitions = []
+    }
+    if (!Array.isArray(keymap.combos)) {
+      keymap.combos = []
     }
 
     res.json({

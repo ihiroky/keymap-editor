@@ -1,0 +1,196 @@
+.editor {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.sidebar {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: rgba(247, 247, 247, 0.85);
+  padding: 12px;
+}
+
+.sectionHeader {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #556;
+  margin: 2px 0 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.listItem {
+  text-align: left;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 7px;
+  background: white;
+  padding: 8px 10px;
+}
+
+.listItem[data-selected='true'] {
+  border-color: var(--selection);
+  background: rgba(60, 179, 113, 0.14);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.formRow input,
+.formRow select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.slowReleaseCheckbox {
+  width: auto !important;
+  justify-self: start;
+}
+
+.bindingRow {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.bindingField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paramList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paramRow {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.paramRow label {
+  font-size: 12px;
+  color: #556;
+}
+
+.paramRow select,
+.paramRow input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.paramPickerButton {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  background: #fff;
+  min-height: 30px;
+  padding: 4px 8px;
+}
+
+.paramPicker {
+  grid-column: 1 / -1;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background: rgba(245, 245, 245, 0.9);
+}
+
+.group {
+  margin-top: 14px;
+}
+
+.groupTitle {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #556;
+  margin-bottom: 8px;
+}
+
+.keyboardMap {
+  position: relative;
+  margin-top: 10px;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 8px;
+  box-sizing: content-box;
+  background: rgba(245, 245, 245, 0.6);
+}
+
+.keyButton {
+  position: absolute;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 6px;
+  background: white;
+  color: #445;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keyButton[data-selected='true'] {
+  border-color: var(--selection);
+  background: rgba(60, 179, 113, 0.26);
+}
+
+.errors {
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  border: 1px solid rgba(185, 0, 0, 0.25);
+  background: rgba(185, 0, 0, 0.08);
+}
+
+@media (max-width: 960px) {
+  .editor {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .bindingRow {
+    grid-template-columns: 1fr;
+  }
+
+  .paramRow {
+    grid-template-columns: 1fr;
+  }
+}

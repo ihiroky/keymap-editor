@@ -58,6 +58,38 @@ describe('keymap range patch generation', () => {
     expect(generated.code).toContain('bindings = <&kp B>;')
   })
 
+  test('preserves comments in combo definition when property value is updated', () => {
+    const source = `
+/ {
+    combos {
+        compatible = "zmk,combos";
+
+        esc_combo: esc_combo {
+            // keep-combo-comment
+            timeout-ms = <30>;
+            key-positions = <0 1>;
+            bindings = <&kp ESC>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&none>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.combos[0].properties['timeout-ms'] = 45
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toContain('// keep-combo-comment')
+    expect(generated.code).toContain('timeout-ms = <45>;')
+  })
+
   test('localizes regeneration when structure changes', () => {
     const source = `
 / {
@@ -103,6 +135,66 @@ describe('keymap range patch generation', () => {
 
     expect(generated.code).toContain('// keep-layer-comment')
     expect(generated.code).toContain('macro_b: macro_b')
+  })
+
+  test('localizes regeneration when combo structure changes', () => {
+    const source = `
+/ {
+    combos {
+        compatible = "zmk,combos";
+        esc_combo: esc_combo {
+            timeout-ms = <30>;
+            key-positions = <0 1>;
+            bindings = <&kp ESC>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            // keep-layer-comment
+            bindings = <&kp A>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.combos.push({
+      name: 'tab_combo',
+      label: 'tab_combo',
+      bind: '&tab_combo',
+      properties: {
+        'timeout-ms': 35,
+        'key-positions': [0, 1],
+        bindings: ['&kp TAB'],
+        layers: [],
+        'require-prior-idle-ms': 0,
+        'slow-release': false
+      },
+      property_types: {
+        'timeout-ms': 'int',
+        'key-positions': 'token-array',
+        bindings: 'bindings',
+        layers: 'token-array',
+        'require-prior-idle-ms': 'int',
+        'slow-release': 'boolean'
+      },
+      property_order: [
+        'timeout-ms',
+        'key-positions',
+        'bindings',
+        'layers',
+        'require-prior-idle-ms',
+        'slow-release'
+      ],
+      children: []
+    })
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toContain('// keep-layer-comment')
+    expect(generated.code).toContain('tab_combo: tab_combo')
   })
 
   test('keeps untouched override comments even when include set is incomplete', () => {
@@ -175,6 +267,50 @@ describe('keymap range patch generation', () => {
 
     expect(generated.code).toContain('#include <dt-bindings/zmk/bt.h>')
     expect(generated.code).toContain('&bt BT_SEL 0')
+  })
+
+  test('adds required includes when combo binding introduces a new behavior include', () => {
+    const source = `
+#include <dt-bindings/zmk/keys.h>
+
+/ {
+    combos {
+        compatible = "zmk,combos";
+        esc_combo: esc_combo {
+            timeout-ms = <30>;
+            key-positions = <0 1>;
+            bindings = <&kp ESC>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&kp A>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.combos[0].properties.bindings = ['&bt BT_SEL 0']
+
+    const generated = generateKeymap(singleKeyLayout, parsed, undefined, {
+      behaviours: [
+        {
+          code: '&kp',
+          includes: ['#include <dt-bindings/zmk/keys.h>']
+        },
+        {
+          code: '&bt',
+          includes: ['#include <dt-bindings/zmk/keys.h>', '#include <dt-bindings/zmk/bt.h>']
+        }
+      ],
+      behaviourTypes: []
+    })
+
+    expect(generated.code).toContain('#include <dt-bindings/zmk/bt.h>')
+    expect(generated.code).toContain('bindings = <&bt BT_SEL 0>;')
   })
 
   test('uses explicit template and skips range patch path', () => {

@@ -127,6 +127,9 @@ function loadKeymap () {
   if (!Array.isArray(keymapContent.behavior_definitions)) {
     keymapContent.behavior_definitions = []
   }
+  if (!Array.isArray(keymapContent.combos)) {
+    keymapContent.combos = []
+  }
 
   return parseKeymap(keymapContent)
 }

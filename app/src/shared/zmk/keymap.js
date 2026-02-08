@@ -63,6 +63,35 @@ function getBehavioursUsed (keymap) {
   return uniq(map(keybinds, 'value'))
 }
 
+function getBehaviourBindCode (binding) {
+  const text = String(binding || '').trim()
+  if (!text.startsWith('&')) {
+    return ''
+  }
+
+  const [code] = text.split(/\s+/)
+  return code || ''
+}
+
+function getComboBehavioursUsed (keymap) {
+  const combos = normalizeBehaviorList(keymap?.combos)
+  const binds = []
+
+  for (const combo of combos) {
+    const bindings = Array.isArray(combo?.properties?.bindings)
+      ? combo.properties.bindings
+      : []
+    for (const binding of bindings) {
+      const code = getBehaviourBindCode(binding)
+      if (code) {
+        binds.push(code)
+      }
+    }
+  }
+
+  return uniq(binds)
+}
+
 function parseKeyBinding (binding) {
   const paramsPattern = /\((.+)\)/
 
@@ -521,10 +550,12 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
 
   const sourceKeymap = stripEditorMetadata(parseKeymap(sourceParsedCode))
   const sourceEncoded = encodeKeymap(sourceKeymap)
+  const sourceCombos = normalizeBehaviorList(sourceKeymap.combos)
   const sourceBehaviorOverrides = normalizeBehaviorList(sourceKeymap.behavior_overrides)
   const sourceBehaviorDefinitions = normalizeBehaviorList(sourceKeymap.behavior_definitions)
   const sourceSplitDefinitions = splitMacroAndBehaviorDefinitions(sourceBehaviorDefinitions)
 
+  const combos = normalizeBehaviorList(keymap.combos)
   const behaviorOverrides = normalizeBehaviorList(keymap.behavior_overrides)
   const behaviorDefinitions = normalizeBehaviorList(keymap.behavior_definitions)
   const behaviourTypeByCompatible = keyBy(options.behaviourTypes || [], 'compatible')
@@ -648,17 +679,46 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   }
 
   const splitDefinitions = splitMacroAndBehaviorDefinitions(behaviorDefinitions)
+  const sourceCombosNode = findChildNodeByName(rootNode, 'combos')
   const sourceMacrosNode = findChildNodeByName(rootNode, 'macros')
   const sourceBehaviorsNode = findChildNodeByName(rootNode, 'behaviors')
+  const comboTargets = combos
   const macroTargets = splitDefinitions.macroDefinitions
   const behaviorTargets = splitDefinitions.behaviorDefinitions
   const sectionInsertions = []
 
+  if (!sourceCombosNode && sourceCombos.length > 0) {
+    return null
+  }
   if (!sourceMacrosNode && sourceSplitDefinitions.macroDefinitions.length > 0) {
     return null
   }
   if (!sourceBehaviorsNode && sourceSplitDefinitions.behaviorDefinitions.length > 0) {
     return null
+  }
+
+  if (!sourceCombosNode && comboTargets.length > 0) {
+    sectionInsertions.push(renderComboDefinitions(comboTargets, behaviourTypeByCompatible))
+  } else if (sourceCombosNode) {
+    if (sourceCombos.length > 0 && comboTargets.length === 0) {
+      replacements.push({ start: sourceCombosNode.start, end: sourceCombosNode.end, replacement: '' })
+    } else if (
+      sourceCombos.length !== comboTargets.length ||
+      !planBehaviorNodeUpdates({
+        sourceCode,
+        sourceRangeNodes: sourceCombosNode.children || [],
+        sourceParsedNodes: sourceCombos,
+        targetNodes: comboTargets,
+        behaviourTypeByCompatible,
+        replacements
+      })
+    ) {
+      replacements.push({
+        start: sourceCombosNode.start,
+        end: sourceCombosNode.end,
+        replacement: renderComboDefinitions(comboTargets, behaviourTypeByCompatible)
+      })
+    }
   }
 
   if (!sourceMacrosNode && macroTargets.length > 0) {
@@ -781,13 +841,16 @@ function collectDynamicIncludeLinesForKeymap (keymap, options = {}) {
   const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
+  const comboHeaders = flatten(getComboBehavioursUsed(keymapForIncludes).map(
+    bind => get(behavioursByBind, [bind, 'includes'], [])
+  ))
   const customBehaviorHeaders = collectBehaviorTypeIncludes(
     [...behaviorOverrides, ...behaviorDefinitions],
     behaviourTypeByCompatible
   )
 
   return uniq(
-    [...behaviourHeaders, ...customBehaviorHeaders]
+    [...behaviourHeaders, ...comboHeaders, ...customBehaviorHeaders]
       .map(line => parseIncludeLine(line))
       .filter(Boolean)
       .map(item => item.raw)
@@ -1055,6 +1118,18 @@ function renderBehaviorOverrides (nodes, behaviourTypeByCompatible) {
   return `${nodes.map(node => renderBehaviorNode(node, 0, behaviourTypeByCompatible)).join('')}\n`
 }
 
+function renderComboDefinitions (nodes, behaviourTypeByCompatible) {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return ''
+  }
+
+  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible)).join('')
+  return `    combos {\n` +
+    '        compatible = "zmk,combos";\n' +
+    `${children}` +
+    '    };\n'
+}
+
 function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     return ''
@@ -1133,12 +1208,14 @@ function renderTemplate (template, params) {
   const layersPattern = /\{\{\s*rendered_layers\s*\}\}/
   const keymapPattern = /\{\{\s*rendered_keymap\s*\}\}/
   const overridesPattern = /\{\{\s*rendered_behavior_overrides\s*\}\}/
+  const comboDefinitionsPattern = /\{\{\s*rendered_combo_definitions\s*\}\}/
   const macroDefinitionsPattern = /\{\{\s*rendered_macro_definitions\s*\}\}/
   const definitionsPattern = /\{\{\s*rendered_behavior_definitions\s*\}\}/
 
   const renderedLayers = renderLayers(params)
   const renderedKeymap = KEYMAP_BLOCK_TEMPLATE.replace(layersPattern, renderedLayers)
   const splitDefinitions = splitMacroAndBehaviorDefinitions(params.behaviorDefinitions)
+  const renderedComboDefinitions = renderComboDefinitions(params.comboDefinitions, params.behaviourTypeByCompatible)
   const renderedBehaviorOverrides = renderBehaviorOverrides(params.behaviorOverrides, params.behaviourTypeByCompatible)
   const renderedMacroDefinitions = renderMacroDefinitions(splitDefinitions.macroDefinitions, params.behaviourTypeByCompatible)
   const renderedBehaviorDefinitions = renderBehaviorDefinitions(splitDefinitions.behaviorDefinitions, params.behaviourTypeByCompatible)
@@ -1164,6 +1241,12 @@ function renderTemplate (template, params) {
     output = output.replace(overridesPattern, renderedBehaviorOverrides)
   } else {
     output = insertBeforeRoot(output, renderedBehaviorOverrides)
+  }
+
+  if (comboDefinitionsPattern.test(output)) {
+    output = output.replace(comboDefinitionsPattern, renderedComboDefinitions)
+  } else {
+    output = insertBeforeKeymap(output, renderedComboDefinitions)
   }
 
   if (macroDefinitionsPattern.test(output)) {
@@ -1207,6 +1290,7 @@ function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
   const behavioursByBind = keyBy(options.behaviours || [], 'code')
   const behaviourTypeByCompatible = keyBy(options.behaviourTypes || [], 'compatible')
 
+  const comboDefinitions = normalizeBehaviorList(keymap.combos)
   const behaviorOverrides = normalizeBehaviorList(keymap.behavior_overrides)
   const behaviorDefinitions = normalizeBehaviorList(keymap.behavior_definitions)
 
@@ -1221,6 +1305,9 @@ function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
   const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
+  const comboHeaders = flatten(getComboBehavioursUsed(keymapForIncludes).map(
+    bind => get(behavioursByBind, [bind, 'includes'], [])
+  ))
 
   const customBehaviorHeaders = collectBehaviorTypeIncludes(
     [...behaviorOverrides, ...behaviorDefinitions],
@@ -1229,11 +1316,12 @@ function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
 
   return renderTemplate(template, {
     layout,
-    behaviourHeaders: [...behaviourHeaders, ...customBehaviorHeaders],
+    behaviourHeaders: [...behaviourHeaders, ...comboHeaders, ...customBehaviorHeaders],
     layers: encoded.layers,
     layerNames: names,
     sensorLayers: encoded.sensor_layers,
     sensors: options.sensors,
+    comboDefinitions,
     behaviorOverrides,
     behaviorDefinitions,
     behaviourTypeByCompatible
