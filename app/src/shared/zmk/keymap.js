@@ -1,12 +1,14 @@
 const filter = require('lodash/filter')
 const flatten = require('lodash/flatten')
 const get = require('lodash/get')
+const isEqual = require('lodash/isEqual')
 const keyBy = require('lodash/keyBy')
 const map = require('lodash/map')
 const uniq = require('lodash/uniq')
 
 const { renderTable } = require('./layout')
 const { isMacroCompatible } = require('./macro-helpers')
+const { collectEditableRanges, parseKeymapCode } = require('./keymap-code')
 const defaults = require('./defaults')
 
 const EDITOR_METADATA_KEY = '__keymap_editor'
@@ -177,16 +179,630 @@ function normalizeBehaviorList (nodes) {
     .filter(Boolean)
 }
 
+function getLineIndent (content, index) {
+  const lineStart = content.lastIndexOf('\n', Math.max(index - 1, 0)) + 1
+  const prefix = content.slice(lineStart, index)
+  const match = prefix.match(/^[ \t]*/)
+  return match ? match[0] : ''
+}
+
+function applyTextReplacements (content, replacements) {
+  const sorted = [...replacements]
+    .filter(item => Number.isInteger(item.start) && Number.isInteger(item.end) && item.end >= item.start)
+    .sort((a, b) => b.start - a.start)
+
+  let output = content
+  let previousStart = content.length + 1
+
+  for (const replacement of sorted) {
+    if (replacement.end > previousStart) {
+      return null
+    }
+
+    output = output.slice(0, replacement.start) + replacement.replacement + output.slice(replacement.end)
+    previousStart = replacement.start
+  }
+
+  return output
+}
+
+function findChildNodeByName (node, name) {
+  if (!node || !Array.isArray(node.children)) {
+    return null
+  }
+
+  return node.children.find(child => child.name === name) || null
+}
+
+function collectOrderedPropertyKeys (properties, propertyOrder) {
+  const objectProperties = properties && typeof properties === 'object' ? properties : {}
+  const ordered = Array.isArray(propertyOrder)
+    ? propertyOrder.filter(key => typeof key === 'string')
+    : []
+  return [
+    ...ordered,
+    ...Object.keys(objectProperties).filter(key => !ordered.includes(key))
+  ]
+}
+
+function getIndentLevel (content, index) {
+  const indent = getLineIndent(content, index)
+  if (!indent) {
+    return 0
+  }
+
+  if (indent.includes('\t')) {
+    return indent.split('\t').length - 1
+  }
+
+  return Math.max(0, Math.floor(indent.length / 4))
+}
+
+function normalizeBindingList (bindings) {
+  if (!Array.isArray(bindings)) {
+    return []
+  }
+
+  return bindings.map(value => String(value))
+}
+
+function normalizeSensorBindingLayer (sensorLayer, sensors) {
+  const filtered = filterEditableSensorBindings(sensorLayer, sensors)
+  return Array.isArray(filtered)
+    ? filtered.map(value => String(value))
+    : []
+}
+
+function toComparableBehaviorNode (node) {
+  if (!node || typeof node !== 'object') {
+    return null
+  }
+
+  return {
+    label: node.label || null,
+    name: node.name || '',
+    properties: node.properties || {},
+    property_types: node.property_types || {},
+    property_order: Array.isArray(node.property_order) ? node.property_order : [],
+    children: Array.isArray(node.children)
+      ? node.children.map(toComparableBehaviorNode)
+      : []
+  }
+}
+
+function areBehaviorNodesEquivalent (sourceNode, targetNode) {
+  return isEqual(
+    toComparableBehaviorNode(sourceNode),
+    toComparableBehaviorNode(targetNode)
+  )
+}
+
+function renderLayerBlock (layout, layerName, layerBindings, sensorLayer, indent) {
+  const rendered = renderTable(layout, layerBindings, {
+    linePrefix: '',
+    columnSeparator: ' ',
+    align: 'left'
+  })
+  const renderedSensors = Array.isArray(sensorLayer) && sensorLayer.length > 0
+    ? `${indent}    sensor-bindings = <${sensorLayer.join(' ')}>;\n`
+    : ''
+
+  return `${indent}${layerName} {\n` +
+    `${indent}    bindings = <\n` +
+    `${rendered}\n` +
+    `${indent}    >;\n` +
+    `${renderedSensors}` +
+    `${indent}};\n`
+}
+
+function renderLayerBindingsPatchValue (layout, bindings, indent) {
+  const rendered = renderTable(layout, bindings, {
+    linePrefix: '',
+    columnSeparator: ' ',
+    align: 'left'
+  })
+
+  return `<\n${rendered}\n${indent}>`
+}
+
+function planBehaviorNodeValueReplacements (sourceNode, targetNode, behaviourTypeByCompatible, replacements) {
+  const local = []
+  const planned = planBehaviorNodeReplacements(sourceNode, targetNode, behaviourTypeByCompatible, local)
+  if (!planned) {
+    return false
+  }
+
+  replacements.push(...local)
+  return true
+}
+
+function planBehaviorNodeReplacements (sourceNode, targetNode, behaviourTypeByCompatible, replacements) {
+  if (!sourceNode || !targetNode) {
+    return false
+  }
+
+  if (sourceNode.name !== targetNode.name || sourceNode.label !== targetNode.label) {
+    return false
+  }
+
+  const compatible = targetNode.properties?.compatible || targetNode.compatible
+  const knownTypes = compatible
+    ? behaviourTypeByCompatible[compatible]?.propertyTypes || {}
+    : {}
+  const explicitTypes = targetNode.property_types || {}
+  const targetProperties = targetNode.properties || {}
+  const targetKeys = collectOrderedPropertyKeys(targetProperties, targetNode.property_order)
+  const sourceKeys = Array.isArray(sourceNode.propertyOrder) ? sourceNode.propertyOrder : []
+
+  if (targetKeys.length !== sourceKeys.length) {
+    return false
+  }
+
+  for (let i = 0; i < sourceKeys.length; i += 1) {
+    if (sourceKeys[i] !== targetKeys[i]) {
+      return false
+    }
+  }
+
+  for (const key of sourceKeys) {
+    const sourceProperty = sourceNode.properties?.[key]
+    if (!sourceProperty) {
+      return false
+    }
+
+    const value = targetProperties[key]
+    const type = explicitTypes[key] || knownTypes[key]
+    const isBooleanProperty = sourceProperty.type === 'boolean' || type === 'boolean' || typeof value === 'boolean'
+
+    if (isBooleanProperty) {
+      if (sourceProperty.type !== 'boolean' || value !== true) {
+        return false
+      }
+      continue
+    }
+
+    if (sourceProperty.type !== 'assignment') {
+      return false
+    }
+
+    const renderedValue = renderPropertyValue(value, type)
+    replacements.push({
+      start: sourceProperty.valueStart,
+      end: sourceProperty.valueEnd,
+      replacement: renderedValue
+    })
+  }
+
+  const sourceChildren = Array.isArray(sourceNode.children) ? sourceNode.children : []
+  const targetChildren = Array.isArray(targetNode.children) ? targetNode.children : []
+  if (sourceChildren.length !== targetChildren.length) {
+    return false
+  }
+
+  for (let i = 0; i < sourceChildren.length; i += 1) {
+    const planned = planBehaviorNodeReplacements(
+      sourceChildren[i],
+      targetChildren[i],
+      behaviourTypeByCompatible,
+      replacements
+    )
+    if (!planned) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function collectNodeRange (nodes) {
+  const normalized = Array.isArray(nodes) ? nodes : []
+  if (!normalized.length) {
+    return null
+  }
+
+  let start = normalized[0].start
+  let end = normalized[0].end
+  for (const node of normalized) {
+    start = Math.min(start, node.start)
+    end = Math.max(end, node.end)
+  }
+
+  return { start, end }
+}
+
+function replaceBehaviorSectionLocally (sectionNodes, targetNodes, behaviourTypeByCompatible, replacements, insertAt) {
+  const rendered = renderBehaviorOverrides(targetNodes, behaviourTypeByCompatible)
+  const range = collectNodeRange(sectionNodes)
+  if (range) {
+    replacements.push({ start: range.start, end: range.end, replacement: rendered })
+    return true
+  }
+
+  if (rendered && Number.isInteger(insertAt)) {
+    replacements.push({ start: insertAt, end: insertAt, replacement: `${rendered}\n` })
+    return true
+  }
+
+  return false
+}
+
+function planBehaviorNodeUpdates (params) {
+  const {
+    sourceCode,
+    sourceRangeNodes,
+    sourceParsedNodes,
+    targetNodes,
+    behaviourTypeByCompatible,
+    replacements
+  } = params
+
+  if (sourceRangeNodes.length !== sourceParsedNodes.length || sourceParsedNodes.length !== targetNodes.length) {
+    return false
+  }
+
+  for (let index = 0; index < targetNodes.length; index += 1) {
+    const sourceRangeNode = sourceRangeNodes[index]
+    const sourceParsedNode = sourceParsedNodes[index]
+    const targetNode = targetNodes[index]
+    if (!sourceRangeNode || !sourceParsedNode || !targetNode) {
+      return false
+    }
+
+    const sourceLabel = sourceRangeNode.label || null
+    const targetLabel = targetNode.label || null
+    if (
+      sourceRangeNode.name !== targetNode.name ||
+      sourceLabel !== targetLabel ||
+      sourceParsedNode.name !== targetNode.name ||
+      (sourceParsedNode.label || null) !== targetLabel
+    ) {
+      return false
+    }
+
+    if (areBehaviorNodesEquivalent(sourceParsedNode, targetNode)) {
+      continue
+    }
+
+    if (planBehaviorNodeValueReplacements(sourceRangeNode, targetNode, behaviourTypeByCompatible, replacements)) {
+      continue
+    }
+
+    replacements.push({
+      start: sourceRangeNode.start,
+      end: sourceRangeNode.end,
+      replacement: renderBehaviorNode(
+        targetNode,
+        getIndentLevel(sourceCode, sourceRangeNode.start),
+        behaviourTypeByCompatible
+      )
+    })
+  }
+
+  return true
+}
+
+function renderFullKeymapBlock (layout, keymap, encoded, sensors) {
+  const layerNames = Array.isArray(keymap.layer_names) ? keymap.layer_names : []
+  const renderedLayers = encoded.layers.map((layer, index) => {
+    const name = String(layerNames[index] ?? index)
+    const sensorLayer = filterEditableSensorBindings(
+      encoded.sensor_layers?.[index],
+      sensors
+    )
+    return `\n${renderLayerBlock(layout, name, layer, sensorLayer, '        ')}`
+  }).join('')
+
+  return `    keymap {\n` +
+    '        compatible = "zmk,keymap";\n' +
+    `${renderedLayers}\n` +
+    '    };\n'
+}
+
+function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, encoded, options = {}) {
+  const sourceCode = originalKeymap?.[EDITOR_METADATA_KEY]?.source_code
+  if (typeof sourceCode !== 'string' || !sourceCode.trim()) {
+    return null
+  }
+
+  const ranges = collectEditableRanges(sourceCode)
+  const rootNode = ranges?.root
+  if (!rootNode) {
+    return null
+  }
+
+  const sensorCount = Array.isArray(options.sensors) ? options.sensors.length : undefined
+  const sourceParsedCode = parseKeymapCode(
+    sourceCode,
+    Number.isInteger(sensorCount) ? { sensorCount } : {}
+  )
+  if (!sourceParsedCode) {
+    return null
+  }
+
+  const sourceKeymap = stripEditorMetadata(parseKeymap(sourceParsedCode))
+  const sourceEncoded = encodeKeymap(sourceKeymap)
+  const sourceBehaviorOverrides = normalizeBehaviorList(sourceKeymap.behavior_overrides)
+  const sourceBehaviorDefinitions = normalizeBehaviorList(sourceKeymap.behavior_definitions)
+  const sourceSplitDefinitions = splitMacroAndBehaviorDefinitions(sourceBehaviorDefinitions)
+
+  const behaviorOverrides = normalizeBehaviorList(keymap.behavior_overrides)
+  const behaviorDefinitions = normalizeBehaviorList(keymap.behavior_definitions)
+  const behaviourTypeByCompatible = keyBy(options.behaviourTypes || [], 'compatible')
+  const replacements = []
+
+  const keymapNode = findChildNodeByName(rootNode, 'keymap')
+  if (!keymapNode) {
+    return null
+  }
+
+  const layerNodes = Array.isArray(keymapNode.children) ? keymapNode.children : []
+  const layerNames = Array.isArray(keymap.layer_names) ? keymap.layer_names : []
+  const sourceLayerNames = Array.isArray(sourceKeymap.layer_names) ? sourceKeymap.layer_names : []
+  const layerShapeMatches = (
+    layerNodes.length === encoded.layers.length &&
+    sourceLayerNames.length === layerNodes.length &&
+    layerNames.length === encoded.layers.length
+  )
+
+  if (!layerShapeMatches) {
+    replacements.push({
+      start: keymapNode.start,
+      end: keymapNode.end,
+      replacement: renderFullKeymapBlock(layout, keymap, encoded, options.sensors)
+    })
+  } else {
+    for (let index = 0; index < layerNodes.length; index += 1) {
+      const sourceLayer = layerNodes[index]
+      const targetLayerName = String(layerNames[index])
+      const sourceLayerName = String(sourceLayerNames[index])
+      if (sourceLayer.name !== targetLayerName || sourceLayer.name !== sourceLayerName) {
+        replacements.push({
+          start: keymapNode.start,
+          end: keymapNode.end,
+          replacement: renderFullKeymapBlock(layout, keymap, encoded, options.sensors)
+        })
+        break
+      }
+
+      const sourceBindings = normalizeBindingList(sourceEncoded.layers?.[index])
+      const targetBindings = normalizeBindingList(encoded.layers?.[index])
+      const sourceSensors = normalizeSensorBindingLayer(sourceEncoded.sensor_layers?.[index], options.sensors)
+      const targetSensors = normalizeSensorBindingLayer(encoded.sensor_layers?.[index], options.sensors)
+      if (isEqual(sourceBindings, targetBindings) && isEqual(sourceSensors, targetSensors)) {
+        continue
+      }
+
+      const localReplacements = []
+      let patchable = true
+      const bindingProperty = sourceLayer.properties?.bindings
+      if (!bindingProperty || bindingProperty.type !== 'assignment') {
+        patchable = false
+      } else {
+        localReplacements.push({
+          start: bindingProperty.valueStart,
+          end: bindingProperty.valueEnd,
+          replacement: renderLayerBindingsPatchValue(
+            layout,
+            targetBindings,
+            getLineIndent(sourceCode, bindingProperty.start)
+          )
+        })
+      }
+
+      const sensorProperty = sourceLayer.properties?.['sensor-bindings']
+      const hasTargetSensors = targetSensors.length > 0
+      const hasSourceSensors = sourceSensors.length > 0
+      if (hasTargetSensors) {
+        if (!sensorProperty || sensorProperty.type !== 'assignment') {
+          patchable = false
+        } else {
+          localReplacements.push({
+            start: sensorProperty.valueStart,
+            end: sensorProperty.valueEnd,
+            replacement: `<${targetSensors.join(' ')}>`
+          })
+        }
+      } else if (hasSourceSensors && sensorProperty) {
+        patchable = false
+      }
+
+      if (patchable) {
+        replacements.push(...localReplacements)
+      } else {
+        replacements.push({
+          start: sourceLayer.start,
+          end: sourceLayer.end,
+          replacement: renderLayerBlock(
+            layout,
+            targetLayerName,
+            targetBindings,
+            targetSensors,
+            getLineIndent(sourceCode, sourceLayer.start)
+          )
+        })
+      }
+    }
+  }
+
+  const sourceOverrideNodes = (ranges.blocks || []).filter(node => node.name.startsWith('&'))
+  if (
+    !planBehaviorNodeUpdates({
+      sourceCode,
+      sourceRangeNodes: sourceOverrideNodes,
+      sourceParsedNodes: sourceBehaviorOverrides,
+      targetNodes: behaviorOverrides,
+      behaviourTypeByCompatible,
+      replacements
+    })
+  ) {
+    const replaced = replaceBehaviorSectionLocally(
+      sourceOverrideNodes,
+      behaviorOverrides,
+      behaviourTypeByCompatible,
+      replacements,
+      rootNode.start
+    )
+    if (!replaced) {
+      return null
+    }
+  }
+
+  const splitDefinitions = splitMacroAndBehaviorDefinitions(behaviorDefinitions)
+  const sourceMacrosNode = findChildNodeByName(rootNode, 'macros')
+  const sourceBehaviorsNode = findChildNodeByName(rootNode, 'behaviors')
+  const macroTargets = splitDefinitions.macroDefinitions
+  const behaviorTargets = splitDefinitions.behaviorDefinitions
+  const sectionInsertions = []
+
+  if (!sourceMacrosNode && sourceSplitDefinitions.macroDefinitions.length > 0) {
+    return null
+  }
+  if (!sourceBehaviorsNode && sourceSplitDefinitions.behaviorDefinitions.length > 0) {
+    return null
+  }
+
+  if (!sourceMacrosNode && macroTargets.length > 0) {
+    sectionInsertions.push(renderMacroDefinitions(macroTargets, behaviourTypeByCompatible))
+  } else if (sourceMacrosNode) {
+    const sourceMacros = sourceSplitDefinitions.macroDefinitions
+    if (sourceMacros.length > 0 && macroTargets.length === 0) {
+      replacements.push({ start: sourceMacrosNode.start, end: sourceMacrosNode.end, replacement: '' })
+    } else if (
+      sourceMacros.length !== macroTargets.length ||
+      !planBehaviorNodeUpdates({
+        sourceCode,
+        sourceRangeNodes: sourceMacrosNode.children || [],
+        sourceParsedNodes: sourceMacros,
+        targetNodes: macroTargets,
+        behaviourTypeByCompatible,
+        replacements
+      })
+    ) {
+      replacements.push({
+        start: sourceMacrosNode.start,
+        end: sourceMacrosNode.end,
+        replacement: renderMacroDefinitions(macroTargets, behaviourTypeByCompatible)
+      })
+    }
+  }
+
+  if (!sourceBehaviorsNode && behaviorTargets.length > 0) {
+    sectionInsertions.push(renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible))
+  } else if (sourceBehaviorsNode) {
+    const sourceBehaviors = sourceSplitDefinitions.behaviorDefinitions
+    if (sourceBehaviors.length > 0 && behaviorTargets.length === 0) {
+      replacements.push({ start: sourceBehaviorsNode.start, end: sourceBehaviorsNode.end, replacement: '' })
+    } else if (
+      sourceBehaviors.length !== behaviorTargets.length ||
+      !planBehaviorNodeUpdates({
+        sourceCode,
+        sourceRangeNodes: sourceBehaviorsNode.children || [],
+        sourceParsedNodes: sourceBehaviors,
+        targetNodes: behaviorTargets,
+        behaviourTypeByCompatible,
+        replacements
+      })
+    ) {
+      replacements.push({
+        start: sourceBehaviorsNode.start,
+        end: sourceBehaviorsNode.end,
+        replacement: renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible)
+      })
+    }
+  }
+
+  if (sectionInsertions.length > 0) {
+    replacements.push({
+      start: keymapNode.start,
+      end: keymapNode.start,
+      replacement: sectionInsertions.join('')
+    })
+  }
+
+  return applyTextReplacements(sourceCode, replacements)
+}
+
 function generateKeymap (layout, keymap, template, options = {}) {
   const editorTemplate = keymap?.[EDITOR_METADATA_KEY]?.template
   const sanitized = stripEditorMetadata(keymap)
   const encoded = encodeKeymap(sanitized)
   const templateToUse = template || editorTemplate || defaults.keymapTemplate
+  const fullCode = generateKeymapCode(layout, sanitized, encoded, templateToUse, options)
+  const shouldUseRangePatch = !template
+  const patchedCode = shouldUseRangePatch
+    ? tryGenerateKeymapCodeWithRangePatch(layout, keymap, sanitized, encoded, options)
+    : null
+  const sourceKeymap = patchedCode ? parseSourceKeymapFromMetadata(keymap, options) : null
+  const includeSafe = patchedCode && sourceKeymap
+    ? !hasMissingNewRequiredIncludes(
+      keymap?.[EDITOR_METADATA_KEY]?.source_code,
+      sourceKeymap,
+      sanitized,
+      options
+    )
+    : false
 
   return {
-    code: generateKeymapCode(layout, sanitized, encoded, templateToUse, options),
+    code: includeSafe ? patchedCode : fullCode,
     json: generateKeymapJSON(layout, sanitized, encoded)
   }
+}
+
+function parseSourceKeymapFromMetadata (keymap, options = {}) {
+  const sourceCode = keymap?.[EDITOR_METADATA_KEY]?.source_code
+  if (typeof sourceCode !== 'string' || !sourceCode.trim()) {
+    return null
+  }
+
+  const sensorCount = Array.isArray(options.sensors) ? options.sensors.length : undefined
+  const parsedCode = parseKeymapCode(
+    sourceCode,
+    Number.isInteger(sensorCount) ? { sensorCount } : {}
+  )
+  if (!parsedCode) {
+    return null
+  }
+
+  return stripEditorMetadata(parseKeymap(parsedCode))
+}
+
+function collectDynamicIncludeLinesForKeymap (keymap, options = {}) {
+  const behavioursByBind = keyBy(options.behaviours || [], 'code')
+  const behaviourTypeByCompatible = keyBy(options.behaviourTypes || [], 'compatible')
+  const behaviorOverrides = normalizeBehaviorList(keymap?.behavior_overrides)
+  const behaviorDefinitions = normalizeBehaviorList(keymap?.behavior_definitions)
+  const keymapForIncludes = Array.isArray(keymap?.sensor_layers)
+    ? Object.assign({}, keymap, {
+      sensor_layers: keymap.sensor_layers.map(layer => (
+        filterEditableSensorBindings(layer, options.sensors)
+      ))
+    })
+    : keymap
+  const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes).map(
+    bind => get(behavioursByBind, [bind, 'includes'], [])
+  ))
+  const customBehaviorHeaders = collectBehaviorTypeIncludes(
+    [...behaviorOverrides, ...behaviorDefinitions],
+    behaviourTypeByCompatible
+  )
+
+  return uniq(
+    [...behaviourHeaders, ...customBehaviorHeaders]
+      .map(line => parseIncludeLine(line))
+      .filter(Boolean)
+      .map(item => item.raw)
+  )
+}
+
+function hasMissingNewRequiredIncludes (sourceCode, sourceKeymap, targetKeymap, options = {}) {
+  if (typeof sourceCode !== 'string') {
+    return true
+  }
+
+  const existingIncludes = new Set(collectIncludeLines(sourceCode).map(item => item.raw))
+  const sourceRequired = new Set(collectDynamicIncludeLinesForKeymap(sourceKeymap, options))
+  const targetRequired = collectDynamicIncludeLinesForKeymap(targetKeymap, options)
+  return targetRequired.some(include => !sourceRequired.has(include) && !existingIncludes.has(include))
 }
 
 const KEYMAP_BLOCK_TEMPLATE = `    keymap {
@@ -372,36 +988,33 @@ function renderDefaultPropertyValue (value) {
   return `"${escapeString(trimmed)}"`
 }
 
+function renderPropertyValue (value, type) {
+  switch (type) {
+    case 'string':
+      return `"${escapeString(value)}"`
+    case 'int':
+    case 'uint':
+    case 'number':
+    case 'angle':
+      return `<${Number(value)}>`
+    case 'bindings':
+      return renderBindingsValue(value)
+    case 'token':
+      return `<${String(value).trim()}>`
+    case 'token-array':
+    case 'cell-array':
+      return renderTokenArrayValue(value)
+    default:
+      return renderDefaultPropertyValue(value)
+  }
+}
+
 function renderPropertyLine (name, value, type, indent) {
   if (type === 'boolean' || typeof value === 'boolean') {
     return value ? `${indent}${name};\n` : ''
   }
 
-  let renderedValue
-  switch (type) {
-    case 'string':
-      renderedValue = `"${escapeString(value)}"`
-      break
-    case 'int':
-    case 'uint':
-    case 'number':
-    case 'angle':
-      renderedValue = `<${Number(value)}>`
-      break
-    case 'bindings':
-      renderedValue = renderBindingsValue(value)
-      break
-    case 'token':
-      renderedValue = `<${String(value).trim()}>`
-      break
-    case 'token-array':
-    case 'cell-array':
-      renderedValue = renderTokenArrayValue(value)
-      break
-    default:
-      renderedValue = renderDefaultPropertyValue(value)
-      break
-  }
+  const renderedValue = renderPropertyValue(value, type)
 
   return `${indent}${name} = ${renderedValue};\n`
 }

@@ -384,6 +384,120 @@ function parseDts (content) {
   return { includes, nodes, order, entries }
 }
 
+function buildBlockedRanges (blocks) {
+  return blocks.map(block => ({ start: block.start, end: block.end }))
+}
+
+function rangeContainsIndex (ranges, index) {
+  return ranges.some(range => index >= range.start && index < range.end)
+}
+
+function collectPropertyRanges (content, blockedRanges, offset) {
+  const properties = {}
+  const ordered = []
+
+  const assignments = []
+  const assignmentPattern = /([A-Za-z0-9_#-]+)\s*=\s*([^;]+);/g
+  let match
+  while ((match = assignmentPattern.exec(content)) !== null) {
+    const localStart = match.index
+    if (rangeContainsIndex(blockedRanges, localStart)) {
+      continue
+    }
+
+    const fullMatch = match[0]
+    const equalsIndex = fullMatch.indexOf('=')
+    const semicolonIndex = fullMatch.lastIndexOf(';')
+    let valueStart = localStart + equalsIndex + 1
+    const valueMax = localStart + semicolonIndex
+    while (valueStart < valueMax && /\s/.test(content[valueStart])) {
+      valueStart += 1
+    }
+
+    let valueEnd = valueMax
+    while (valueEnd > valueStart && /\s/.test(content[valueEnd - 1])) {
+      valueEnd -= 1
+    }
+
+    assignments.push({
+      index: localStart,
+      name: match[1],
+      type: 'assignment',
+      start: offset + localStart,
+      end: offset + localStart + fullMatch.length,
+      valueStart: offset + valueStart,
+      valueEnd: offset + valueEnd
+    })
+  }
+
+  const withoutAssignments = content.replace(assignmentPattern, assignment => (
+    assignment.replace(/[^\n]/g, ' ')
+  ))
+  const booleanPattern = /([A-Za-z0-9_#-]+)\s*;/g
+  const booleans = []
+  while ((match = booleanPattern.exec(withoutAssignments)) !== null) {
+    const localStart = match.index
+    if (rangeContainsIndex(blockedRanges, localStart)) {
+      continue
+    }
+
+    booleans.push({
+      index: localStart,
+      name: match[1],
+      type: 'boolean',
+      start: offset + localStart,
+      end: offset + localStart + match[0].length
+    })
+  }
+
+  for (const property of [...assignments, ...booleans].sort((a, b) => a.index - b.index)) {
+    ordered.push(property.name)
+    properties[property.name] = property
+  }
+
+  return { properties, ordered }
+}
+
+function parseBlockRanges (content, block, offset = 0) {
+  const localOpenBrace = content.indexOf('{', block.start)
+  const bodyStart = offset + localOpenBrace + 1
+  const bodyEnd = bodyStart + block.content.length
+  const childBlocks = findBlocks(block.content)
+  const children = childBlocks.map(child => (
+    parseBlockRanges(block.content, child, bodyStart)
+  ))
+  const blockedRanges = buildBlockedRanges(childBlocks)
+  const { properties, ordered } = collectPropertyRanges(block.content, blockedRanges, bodyStart)
+
+  return {
+    label: block.label,
+    name: block.name,
+    start: offset + block.start,
+    end: offset + block.end,
+    bodyStart,
+    bodyEnd,
+    properties,
+    propertyOrder: ordered,
+    children
+  }
+}
+
+function collectEditableRanges (content) {
+  if (typeof content !== 'string') {
+    return null
+  }
+
+  const preserved = stripCommentsPreserveWidth(content)
+  const topBlocks = findBlocks(preserved)
+  const blocks = topBlocks.map(block => parseBlockRanges(preserved, block, 0))
+  const root = blocks.find(block => block.name === '/') || null
+
+  return {
+    blocks,
+    root
+  }
+}
+
 function normalizeSensorBindings (sensorBindings, sensorCount) {
   const hasCount = Number.isInteger(sensorCount)
   if (!hasCount) {
@@ -613,7 +727,11 @@ function parseKeymapCode (content, options = {}) {
   })
 
   if (template) {
-    parsed[EDITOR_METADATA_KEY] = { template, source: 'code' }
+    parsed[EDITOR_METADATA_KEY] = {
+      template,
+      source: 'code',
+      source_code: content
+    }
   }
 
   return parsed
@@ -655,6 +773,7 @@ function parseBehaviorChildrenSnippet (snippet) {
 }
 
 module.exports = {
+  collectEditableRanges,
   parseBehaviorChildrenSnippet,
   parseKeymapCode
 }
