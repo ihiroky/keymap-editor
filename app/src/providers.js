@@ -2,7 +2,8 @@ import { createContext } from "react";
 
 export const DefinitionsContext = createContext({
   keycodes: [],
-  behaviours: []
+  behaviours: [],
+  behaviourTypes: []
 })
 
 export const SearchContext = createContext({

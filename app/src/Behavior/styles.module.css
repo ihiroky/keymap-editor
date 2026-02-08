@@ -1,0 +1,212 @@
+.editor {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.sidebar {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: rgba(247, 247, 247, 0.85);
+  padding: 12px;
+}
+
+.sectionHeader {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #556;
+  margin: 2px 0 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.listItem {
+  text-align: left;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 7px;
+  background: white;
+  padding: 8px 10px;
+}
+
+.listItem[data-selected="true"] {
+  border-color: var(--selection);
+  background: rgba(60, 179, 113, 0.14);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px;
+}
+
+.group {
+  margin-top: 16px;
+}
+
+.groupTitle {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #556;
+  margin-bottom: 8px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.formRow input,
+.formRow select,
+.formRow textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formRow textarea {
+  min-height: 68px;
+}
+
+.rawRow {
+  display: grid;
+  grid-template-columns: 190px 130px minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rawRow textarea {
+  min-height: 54px;
+}
+
+.knownRow {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: start;
+}
+
+.knownLabel {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.knownLabel small {
+  color: #667;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.knownInput textarea {
+  min-height: 72px;
+}
+
+.bindingList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bindingRow {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.addKnownList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.errors,
+.warnings,
+.note {
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.errors {
+  border: 1px solid rgba(185, 0, 0, 0.25);
+  background: rgba(185, 0, 0, 0.08);
+}
+
+.warnings {
+  border: 1px solid rgba(185, 120, 0, 0.25);
+  background: rgba(185, 120, 0, 0.08);
+}
+
+.note {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.childrenJson {
+  width: 100%;
+  min-height: 150px;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.childrenHelp {
+  font-size: 12px;
+  color: #556;
+  margin-bottom: 8px;
+}
+
+.childrenActions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.childrenError {
+  color: #900;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .editor {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .rawRow {
+    grid-template-columns: 1fr;
+  }
+
+  .knownRow {
+    grid-template-columns: 1fr;
+  }
+
+  .bindingRow {
+    grid-template-columns: 1fr;
+  }
+}

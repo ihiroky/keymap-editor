@@ -30,7 +30,7 @@ function isSensorEditable(sensor) {
 }
 
 function Keyboard(props) {
-  const { layout, keymap, sensors, onUpdate, saveControl } = props
+  const { layout, keymap, sensors, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
   const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
   const [selectedSensorIndex, setSelectedSensorIndex] = useState(null)
@@ -84,16 +84,15 @@ function Keyboard(props) {
     // Special case for behaviour commands which can dynamically add another
     // parameter that isn't defined at the root level of the behaviour.
     // Currently this is just `&bt BT_SEL` and is only represented as an enum.
-    if (param.enum) {
+    if (param && typeof param === 'object' && Array.isArray(param.enum)) {
       return param.enum.map(v => ({ code: v }))
+    }
+    if (param && typeof param === 'object' && param.type === 'raw') {
+      return []
     }
 
     if (param === 'command') {
       return get(sources, ['behaviours', behaviour, 'commands'], [])
-    }
-
-    if (!searchTargets[param]) {
-      console.log('cannot find target for', param)
     }
 
     return searchTargets[param]
@@ -560,19 +559,6 @@ function Keyboard(props) {
                 {sensorList}
               </div>
             )}
-            {saveControl && (
-              <div className={styles['save-actions']} style={sensorListStyle}>
-                <button
-                  type="button"
-                  className={styles['save-button']}
-                  title={saveControl.title}
-                  disabled={saveControl.disabled}
-                  onClick={saveControl.onClick}
-                >
-                  {saveControl.content}
-                </button>
-              </div>
-            )}
             {selectedSensor && sensorEditPaneStyle && (
               <KeyEditPane
                 className={styles['floating-pane']}
@@ -593,13 +579,7 @@ Keyboard.propTypes = {
   layout: PropTypes.array.isRequired,
   sensors: PropTypes.array,
   keymap: PropTypes.object.isRequired,
-  onUpdate: PropTypes.func.isRequired,
-  saveControl: PropTypes.shape({
-    title: PropTypes.string,
-    disabled: PropTypes.bool,
-    onClick: PropTypes.func,
-    content: PropTypes.node
-  })
+  onUpdate: PropTypes.func.isRequired
 }
 
 export default Keyboard

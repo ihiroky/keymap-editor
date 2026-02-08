@@ -5,6 +5,7 @@ const router = Router()
 const debug = false
 
 router.get('/behaviors', (req, res) => res.json(zmk.loadBehaviors()))
+router.get('/behavior-types', (req, res) => res.json(zmk.loadBehaviorTypes()))
 router.get('/keycodes', (req, res) => res.json(zmk.loadKeycodes()))
 router.get('/layout', (req, res) => res.json({
   layout: zmk.loadLayout(),
