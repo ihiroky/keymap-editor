@@ -3,6 +3,8 @@ import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
 import styles from './styles.module.css'
+const { parseBehaviorChildrenSnippet } = require('../shared/zmk/keymap-code')
+const { renderBehaviorChildrenSnippet } = require('../shared/zmk/keymap')
 
 const RAW_TYPE_CHOICES = [
   'raw',
@@ -424,7 +426,6 @@ function BehaviorEditor (props) {
     return null
   })
   const [childrenDraft, setChildrenDraft] = useState('')
-  const [childrenError, setChildrenError] = useState(null)
 
   useEffect(() => {
     if (!selection) {
@@ -461,13 +462,32 @@ function BehaviorEditor (props) {
   useEffect(() => {
     if (!selectedNode) {
       setChildrenDraft('')
-      setChildrenError(null)
       return
     }
 
-    setChildrenDraft(JSON.stringify(selectedNode.children || [], null, 2))
-    setChildrenError(null)
-  }, [selectedNode])
+    setChildrenDraft(renderBehaviorChildrenSnippet(
+      selectedNode.children || [],
+      behaviorTypes
+    ))
+  }, [selectedNode, behaviorTypes])
+
+  const parsedChildrenDraft = useMemo(() => {
+    if (!selectedNode) {
+      return { children: [], error: null }
+    }
+
+    try {
+      return {
+        children: parseBehaviorChildrenSnippet(childrenDraft),
+        error: null
+      }
+    } catch (err) {
+      return {
+        children: null,
+        error: err?.message || String(err)
+      }
+    }
+  }, [childrenDraft, selectedNode])
 
   const selectedType = useMemo(() => {
     if (!selectedNode || !selection) {
@@ -1147,9 +1167,13 @@ function BehaviorEditor (props) {
             )}
 
             <div className={styles.group}>
-              <div className={styles.groupTitle}>Children JSON</div>
+              <div className={styles.groupTitle}>Children (.keymap)</div>
+              <div className={styles.childrenHelp}>
+                Enter only child nodes that belong inside the parent block, for example <code>{'foo: bar { ... };'}</code>.
+              </div>
               <textarea
                 className={styles.childrenJson}
+                aria-label="Children (.keymap)"
                 value={childrenDraft}
                 onChange={event => setChildrenDraft(event.target.value)}
               />
@@ -1157,26 +1181,38 @@ function BehaviorEditor (props) {
                 <button
                   type="button"
                   onClick={() => {
-                    try {
-                      const parsed = JSON.parse(childrenDraft || '[]')
-                      if (!Array.isArray(parsed)) {
-                        throw new Error('Children JSON must be an array')
-                      }
-
-                      updateSelectedNode(current => {
-                        const next = cloneNode(current)
-                        next.children = parsed
-                        return next
-                      })
-                      setChildrenError(null)
-                    } catch (err) {
-                      setChildrenError(err?.message || String(err))
+                    if (!parsedChildrenDraft.children) {
+                      return
                     }
+                    setChildrenDraft(renderBehaviorChildrenSnippet(
+                      parsedChildrenDraft.children,
+                      behaviorTypes
+                    ))
                   }}
+                  disabled={Boolean(parsedChildrenDraft.error)}
                 >
-                  Apply Children JSON
+                  Format
                 </button>
-                {childrenError && <span className={styles.childrenError}>{childrenError}</span>}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!parsedChildrenDraft.children) {
+                      return
+                    }
+
+                    updateSelectedNode(current => {
+                      const next = cloneNode(current)
+                      next.children = parsedChildrenDraft.children
+                      return next
+                    })
+                  }}
+                  disabled={Boolean(parsedChildrenDraft.error)}
+                >
+                  Apply Children
+                </button>
+                {parsedChildrenDraft.error && (
+                  <span className={styles.childrenError}>{parsedChildrenDraft.error}</span>
+                )}
               </div>
             </div>
           </>

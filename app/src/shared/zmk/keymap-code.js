@@ -8,6 +8,7 @@ const EDITOR_METADATA_KEY = '__keymap_editor'
 const RENDERED_KEYMAP = '{{rendered_keymap}}'
 const RENDERED_BEHAVIOR_OVERRIDES = '{{rendered_behavior_overrides}}'
 const RENDERED_BEHAVIOR_DEFINITIONS = '{{rendered_behavior_definitions}}'
+const CHILDREN_SNIPPET_ROOT_NAME = '__keymap_editor_children_root'
 
 function stripComments (content) {
   return content
@@ -277,6 +278,31 @@ function parseProperties (content) {
   }
 
   return { properties, propertyTypes, propertyOrder: ordered }
+}
+
+function stripParsedProperties (content) {
+  const assignmentPattern = /([A-Za-z0-9_#-]+)\s*=\s*([^;]+);/g
+  const withoutAssignments = content.replace(assignmentPattern, assignment => (
+    assignment.replace(/[^\n]/g, ' ')
+  ))
+
+  const booleanPattern = /([A-Za-z0-9_#-]+)\s*;/g
+  return withoutAssignments.replace(booleanPattern, value => (
+    value.replace(/[^\n]/g, ' ')
+  ))
+}
+
+function assertNodeContentParsed (content, context) {
+  const blocks = findBlocks(content)
+  for (const block of blocks) {
+    assertNodeContentParsed(block.content, `${context}.${block.name}`)
+  }
+
+  const withoutBlocks = stripBlocks(content, blocks)
+  const withoutProperties = stripParsedProperties(withoutBlocks)
+  if (/[^\s]/.test(withoutProperties)) {
+    throw new Error(`Invalid children snippet syntax near ${context}`)
+  }
 }
 
 function stripBlocks (content, blocks) {
@@ -569,6 +595,42 @@ function parseKeymapCode (content, options = {}) {
   return parsed
 }
 
+function parseBehaviorChildrenSnippet (snippet) {
+  const source = String(snippet || '')
+  if (!source.trim()) {
+    return []
+  }
+
+  const wrapped = `${CHILDREN_SNIPPET_ROOT_NAME} {\n${source}\n};\n`
+  const cleaned = stripComments(wrapped)
+  const topBlocks = findBlocks(cleaned)
+  const rootBlock = topBlocks.find(block => block.name === CHILDREN_SNIPPET_ROOT_NAME)
+  if (!rootBlock) {
+    throw new Error('Invalid children snippet: failed to parse blocks')
+  }
+
+  const withoutRoot = stripBlocks(cleaned, [rootBlock])
+  const topLevelRemainder = stripParsedProperties(withoutRoot)
+  if (/[^\s]/.test(topLevelRemainder)) {
+    throw new Error('Invalid children snippet: unexpected top-level tokens')
+  }
+
+  assertNodeContentParsed(rootBlock.content, 'children')
+
+  const dts = parseDts(wrapped)
+  const rootNode = dts.nodes[CHILDREN_SNIPPET_ROOT_NAME]
+  if (!rootNode) {
+    throw new Error('Invalid children snippet: root parse failed')
+  }
+
+  if (Object.keys(rootNode.properties || {}).length > 0) {
+    throw new Error('Children snippet must contain child nodes only')
+  }
+
+  return (rootNode.childNodes || []).map(toBehaviorNode)
+}
+
 module.exports = {
+  parseBehaviorChildrenSnippet,
   parseKeymapCode
 }

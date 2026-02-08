@@ -450,6 +450,16 @@ function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible) {
   return `    behaviors {\n${children}    };\n`
 }
 
+function renderBehaviorChildrenSnippet (nodes, behaviourTypes = []) {
+  const normalized = normalizeBehaviorList(nodes)
+  if (!normalized.length) {
+    return ''
+  }
+
+  const behaviourTypeByCompatible = keyBy(behaviourTypes || [], 'compatible')
+  return normalized.map(node => renderBehaviorNode(node, 0, behaviourTypeByCompatible)).join('')
+}
+
 function insertBeforeRoot (template, section) {
   if (!section) {
     return template
@@ -600,5 +610,6 @@ module.exports = {
   encodeKeymap,
   parseKeyBinding,
   parseKeymap,
-  generateKeymap
+  generateKeymap,
+  renderBehaviorChildrenSnippet
 }
