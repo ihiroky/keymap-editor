@@ -18,6 +18,7 @@ const keymapTemplate = `
 {{rendered_behavior_overrides}}
 
 / {
+{{rendered_macro_definitions}}
 {{rendered_behavior_definitions}}
     keymap {
         compatible = "zmk,keymap";

@@ -1,0 +1,206 @@
+.editor {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.sidebar {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: rgba(247, 247, 247, 0.85);
+  padding: 12px;
+}
+
+.sectionHeader {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #556;
+  margin: 2px 0 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.listItem {
+  text-align: left;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 7px;
+  background: white;
+  padding: 8px 10px;
+}
+
+.listItem[data-selected='true'] {
+  border-color: var(--selection);
+  background: rgba(60, 179, 113, 0.14);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.formRow label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.formRow input,
+.formRow select,
+.formRow textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modeSwitch {
+  display: inline-flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.modeSwitch button[data-active='true'] {
+  border-color: var(--selection);
+  background: rgba(60, 179, 113, 0.14);
+}
+
+.group {
+  margin-top: 12px;
+}
+
+.groupTitle {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #556;
+  margin-bottom: 8px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.knownRow {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.knownRow label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.addKnownList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emptyHint {
+  margin: 0;
+  color: #556;
+  font-size: 13px;
+}
+
+.stepRow {
+  display: grid;
+  grid-template-columns: 34px 170px minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.stepRow[data-dragging='true'] {
+  opacity: 0.7;
+}
+
+.removeButton {
+  width: auto;
+  grid-column: 5;
+  justify-self: end;
+}
+
+.dragHandle {
+  text-align: center;
+  user-select: none;
+  color: #556;
+  font-weight: 700;
+  cursor: grab;
+}
+
+.rawTextarea {
+  width: 100%;
+  min-height: 170px;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.rawActions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.errors {
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  border: 1px solid rgba(185, 0, 0, 0.25);
+  background: rgba(185, 0, 0, 0.08);
+}
+
+@media (max-width: 960px) {
+  .editor {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .stepRow {
+    grid-template-columns: 34px 1fr;
+  }
+
+  .knownRow {
+    grid-template-columns: 1fr;
+  }
+
+  .stepRow > :nth-child(n + 3) {
+    grid-column: span 2;
+  }
+
+  .removeButton {
+    grid-column: 2;
+    justify-self: end;
+  }
+}

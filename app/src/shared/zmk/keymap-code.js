@@ -7,6 +7,7 @@ const KEYMAP_ROOT = {
 const EDITOR_METADATA_KEY = '__keymap_editor'
 const RENDERED_KEYMAP = '{{rendered_keymap}}'
 const RENDERED_BEHAVIOR_OVERRIDES = '{{rendered_behavior_overrides}}'
+const RENDERED_MACRO_DEFINITIONS = '{{rendered_macro_definitions}}'
 const RENDERED_BEHAVIOR_DEFINITIONS = '{{rendered_behavior_definitions}}'
 const CHILDREN_SNIPPET_ROOT_NAME = '__keymap_editor_children_root'
 
@@ -212,14 +213,27 @@ function normalizeAngleValue (value) {
   return trimmed
 }
 
-function parsePropertyValue (rawValue) {
+function parsePropertyValue (rawValue, propertyName = '') {
   const trimmed = rawValue.trim()
+  const normalizedPropertyName = String(propertyName || '').trim()
+  const isBindingsProperty = normalizedPropertyName === 'bindings' || normalizedPropertyName === 'sensor-bindings'
+
   const quoted = trimmed.match(/^"([\s\S]*)"$/)
   if (quoted) {
     return { value: quoted[1], type: 'string' }
   }
 
   const angleMatches = Array.from(trimmed.matchAll(/<([^>]+)>/g))
+  if (isBindingsProperty) {
+    const bindingSource = angleMatches.length
+      ? angleMatches.map(match => normalizeAngleValue(match[1])).join(' ')
+      : trimmed
+    return {
+      value: parseBindings(bindingSource),
+      type: 'bindings'
+    }
+  }
+
   if (angleMatches.length) {
     const values = angleMatches.map(match => normalizeAngleValue(match[1]))
     return {
@@ -268,7 +282,7 @@ function parseProperties (content) {
   for (const property of [...assignments, ...booleans].sort((a, b) => a.index - b.index)) {
     ordered.push(property.name)
     if (property.assignment) {
-      const parsed = parsePropertyValue(property.rawValue)
+      const parsed = parsePropertyValue(property.rawValue, property.name)
       properties[property.name] = parsed.value
       propertyTypes[property.name] = parsed.type
     } else {
@@ -535,11 +549,16 @@ function extractKeymapTemplate (content) {
 
   const preserved = stripCommentsPreserveWidth(content)
   const topBlocks = findBlocks(preserved)
+  const macroDefinitionsRange = findNamedBlockRange(content, 'macros')
   const behaviorDefinitionsRange = findNamedBlockRange(content, 'behaviors')
 
   const ranges = [
     { ...keymapRange, replacement: RENDERED_KEYMAP }
   ]
+
+  if (macroDefinitionsRange) {
+    ranges.push({ ...macroDefinitionsRange, replacement: RENDERED_MACRO_DEFINITIONS })
+  }
 
   if (behaviorDefinitionsRange) {
     ranges.push({ ...behaviorDefinitionsRange, replacement: RENDERED_BEHAVIOR_DEFINITIONS })
@@ -555,6 +574,7 @@ function extractKeymapTemplate (content) {
 
   let template = applyRanges(content, ranges)
   template = insertPlaceholderAtTopLevel(template, RENDERED_BEHAVIOR_OVERRIDES)
+  template = insertPlaceholderBeforeKeymap(template, RENDERED_MACRO_DEFINITIONS)
   template = insertPlaceholderBeforeKeymap(template, RENDERED_BEHAVIOR_DEFINITIONS)
 
   return template
@@ -569,6 +589,10 @@ function parseKeymapCode (content, options = {}) {
   }
 
   const rootNode = dts.nodes['/']
+  const macroDefinitionsNode = rootNode?.children?.macros
+  const macroDefinitions = Array.isArray(macroDefinitionsNode?.childNodes)
+    ? macroDefinitionsNode.childNodes.map(toBehaviorNode)
+    : []
   const behaviorDefinitionsNode = rootNode?.children?.behaviors
   const behaviorDefinitions = Array.isArray(behaviorDefinitionsNode?.childNodes)
     ? behaviorDefinitionsNode.childNodes.map(toBehaviorNode)
@@ -585,7 +609,7 @@ function parseKeymapCode (content, options = {}) {
       ? extracted.sensorLayers
       : undefined,
     behavior_overrides: behaviorOverrides,
-    behavior_definitions: behaviorDefinitions
+    behavior_definitions: [...macroDefinitions, ...behaviorDefinitions]
   })
 
   if (template) {
