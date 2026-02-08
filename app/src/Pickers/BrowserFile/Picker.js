@@ -3,9 +3,9 @@ import PropTypes from 'prop-types'
 
 import Selector from '../../Common/Selector'
 import Spinner from '../../Common/Spinner'
-const { validateInfoJson, selectDefaultLayoutAndSensors } = require('../../shared/zmk/layout')
-const { parseKeymapCode } = require('../../shared/zmk/keymap-code')
-const { parseKeymap } = require('../../shared/zmk/keymap')
+import { validateInfoJson, selectDefaultLayoutAndSensors } from '../../shared/zmk/layout'
+import { parseKeymapCode } from '../../shared/zmk/keymap-code'
+import { parseKeymap } from '../../shared/zmk/keymap'
 
 function isWritableBrowserFileSupported () {
   return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'

@@ -1,15 +1,15 @@
-const filter = require('lodash/filter')
-const flatten = require('lodash/flatten')
-const get = require('lodash/get')
-const isEqual = require('lodash/isEqual')
-const keyBy = require('lodash/keyBy')
-const map = require('lodash/map')
-const uniq = require('lodash/uniq')
+import filter from 'lodash/filter'
+import flatten from 'lodash/flatten'
+import get from 'lodash/get'
+import isEqual from 'lodash/isEqual'
+import keyBy from 'lodash/keyBy'
+import map from 'lodash/map'
+import uniq from 'lodash/uniq'
 
-const { renderTable } = require('./layout')
-const { isMacroCompatible } = require('./macro-helpers')
-const { collectEditableRanges, parseKeymapCode } = require('./keymap-code')
-const defaults = require('./defaults')
+import { renderTable } from './layout'
+import { isMacroCompatible } from './macro-helpers'
+import { collectEditableRanges, parseKeymapCode } from './keymap-code'
+import { keymapTemplate } from './defaults'
 
 const EDITOR_METADATA_KEY = '__keymap_editor'
 
@@ -786,7 +786,7 @@ function generateKeymap (layout, keymap, template, options = {}) {
   const editorTemplate = keymap?.[EDITOR_METADATA_KEY]?.template
   const sanitized = stripEditorMetadata(keymap)
   const encoded = encodeKeymap(sanitized)
-  const templateToUse = template || editorTemplate || defaults.keymapTemplate
+  const templateToUse = template || editorTemplate || keymapTemplate
   const fullCode = generateKeymapCode(layout, sanitized, encoded, templateToUse, options)
   const shouldUseRangePatch = !template
   const patchedCode = shouldUseRangePatch
@@ -1342,7 +1342,7 @@ function generateKeymapJSON (layout, keymap, encoded) {
   return base.replace('"layers": null', `"layers": [\n    ${layers.join(', ')}\n  ]`)
 }
 
-module.exports = {
+export {
   EDITOR_METADATA_KEY,
   encodeKeymap,
   parseKeyBinding,

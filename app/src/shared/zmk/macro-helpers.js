@@ -1,4 +1,4 @@
-const keyBy = require('lodash/keyBy')
+import keyBy from 'lodash/keyBy'
 
 const MACRO_COMPATIBLES = [
   'zmk,behavior-macro',
@@ -336,7 +336,7 @@ function validateMacroCollection (definitions) {
   return errors
 }
 
-module.exports = {
+export {
   MACRO_COMPATIBLES,
   MACRO_BINDING_CELLS,
   MACRO_MODE_CONTROLS,

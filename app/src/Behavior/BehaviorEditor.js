@@ -3,8 +3,8 @@ import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
 import styles from './styles.module.css'
-const { parseBehaviorChildrenSnippet } = require('../shared/zmk/keymap-code')
-const { renderBehaviorChildrenSnippet } = require('../shared/zmk/keymap')
+import { parseBehaviorChildrenSnippet } from '../shared/zmk/keymap-code'
+import { renderBehaviorChildrenSnippet } from '../shared/zmk/keymap'
 
 const RAW_TYPE_CHOICES = [
   'raw',

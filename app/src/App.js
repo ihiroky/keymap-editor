@@ -16,8 +16,8 @@ import ComboEditor from './Combo/ComboEditor'
 import GitHubLink from './GitHubLink'
 import Loader from './Common/Loader'
 import github from './Pickers/Github/api'
-const { generateKeymap } = require('./shared/zmk/keymap')
-const { mergeBehaviorDefinitions, splitBehaviorDefinitions } = require('./shared/zmk/macro-helpers')
+import { generateKeymap } from './shared/zmk/keymap'
+import { mergeBehaviorDefinitions, splitBehaviorDefinitions } from './shared/zmk/macro-helpers'
 
 function getBrowserFileDownloadName (browserFile) {
   if (browserFile?.baseName) {

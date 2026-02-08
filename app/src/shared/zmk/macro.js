@@ -1,1 +1,1 @@
-module.exports = require('./macro-helpers')
+export * from './macro-helpers'
