@@ -1,20 +1,20 @@
 .drawerRoot {
-  padding: 16px 20px 28px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 8mm;
 }
-
+jj
 .empty {
   margin: 0;
   color: #555;
 }
 
 .layerSection {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 10px;
-  background: #fff;
-  padding: 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 0px;
 }
 
 .layerLabel {
@@ -25,18 +25,17 @@
 
 .layerCanvasViewport {
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.layerCanvasViewport::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
 }
 
 .layerCanvasPrintFrame {
-  width: fit-content;
+  margin-left: var(--drawer-print-margin, 0px);
+  margin-right: var(--drawer-print-margin, 0px);
+  width: calc(var(--drawer-layer-width, 0px) * var(--drawer-print-scale, 1));
+  height: calc(var(--drawer-layer-height, 0px) * var(--drawer-print-scale, 1));
+  overflow: hidden;
 }
 
 .layerCanvas {
@@ -45,6 +44,8 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   background: #fafafa;
+  transform-origin: top left;
+  transform: scale(var(--drawer-print-scale, 1));
 }
 
 .key {
@@ -131,48 +132,18 @@
   z-index: 5;
 }
 
-@media (max-width: 960px) {
-  .drawerRoot {
-    padding: 12px;
-    gap: 14px;
-  }
-
-  .layerSection {
-    padding: 10px;
-  }
-}
-
 @media print {
   .drawerRoot {
     padding: 0;
-    gap: 8mm;
   }
 
   .layerSection {
-    border: none;
     break-inside: avoid;
     page-break-inside: avoid;
-    padding: 12px 0px;
   }
 
   .layerCanvas {
     border-color: #999;
     background: #fff;
-    transform-origin: top left;
-    transform: scale(var(--drawer-print-scale, 1));
-  }
-
-  .layerCanvasViewport {
-    overflow: visible;
-    margin: 0;
-    padding: 0;
-  }
-
-  .layerCanvasPrintFrame {
-    margin-left: var(--drawer-print-margin, 0px);
-    margin-right: var(--drawer-print-margin, 0px);
-    width: calc(var(--drawer-layer-width, 0px) * var(--drawer-print-scale, 1));
-    height: calc(var(--drawer-layer-height, 0px) * var(--drawer-print-scale, 1));
-    overflow: hidden;
   }
 }
