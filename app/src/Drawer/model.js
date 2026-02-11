@@ -476,6 +476,11 @@ function getComboBindingLabel(combo, keycodes, behaviours) {
   return formatBindingLabel(binding, keycodes, behaviours)
 }
 
+function getComboBindingTitle(combo) {
+  const bindings = splitBindingList(combo?.properties?.bindings)
+  return normalizeBindingText(bindings[0] || '&none')
+}
+
 function normalizeComboPositions(combo, keyCount) {
   const positions = Array.isArray(combo?.properties?.['key-positions'])
     ? combo.properties['key-positions']
@@ -528,6 +533,7 @@ function buildComboRenderModels({
     }
 
     const label = getComboBindingLabel(combo, keycodes, behaviours) || 'Combo'
+    const title = getComboBindingTitle(combo)
     const meanX = centers.reduce((sum, center) => sum + center.x, 0) / centers.length
     const minY = centers.reduce((value, center) => Math.min(value, center.y), centers[0].y)
     const bucket = Math.round(meanX / 80)
@@ -552,6 +558,7 @@ function buildComboRenderModels({
     positionedCombos.push({
       id: `combo-${layerIndex}-${comboIndex}`,
       label,
+      title,
       left,
       top,
       width,

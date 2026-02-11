@@ -23,10 +23,25 @@
   line-height: 1.3;
 }
 
+.layerCanvasViewport {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.layerCanvasViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.layerCanvasPrintFrame {
+  width: fit-content;
+}
+
 .layerCanvas {
   position: relative;
-  max-width: 100%;
-  overflow: auto;
+  box-sizing: border-box;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   background: #fafafa;
@@ -134,13 +149,30 @@
   }
 
   .layerSection {
-    border: 1px solid #bbb;
+    border: none;
     break-inside: avoid;
     page-break-inside: avoid;
+    padding: 12px 0px;
   }
 
   .layerCanvas {
-    border-color: #ccc;
+    border-color: #999;
     background: #fff;
+    transform-origin: top left;
+    transform: scale(var(--drawer-print-scale, 1));
+  }
+
+  .layerCanvasViewport {
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+  }
+
+  .layerCanvasPrintFrame {
+    margin-left: var(--drawer-print-margin, 0px);
+    margin-right: var(--drawer-print-margin, 0px);
+    width: calc(var(--drawer-layer-width, 0px) * var(--drawer-print-scale, 1));
+    height: calc(var(--drawer-layer-height, 0px) * var(--drawer-print-scale, 1));
+    overflow: hidden;
   }
 }

@@ -67,10 +67,14 @@ describe('KeymapDrawer', () => {
     expect(screen.getByTestId('combo-line-0-0-0')).toBeTruthy()
 
     expect(screen.getByTestId('key-behavior-0-0').textContent).toBe('mkp')
+    expect(screen.getByTestId('key-behavior-0-0').getAttribute('title')).toBe('&mkp MB1')
     expect(screen.getByTestId('key-tap-0-0').textContent).toBe('MB1')
+    expect(screen.getByTestId('key-tap-0-0').getAttribute('title')).toBe('&mkp MB1')
 
     const layerLink = screen.getByTestId('layer-link-0-2')
     expect(layerLink.getAttribute('href')).toBe('#drawer-layer-1')
     expect(layerLink.textContent).toBe('Fn')
+    expect(layerLink.getAttribute('title')).toBe('Move to Fn (Layer 1)')
+    expect(screen.getByTestId('combo-0-0').getAttribute('title')).toBe('&kp TAB')
   })
 })

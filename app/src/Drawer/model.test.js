@@ -181,6 +181,10 @@ describe('Drawer model', () => {
       behaviorLabel: null
     }))
     expect(model.combos).toHaveLength(1)
+    expect(model.combos[0]).toEqual(expect.objectContaining({
+      label: 'TAB',
+      title: '&kp TAB'
+    }))
   })
 
   test('returns null for invalid layer move input', () => {
