@@ -19,6 +19,7 @@ export const keymapTemplate = `
 
 / {
 {{rendered_combo_definitions}}
+{{rendered_conditional_layer_definitions}}
 {{rendered_macro_definitions}}
 {{rendered_behavior_definitions}}
     keymap {

@@ -197,6 +197,149 @@ describe('keymap range patch generation', () => {
     expect(generated.code).toContain('tab_combo: tab_combo')
   })
 
+  test('preserves comments in conditional layer definition when property value is updated', () => {
+    const source = `
+/ {
+    conditional_layers {
+        nav_num: nav_num {
+            // keep-conditional-layer-comment
+            if-layers = <1 2>;
+            then-layer = <3>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&none>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.conditional_layers[0].properties['then-layer'] = 4
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toContain('// keep-conditional-layer-comment')
+    expect(generated.code).toContain('then-layer = <4>;')
+  })
+
+  test('localizes regeneration when conditional layer section is inserted', () => {
+    const source = `
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            // keep-layer-comment
+            bindings = <&kp A>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.conditional_layers = [
+      {
+        name: 'nav_num',
+        label: 'nav_num',
+        bind: '&nav_num',
+        properties: {
+          'if-layers': [1, 2],
+          'then-layer': 3
+        },
+        property_types: {
+          'if-layers': 'token-array',
+          'then-layer': 'int'
+        },
+        property_order: ['if-layers', 'then-layer'],
+        children: []
+      }
+    ]
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toContain('// keep-layer-comment')
+    expect(generated.code).toContain('conditional_layers {')
+    expect(generated.code).toContain('nav_num: nav_num')
+  })
+
+  test('matches existing tab indentation when conditional layer section is inserted', () => {
+    const source = `
+/ {
+\tmacros {
+\t\tmacro_a: macro_a {
+\t\t\tcompatible = "zmk,behavior-macro";
+\t\t\t#binding-cells = <0>;
+\t\t\tbindings = <&kp A>;
+\t\t};
+\t};
+
+\tkeymap {
+\t\tcompatible = "zmk,keymap";
+\t\tdefault_layer {
+\t\t\tbindings = <&kp A>;
+\t\t};
+\t};
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.conditional_layers = [
+      {
+        name: 'nav_num',
+        label: 'nav_num',
+        bind: '&nav_num',
+        properties: {
+          'if-layers': [1, 2],
+          'then-layer': 3
+        },
+        property_types: {
+          'if-layers': 'token-array',
+          'then-layer': 'int'
+        },
+        property_order: ['if-layers', 'then-layer'],
+        children: []
+      }
+    ]
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toMatch(/\n\tconditional_layers \{/)
+    expect(generated.code).toMatch(/\n\t\tnav_num: nav_num \{/)
+    expect(generated.code).toMatch(/\n\tkeymap \{/)
+  })
+
+  test('localizes regeneration when conditional layer section is removed', () => {
+    const source = `
+/ {
+    conditional_layers {
+        nav_num: nav_num {
+            if-layers = <1 2>;
+            then-layer = <3>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            // keep-layer-comment
+            bindings = <&kp A>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    parsed.conditional_layers = []
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toContain('// keep-layer-comment')
+    expect(generated.code).not.toContain('conditional_layers {')
+  })
+
   test('keeps untouched override comments even when include set is incomplete', () => {
     const source = `
 #include <dt-bindings/zmk/keys.h>

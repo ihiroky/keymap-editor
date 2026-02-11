@@ -130,6 +130,9 @@ function loadKeymap () {
   if (!Array.isArray(keymapContent.combos)) {
     keymapContent.combos = []
   }
+  if (!Array.isArray(keymapContent.conditional_layers)) {
+    keymapContent.conditional_layers = []
+  }
 
   return parseKeymap(keymapContent)
 }
