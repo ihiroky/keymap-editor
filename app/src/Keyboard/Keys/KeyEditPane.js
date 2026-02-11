@@ -60,6 +60,7 @@ function KeyEditPane(props) {
   const [picker, setPicker] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
+  const paneRef = useRef(null)
   const dragStateRef = useRef(null)
   const rafRef = useRef(null)
   const isPickerForPath = useMemo(() => function(path) {
@@ -234,6 +235,31 @@ function KeyEditPane(props) {
   }, [dragOffset])
 
   useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (event.button !== 0) {
+        return
+      }
+
+      const target = event.target
+      if (!(target instanceof Node)) {
+        return
+      }
+
+      if (paneRef.current?.contains(target)) {
+        return
+      }
+
+      onClose()
+    }
+
+    document.addEventListener('pointerdown', handleClickOutside)
+
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside)
+    }
+  }, [onClose])
+
+  useEffect(() => {
     if (!isDragging) {
       return
     }
@@ -327,6 +353,7 @@ function KeyEditPane(props) {
 
   return (
     <aside
+      ref={paneRef}
       className={`${styles.panel} ${isDragging ? styles.dragging : ''} ${className || ''}`}
       style={paneStyle}
     >
