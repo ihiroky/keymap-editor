@@ -215,6 +215,10 @@ function getLineIndent (content, index) {
   return match ? match[0] : ''
 }
 
+function getLineStartIndex (content, index) {
+  return content.lastIndexOf('\n', Math.max(index - 1, 0)) + 1
+}
+
 function applyTextReplacements (content, replacements) {
   const sorted = [...replacements]
     .filter(item => Number.isInteger(item.start) && Number.isInteger(item.end) && item.end >= item.start)
@@ -265,6 +269,14 @@ function getIndentLevel (content, index) {
   }
 
   return Math.max(0, Math.floor(indent.length / 4))
+}
+
+function getIndentUnitFromLineIndent (indent) {
+  if (typeof indent !== 'string' || indent.length === 0) {
+    return '    '
+  }
+
+  return indent.includes('\t') ? '\t' : '    '
 }
 
 function normalizeBindingList (bindings) {
@@ -502,7 +514,8 @@ function planBehaviorNodeUpdates (params) {
       replacement: renderBehaviorNode(
         targetNode,
         getIndentLevel(sourceCode, sourceRangeNode.start),
-        behaviourTypeByCompatible
+        behaviourTypeByCompatible,
+        getIndentUnitFromLineIndent(getLineIndent(sourceCode, sourceRangeNode.start))
       )
     })
   }
@@ -551,11 +564,13 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   const sourceKeymap = stripEditorMetadata(parseKeymap(sourceParsedCode))
   const sourceEncoded = encodeKeymap(sourceKeymap)
   const sourceCombos = normalizeBehaviorList(sourceKeymap.combos)
+  const sourceConditionalLayers = normalizeBehaviorList(sourceKeymap.conditional_layers)
   const sourceBehaviorOverrides = normalizeBehaviorList(sourceKeymap.behavior_overrides)
   const sourceBehaviorDefinitions = normalizeBehaviorList(sourceKeymap.behavior_definitions)
   const sourceSplitDefinitions = splitMacroAndBehaviorDefinitions(sourceBehaviorDefinitions)
 
   const combos = normalizeBehaviorList(keymap.combos)
+  const conditionalLayers = normalizeBehaviorList(keymap.conditional_layers)
   const behaviorOverrides = normalizeBehaviorList(keymap.behavior_overrides)
   const behaviorDefinitions = normalizeBehaviorList(keymap.behavior_definitions)
   const behaviourTypeByCompatible = keyBy(options.behaviourTypes || [], 'compatible')
@@ -565,6 +580,8 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   if (!keymapNode) {
     return null
   }
+  const keymapLineStart = getLineStartIndex(sourceCode, keymapNode.start)
+  const sectionIndentUnit = getIndentUnitFromLineIndent(getLineIndent(sourceCode, keymapNode.start))
 
   const layerNodes = Array.isArray(keymapNode.children) ? keymapNode.children : []
   const layerNames = Array.isArray(keymap.layer_names) ? keymap.layer_names : []
@@ -680,14 +697,19 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
 
   const splitDefinitions = splitMacroAndBehaviorDefinitions(behaviorDefinitions)
   const sourceCombosNode = findChildNodeByName(rootNode, 'combos')
+  const sourceConditionalLayersNode = findChildNodeByName(rootNode, 'conditional_layers')
   const sourceMacrosNode = findChildNodeByName(rootNode, 'macros')
   const sourceBehaviorsNode = findChildNodeByName(rootNode, 'behaviors')
   const comboTargets = combos
+  const conditionalLayerTargets = conditionalLayers
   const macroTargets = splitDefinitions.macroDefinitions
   const behaviorTargets = splitDefinitions.behaviorDefinitions
   const sectionInsertions = []
 
   if (!sourceCombosNode && sourceCombos.length > 0) {
+    return null
+  }
+  if (!sourceConditionalLayersNode && sourceConditionalLayers.length > 0) {
     return null
   }
   if (!sourceMacrosNode && sourceSplitDefinitions.macroDefinitions.length > 0) {
@@ -698,7 +720,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   }
 
   if (!sourceCombosNode && comboTargets.length > 0) {
-    sectionInsertions.push(renderComboDefinitions(comboTargets, behaviourTypeByCompatible))
+    sectionInsertions.push(renderComboDefinitions(comboTargets, behaviourTypeByCompatible, sectionIndentUnit))
   } else if (sourceCombosNode) {
     if (sourceCombos.length > 0 && comboTargets.length === 0) {
       replacements.push({ start: sourceCombosNode.start, end: sourceCombosNode.end, replacement: '' })
@@ -716,13 +738,49 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       replacements.push({
         start: sourceCombosNode.start,
         end: sourceCombosNode.end,
-        replacement: renderComboDefinitions(comboTargets, behaviourTypeByCompatible)
+        replacement: renderComboDefinitions(comboTargets, behaviourTypeByCompatible, sectionIndentUnit)
+      })
+    }
+  }
+
+  if (!sourceConditionalLayersNode && conditionalLayerTargets.length > 0) {
+    sectionInsertions.push(renderConditionalLayerDefinitions(
+      conditionalLayerTargets,
+      behaviourTypeByCompatible,
+      sectionIndentUnit
+    ))
+  } else if (sourceConditionalLayersNode) {
+    if (sourceConditionalLayers.length > 0 && conditionalLayerTargets.length === 0) {
+      replacements.push({
+        start: sourceConditionalLayersNode.start,
+        end: sourceConditionalLayersNode.end,
+        replacement: ''
+      })
+    } else if (
+      sourceConditionalLayers.length !== conditionalLayerTargets.length ||
+      !planBehaviorNodeUpdates({
+        sourceCode,
+        sourceRangeNodes: sourceConditionalLayersNode.children || [],
+        sourceParsedNodes: sourceConditionalLayers,
+        targetNodes: conditionalLayerTargets,
+        behaviourTypeByCompatible,
+        replacements
+      })
+    ) {
+      replacements.push({
+        start: sourceConditionalLayersNode.start,
+        end: sourceConditionalLayersNode.end,
+        replacement: renderConditionalLayerDefinitions(
+          conditionalLayerTargets,
+          behaviourTypeByCompatible,
+          sectionIndentUnit
+        )
       })
     }
   }
 
   if (!sourceMacrosNode && macroTargets.length > 0) {
-    sectionInsertions.push(renderMacroDefinitions(macroTargets, behaviourTypeByCompatible))
+    sectionInsertions.push(renderMacroDefinitions(macroTargets, behaviourTypeByCompatible, sectionIndentUnit))
   } else if (sourceMacrosNode) {
     const sourceMacros = sourceSplitDefinitions.macroDefinitions
     if (sourceMacros.length > 0 && macroTargets.length === 0) {
@@ -741,13 +799,13 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       replacements.push({
         start: sourceMacrosNode.start,
         end: sourceMacrosNode.end,
-        replacement: renderMacroDefinitions(macroTargets, behaviourTypeByCompatible)
+        replacement: renderMacroDefinitions(macroTargets, behaviourTypeByCompatible, sectionIndentUnit)
       })
     }
   }
 
   if (!sourceBehaviorsNode && behaviorTargets.length > 0) {
-    sectionInsertions.push(renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible))
+    sectionInsertions.push(renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible, sectionIndentUnit))
   } else if (sourceBehaviorsNode) {
     const sourceBehaviors = sourceSplitDefinitions.behaviorDefinitions
     if (sourceBehaviors.length > 0 && behaviorTargets.length === 0) {
@@ -766,15 +824,15 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       replacements.push({
         start: sourceBehaviorsNode.start,
         end: sourceBehaviorsNode.end,
-        replacement: renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible)
+        replacement: renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible, sectionIndentUnit)
       })
     }
   }
 
   if (sectionInsertions.length > 0) {
     replacements.push({
-      start: keymapNode.start,
-      end: keymapNode.start,
+      start: keymapLineStart,
+      end: keymapLineStart,
       replacement: sectionInsertions.join('')
     })
   }
@@ -1082,8 +1140,8 @@ function renderPropertyLine (name, value, type, indent) {
   return `${indent}${name} = ${renderedValue};\n`
 }
 
-function renderBehaviorNode (node, level, behaviourTypeByCompatible) {
-  const indent = '    '.repeat(level)
+function renderBehaviorNode (node, level, behaviourTypeByCompatible, indentUnit = '    ') {
+  const indent = indentUnit.repeat(level)
   const header = node.label ? `${node.label}: ${node.name}` : node.name
   const compatible = node.properties?.compatible || node.compatible
   const behaviorType = compatible ? behaviourTypeByCompatible[compatible] : null
@@ -1099,44 +1157,57 @@ function renderBehaviorNode (node, level, behaviourTypeByCompatible) {
   let body = ''
   for (const key of orderedKeys) {
     const type = explicitTypes[key] || knownTypes[key]
-    body += renderPropertyLine(key, properties[key], type, `${indent}    `)
+    body += renderPropertyLine(key, properties[key], type, `${indent}${indentUnit}`)
   }
 
   const children = Array.isArray(node.children) ? node.children : []
   for (const child of children) {
-    body += renderBehaviorNode(child, level + 1, behaviourTypeByCompatible)
+    body += renderBehaviorNode(child, level + 1, behaviourTypeByCompatible, indentUnit)
   }
 
   return `${indent}${header} {\n${body}${indent}};\n`
 }
 
-function renderBehaviorOverrides (nodes, behaviourTypeByCompatible) {
+function renderBehaviorOverrides (nodes, behaviourTypeByCompatible, indentUnit = '    ') {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     return ''
   }
 
-  return `${nodes.map(node => renderBehaviorNode(node, 0, behaviourTypeByCompatible)).join('')}\n`
+  return `${nodes.map(node => renderBehaviorNode(node, 0, behaviourTypeByCompatible, indentUnit)).join('')}\n`
 }
 
-function renderComboDefinitions (nodes, behaviourTypeByCompatible) {
+function renderComboDefinitions (nodes, behaviourTypeByCompatible, indentUnit = '    ') {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     return ''
   }
 
-  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible)).join('')
-  return `    combos {\n` +
-    '        compatible = "zmk,combos";\n' +
+  const sectionIndent = indentUnit
+  const propertyIndent = `${indentUnit}${indentUnit}`
+  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible, indentUnit)).join('')
+  return `${sectionIndent}combos {\n` +
+    `${propertyIndent}compatible = "zmk,combos";\n` +
     `${children}` +
-    '    };\n'
+    `${sectionIndent}};\n`
 }
 
-function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible) {
+function renderConditionalLayerDefinitions (nodes, behaviourTypeByCompatible, indentUnit = '    ') {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     return ''
   }
 
-  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible)).join('')
-  return `    behaviors {\n${children}    };\n`
+  const sectionIndent = indentUnit
+  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible, indentUnit)).join('')
+  return `${sectionIndent}conditional_layers {\n${children}${sectionIndent}};\n`
+}
+
+function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible, indentUnit = '    ') {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return ''
+  }
+
+  const sectionIndent = indentUnit
+  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible, indentUnit)).join('')
+  return `${sectionIndent}behaviors {\n${children}${sectionIndent}};\n`
 }
 
 function splitMacroAndBehaviorDefinitions (nodes) {
@@ -1156,13 +1227,14 @@ function splitMacroAndBehaviorDefinitions (nodes) {
   return { macroDefinitions, behaviorDefinitions }
 }
 
-function renderMacroDefinitions (nodes, behaviourTypeByCompatible) {
+function renderMacroDefinitions (nodes, behaviourTypeByCompatible, indentUnit = '    ') {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     return ''
   }
 
-  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible)).join('')
-  return `    macros {\n${children}    };\n`
+  const sectionIndent = indentUnit
+  const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible, indentUnit)).join('')
+  return `${sectionIndent}macros {\n${children}${sectionIndent}};\n`
 }
 
 function renderBehaviorChildrenSnippet (nodes, behaviourTypes = []) {
@@ -1172,7 +1244,7 @@ function renderBehaviorChildrenSnippet (nodes, behaviourTypes = []) {
   }
 
   const behaviourTypeByCompatible = keyBy(behaviourTypes || [], 'compatible')
-  return normalized.map(node => renderBehaviorNode(node, 0, behaviourTypeByCompatible)).join('')
+  return normalized.map(node => renderBehaviorNode(node, 0, behaviourTypeByCompatible, '    ')).join('')
 }
 
 function insertBeforeRoot (template, section) {
@@ -1209,6 +1281,7 @@ function renderTemplate (template, params) {
   const keymapPattern = /\{\{\s*rendered_keymap\s*\}\}/
   const overridesPattern = /\{\{\s*rendered_behavior_overrides\s*\}\}/
   const comboDefinitionsPattern = /\{\{\s*rendered_combo_definitions\s*\}\}/
+  const conditionalLayerDefinitionsPattern = /\{\{\s*rendered_conditional_layer_definitions\s*\}\}/
   const macroDefinitionsPattern = /\{\{\s*rendered_macro_definitions\s*\}\}/
   const definitionsPattern = /\{\{\s*rendered_behavior_definitions\s*\}\}/
 
@@ -1216,6 +1289,10 @@ function renderTemplate (template, params) {
   const renderedKeymap = KEYMAP_BLOCK_TEMPLATE.replace(layersPattern, renderedLayers)
   const splitDefinitions = splitMacroAndBehaviorDefinitions(params.behaviorDefinitions)
   const renderedComboDefinitions = renderComboDefinitions(params.comboDefinitions, params.behaviourTypeByCompatible)
+  const renderedConditionalLayerDefinitions = renderConditionalLayerDefinitions(
+    params.conditionalLayerDefinitions,
+    params.behaviourTypeByCompatible
+  )
   const renderedBehaviorOverrides = renderBehaviorOverrides(params.behaviorOverrides, params.behaviourTypeByCompatible)
   const renderedMacroDefinitions = renderMacroDefinitions(splitDefinitions.macroDefinitions, params.behaviourTypeByCompatible)
   const renderedBehaviorDefinitions = renderBehaviorDefinitions(splitDefinitions.behaviorDefinitions, params.behaviourTypeByCompatible)
@@ -1247,6 +1324,12 @@ function renderTemplate (template, params) {
     output = output.replace(comboDefinitionsPattern, renderedComboDefinitions)
   } else {
     output = insertBeforeKeymap(output, renderedComboDefinitions)
+  }
+
+  if (conditionalLayerDefinitionsPattern.test(output)) {
+    output = output.replace(conditionalLayerDefinitionsPattern, renderedConditionalLayerDefinitions)
+  } else {
+    output = insertBeforeKeymap(output, renderedConditionalLayerDefinitions)
   }
 
   if (macroDefinitionsPattern.test(output)) {
@@ -1291,6 +1374,7 @@ function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
   const behaviourTypeByCompatible = keyBy(options.behaviourTypes || [], 'compatible')
 
   const comboDefinitions = normalizeBehaviorList(keymap.combos)
+  const conditionalLayerDefinitions = normalizeBehaviorList(keymap.conditional_layers)
   const behaviorOverrides = normalizeBehaviorList(keymap.behavior_overrides)
   const behaviorDefinitions = normalizeBehaviorList(keymap.behavior_definitions)
 
@@ -1322,6 +1406,7 @@ function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
     sensorLayers: encoded.sensor_layers,
     sensors: options.sensors,
     comboDefinitions,
+    conditionalLayerDefinitions,
     behaviorOverrides,
     behaviorDefinitions,
     behaviourTypeByCompatible

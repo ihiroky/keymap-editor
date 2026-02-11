@@ -82,6 +82,26 @@ jest.mock('./Pickers/KeyboardPicker', () => function MockKeyboardPicker ({ onSel
             ],
             children: []
           }
+        ],
+        conditional_layers: [
+          {
+            name: 'nav_num',
+            label: 'nav_num',
+            bind: '&nav_num',
+            properties: {
+              'if-layers': [1, 2],
+              'then-layer': 3
+            },
+            property_types: {
+              'if-layers': 'token-array',
+              'then-layer': 'int'
+            },
+            property_order: [
+              'if-layers',
+              'then-layer'
+            ],
+            children: []
+          }
         ]
       }
     })
@@ -97,6 +117,7 @@ jest.mock('./Keyboard/Keyboard', () => function MockKeyboard () {
 let mockLastBehaviorProps = null
 let mockLastMacroProps = null
 let mockLastComboProps = null
+let mockLastConditionalLayerProps = null
 
 jest.mock('./Behavior/BehaviorEditor', () => function MockBehaviorEditor (props) {
   mockLastBehaviorProps = props
@@ -152,6 +173,24 @@ jest.mock('./Combo/ComboEditor', () => function MockComboEditor (props) {
   )
 })
 
+jest.mock('./ConditionalLayer/ConditionalLayerEditor', () => function MockConditionalLayerEditor (props) {
+  mockLastConditionalLayerProps = props
+  return (
+    <button
+      type='button'
+      onClick={() => {
+        const rule = props.keymap.conditional_layers[0]
+        props.onUpdate({
+          ...props.keymap,
+          conditional_layers: [{ ...rule, name: 'conditional_layer_updated' }]
+        })
+      }}
+    >
+      Conditional Layer Update
+    </button>
+  )
+})
+
 jest.mock('./Drawer/KeymapDrawer', () => function MockKeymapDrawer () {
   return <div>Drawer Mock</div>
 })
@@ -161,9 +200,10 @@ describe('App macro/behavior split integration', () => {
     mockLastBehaviorProps = null
     mockLastMacroProps = null
     mockLastComboProps = null
+    mockLastConditionalLayerProps = null
   })
 
-  test('shows Macro/Combo tabs and splits editor keymap definitions', async () => {
+  test('shows Macro/Combo/Conditional Layers tabs and splits editor keymap definitions', async () => {
     render(<App />)
 
     await screen.findByText('Keymap')
@@ -194,11 +234,20 @@ describe('App macro/behavior split integration', () => {
     expect(mockLastComboProps.keymap.combos).toHaveLength(1)
     expect(mockLastComboProps.keymap.combos[0].name).toBe('combo_a')
 
+    fireEvent.click(screen.getByRole('button', { name: 'Conditional Layers' }))
+
+    await waitFor(() => {
+      expect(mockLastConditionalLayerProps).toBeTruthy()
+    })
+
+    expect(mockLastConditionalLayerProps.keymap.conditional_layers).toHaveLength(1)
+    expect(mockLastConditionalLayerProps.keymap.conditional_layers[0].name).toBe('nav_num')
+
     fireEvent.click(screen.getByRole('button', { name: 'Drawer tab' }))
     await screen.findByText('Drawer Mock')
   })
 
-  test('preserves both definition groups when each editor updates', async () => {
+  test('preserves all editor groups when each editor updates', async () => {
     render(<App />)
 
     await screen.findByText('Keymap')
@@ -224,6 +273,12 @@ describe('App macro/behavior split integration', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Combo Update' }))
 
+    fireEvent.click(screen.getByRole('button', { name: 'Conditional Layers' }))
+    await waitFor(() => {
+      expect(mockLastConditionalLayerProps).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Conditional Layer Update' }))
+
     fireEvent.click(screen.getByRole('button', { name: 'Macro' }))
     await waitFor(() => {
       expect(mockLastMacroProps.keymap.behavior_definitions[0].label).toBe('macro_updated')
@@ -237,6 +292,11 @@ describe('App macro/behavior split integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Combo' }))
     await waitFor(() => {
       expect(mockLastComboProps.keymap.combos[0].name).toBe('combo_updated')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conditional Layers' }))
+    await waitFor(() => {
+      expect(mockLastConditionalLayerProps.keymap.conditional_layers[0].name).toBe('conditional_layer_updated')
     })
   })
 

@@ -14,6 +14,7 @@ import Keyboard from './Keyboard/Keyboard'
 import BehaviorEditor from './Behavior/BehaviorEditor'
 import MacroEditor from './Macro/MacroEditor'
 import ComboEditor from './Combo/ComboEditor'
+import ConditionalLayerEditor from './ConditionalLayer/ConditionalLayerEditor'
 import KeymapDrawer from './Drawer/KeymapDrawer'
 import GitHubLink from './GitHubLink'
 import Loader from './Common/Loader'
@@ -59,6 +60,7 @@ function normalizeKeymapShape(keymap) {
   return {
     ...keymap,
     combos: Array.isArray(keymap.combos) ? keymap.combos : [],
+    conditional_layers: Array.isArray(keymap.conditional_layers) ? keymap.conditional_layers : [],
     behavior_overrides: Array.isArray(keymap.behavior_overrides) ? keymap.behavior_overrides : [],
     behavior_definitions: Array.isArray(keymap.behavior_definitions) ? keymap.behavior_definitions : []
   }
@@ -440,7 +442,7 @@ function App() {
 
     if (source === 'local') {
       return {
-        title: 'Save keymap/behavior/macro/combo changes locally',
+        title: 'Save keymap/behavior/macro/combo/conditional-layer changes locally',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleCompile,
         content: (
@@ -454,7 +456,7 @@ function App() {
 
     if (source === 'github') {
       return {
-        title: 'Commit keymap/behavior/macro/combo changes to GitHub repository',
+        title: 'Commit keymap/behavior/macro/combo/conditional-layer changes to GitHub repository',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleCommitChanges,
         content: (
@@ -469,8 +471,8 @@ function App() {
     if (source === 'browser-file') {
       return {
         title: sourceOther?.browserFile?.writeCapable
-          ? 'Save keymap/behavior/macro/combo to selected local file (falls back to download if write fails)'
-          : 'Save keymap/behavior/macro/combo as download',
+          ? 'Save keymap/behavior/macro/combo/conditional-layer to selected local file (falls back to download if write fails)'
+          : 'Save keymap/behavior/macro/combo/conditional-layer as download',
         disabled: !hasUnsavedChanges || saving,
         onClick: handleSaveBrowserFile,
         content: (
@@ -532,6 +534,13 @@ function App() {
                 onClick={() => setActiveTab('combo')}
               >
                 Combo
+              </button>
+              <button
+                type="button"
+                className={`editor-tab ${activeTab === 'conditional-layer' ? 'active' : ''}`}
+                onClick={() => setActiveTab('conditional-layer')}
+              >
+                Conditional Layers
               </button>
               <button
                 type="button"
@@ -607,6 +616,13 @@ function App() {
               layout={layout}
               availableBehaviours={mergedBehaviours}
               keycodes={definitions?.keycodes || []}
+              onUpdate={handleUpdateKeymap}
+            />
+          )}
+
+          {layout && currentKeymap && activeTab === 'conditional-layer' && (
+            <ConditionalLayerEditor
+              keymap={currentKeymap}
               onUpdate={handleUpdateKeymap}
             />
           )}

@@ -100,10 +100,11 @@ html, body {
 
   .editor-tabs {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .editor-tab {
-    flex: 1 1 25%;
+    flex: 1 1 30%;
   }
 
   .app-save-button {
