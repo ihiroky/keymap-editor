@@ -32,6 +32,7 @@
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 7px;
   background: white;
+  color: #334155;
   padding: 8px 10px;
 }
 
@@ -53,6 +54,25 @@
   padding: 14px;
 }
 
+.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton) {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: var(--selection);
+  color: white;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .formRow {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
@@ -61,15 +81,10 @@
   margin-bottom: 8px;
 }
 
-.formRow input,
-.formRow select {
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .slowReleaseCheckbox {
   width: auto !important;
   justify-self: start;
+  accent-color: var(--selection);
 }
 
 .bindingRow {
@@ -102,20 +117,108 @@
   color: #556;
 }
 
+.formRow input[type='text'],
+.formRow input[type='number'],
+.formRow select,
+.bindingRow input[type='text'],
+.bindingRow input[type='number'],
+.bindingRow select,
+.paramRow input[type='text'],
+.paramRow input[type='number'],
 .paramRow select,
-.paramRow input {
+.group input[type='text'],
+.group input[type='number'],
+.paramPickerButton {
   width: 100%;
   box-sizing: border-box;
+  border: var(--editor-field-border);
+  border-radius: var(--editor-field-radius);
+  background: var(--editor-field-bg);
+  color: var(--editor-field-color);
+  font-size: var(--editor-field-font-size);
+  transition: var(--editor-field-transition);
+}
+
+.formRow input[type='text'],
+.formRow input[type='number'],
+.formRow select,
+.bindingRow input[type='text'],
+.bindingRow input[type='number'],
+.bindingRow select,
+.paramRow input[type='text'],
+.paramRow input[type='number'],
+.paramRow select,
+.group input[type='text'],
+.group input[type='number'] {
+  min-height: var(--editor-field-height);
+  line-height: var(--editor-field-line-height);
+  padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
 }
 
 .paramPickerButton {
-  width: 100%;
+  min-height: var(--editor-field-height);
+  line-height: var(--editor-field-line-height);
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 6px;
-  background: #fff;
-  min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
+}
+
+.formRow input[type='text']::placeholder,
+.formRow input[type='number']::placeholder,
+.bindingRow input[type='text']::placeholder,
+.bindingRow input[type='number']::placeholder,
+.paramRow input[type='text']::placeholder,
+.paramRow input[type='number']::placeholder,
+.group input[type='text']::placeholder,
+.group input[type='number']::placeholder {
+  color: var(--editor-field-placeholder);
+}
+
+.formRow input[type='text']:focus-visible,
+.formRow input[type='number']:focus-visible,
+.formRow select:focus-visible,
+.bindingRow input[type='text']:focus-visible,
+.bindingRow input[type='number']:focus-visible,
+.bindingRow select:focus-visible,
+.paramRow input[type='text']:focus-visible,
+.paramRow input[type='number']:focus-visible,
+.paramRow select:focus-visible,
+.group input[type='text']:focus-visible,
+.group input[type='number']:focus-visible,
+.paramPickerButton:focus-visible {
+  outline: none;
+  border-color: var(--editor-field-focus-border);
+  box-shadow: var(--editor-field-focus-ring);
+}
+
+.formRow input[type='text']:disabled,
+.formRow input[type='number']:disabled,
+.formRow select:disabled,
+.bindingRow input[type='text']:disabled,
+.bindingRow input[type='number']:disabled,
+.bindingRow select:disabled,
+.paramRow input[type='text']:disabled,
+.paramRow input[type='number']:disabled,
+.paramRow select:disabled,
+.group input[type='text']:disabled,
+.group input[type='number']:disabled,
+.paramPickerButton:disabled {
+  border: var(--editor-field-disabled-border);
+  background: var(--editor-field-disabled-bg);
+  color: var(--editor-field-disabled-color);
+}
+
+.formRow input[type='checkbox'],
+.bindingRow input[type='checkbox'],
+.paramRow input[type='checkbox'],
+.group input[type='checkbox'] {
+  width: auto;
+  height: auto;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: var(--selection);
 }
 
 .paramPicker {

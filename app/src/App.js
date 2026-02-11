@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 
 import * as config from './config'
 import './App.css'
+import './Common/editor-form-tokens.css'
 import { DefinitionsContext } from './providers'
 import { loadKeycodes } from './keycodes'
 import { loadBehaviours, loadBehaviourTypes } from './api'

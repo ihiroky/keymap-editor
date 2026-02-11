@@ -1,0 +1,20 @@
+:root {
+  --editor-field-height: 30px;
+  --editor-field-radius: 6px;
+  --editor-field-padding-y: 4px;
+  --editor-field-padding-x: 8px;
+  --editor-field-font-size: 14px;
+  --editor-field-line-height: 1.35;
+  --editor-field-border: 1px solid rgba(0, 0, 0, 0.2);
+  --editor-field-bg: #fff;
+  --editor-field-color: #1f2937;
+  --editor-field-placeholder: rgba(31, 41, 55, 0.55);
+  --editor-field-focus-border: var(--selection);
+  --editor-field-focus-ring: 0 0 0 3px rgba(60, 179, 113, 0.2);
+  --editor-field-disabled-bg: rgba(0, 0, 0, 0.06);
+  --editor-field-disabled-color: #6b7280;
+  --editor-field-disabled-border: 1px solid rgba(0, 0, 0, 0.12);
+  --editor-field-transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  --editor-field-textarea-min-height: 72px;
+  --editor-field-textarea-line-height: 1.4;
+}
