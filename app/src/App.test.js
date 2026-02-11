@@ -152,6 +152,10 @@ jest.mock('./Combo/ComboEditor', () => function MockComboEditor (props) {
   )
 })
 
+jest.mock('./Drawer/KeymapDrawer', () => function MockKeymapDrawer () {
+  return <div>Drawer Mock</div>
+})
+
 describe('App macro/behavior split integration', () => {
   beforeEach(() => {
     mockLastBehaviorProps = null
@@ -189,6 +193,9 @@ describe('App macro/behavior split integration', () => {
 
     expect(mockLastComboProps.keymap.combos).toHaveLength(1)
     expect(mockLastComboProps.keymap.combos[0].name).toBe('combo_a')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drawer tab' }))
+    await screen.findByText('Drawer Mock')
   })
 
   test('preserves both definition groups when each editor updates', async () => {
@@ -231,5 +238,23 @@ describe('App macro/behavior split integration', () => {
     await waitFor(() => {
       expect(mockLastComboProps.keymap.combos[0].name).toBe('combo_updated')
     })
+  })
+
+  test('shows Export PDF button and calls print on drawer tab', async () => {
+    const originalPrint = window.print
+    window.print = jest.fn()
+    render(<App />)
+
+    await screen.findByText('Keymap')
+    fireEvent.click(screen.getByRole('button', { name: 'Drawer tab' }))
+    await screen.findByText('Drawer Mock')
+
+    const exportButton = screen.getByRole('button', { name: 'Export PDF' })
+    expect(exportButton).toBeTruthy()
+
+    fireEvent.click(exportButton)
+    expect(window.print).toHaveBeenCalledTimes(1)
+
+    window.print = originalPrint
   })
 })

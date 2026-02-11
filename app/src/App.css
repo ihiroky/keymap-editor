@@ -45,6 +45,12 @@ html, body {
   gap: 6px;
 }
 
+.toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .editor-tab {
   border: 1px solid rgba(0, 0, 0, 0.18);
   background: #f6f6f6;
@@ -71,6 +77,16 @@ html, body {
   gap: 8px;
 }
 
+.app-export-button {
+  cursor: pointer;
+  background-color: #2f5ca8;
+  color: white;
+  font-size: 15px;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 12px;
+}
+
 .app-save-button[disabled] {
   background-color: #ccc;
   cursor: not-allowed;
@@ -92,5 +108,35 @@ html, body {
 
   .app-save-button {
     justify-content: center;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+  }
+
+  .app-export-button {
+    width: 100%;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  [data-keymap-drawer='true'],
+  [data-keymap-drawer='true'] * {
+    visibility: visible !important;
+  }
+
+  [data-keymap-drawer='true'] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .github-link {
+    display: none !important;
   }
 }
