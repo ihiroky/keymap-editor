@@ -516,20 +516,6 @@ function App() {
               </button>
               <button
                 type="button"
-                className={`editor-tab ${activeTab === 'behavior' ? 'active' : ''}`}
-                onClick={() => setActiveTab('behavior')}
-              >
-                Behavior
-              </button>
-              <button
-                type="button"
-                className={`editor-tab ${activeTab === 'macro' ? 'active' : ''}`}
-                onClick={() => setActiveTab('macro')}
-              >
-                Macro
-              </button>
-              <button
-                type="button"
                 className={`editor-tab ${activeTab === 'combo' ? 'active' : ''}`}
                 onClick={() => setActiveTab('combo')}
               >
@@ -541,6 +527,20 @@ function App() {
                 onClick={() => setActiveTab('conditional-layer')}
               >
                 Conditional Layers
+              </button>
+              <button
+                type="button"
+                className={`editor-tab ${activeTab === 'macro' ? 'active' : ''}`}
+                onClick={() => setActiveTab('macro')}
+              >
+                Macro
+              </button>
+              <button
+                type="button"
+                className={`editor-tab ${activeTab === 'behavior' ? 'active' : ''}`}
+                onClick={() => setActiveTab('behavior')}
+              >
+                Behavior
               </button>
               <button
                 type="button"
