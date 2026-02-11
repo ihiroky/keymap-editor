@@ -14,6 +14,7 @@ import Keyboard from './Keyboard/Keyboard'
 import BehaviorEditor from './Behavior/BehaviorEditor'
 import MacroEditor from './Macro/MacroEditor'
 import ComboEditor from './Combo/ComboEditor'
+import KeymapDrawer from './Drawer/KeymapDrawer'
 import GitHubLink from './GitHubLink'
 import Loader from './Common/Loader'
 import github from './Pickers/Github/api'
@@ -237,6 +238,12 @@ function App() {
       body: JSON.stringify(currentKeymap)
     })
   }, [currentKeymap])
+
+  const handleExportPdf = useCallback(() => {
+    if (typeof window.print === 'function') {
+      window.print()
+    }
+  }, [])
 
   const handleCommitChanges = useMemo(() => function () {
     const { repository, branch } = sourceOther.github
@@ -526,18 +533,39 @@ function App() {
               >
                 Combo
               </button>
-            </div>
-            {saveControl && (
               <button
                 type="button"
-                className="app-save-button"
-                title={saveControl.title}
-                disabled={saveControl.disabled}
-                onClick={saveControl.onClick}
+                className={`editor-tab ${activeTab === 'drawer' ? 'active' : ''}`}
+                aria-label="Drawer tab"
+                onClick={() => setActiveTab('drawer')}
               >
-                {saveControl.content}
+                Drawer
               </button>
-            )}
+            </div>
+            <div className="toolbar-actions">
+              {saveControl && (
+                <button
+                  type="button"
+                  className="app-save-button"
+                  title={saveControl.title}
+                  disabled={saveControl.disabled}
+                  onClick={saveControl.onClick}
+                >
+                  {saveControl.content}
+                </button>
+              )}
+              {activeTab === 'drawer' && (
+                <button
+                  type="button"
+                  className="app-export-button"
+                  aria-label="Export PDF"
+                  title="Export drawer view as PDF (print dialog)"
+                  onClick={handleExportPdf}
+                >
+                  Export PDF
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -580,6 +608,16 @@ function App() {
               availableBehaviours={mergedBehaviours}
               keycodes={definitions?.keycodes || []}
               onUpdate={handleUpdateKeymap}
+            />
+          )}
+
+          {layout && currentKeymap && activeTab === 'drawer' && (
+            <KeymapDrawer
+              layout={layout}
+              keymap={currentKeymap}
+              keycodes={definitionsContextValue.keycodes || []}
+              behaviours={definitionsContextValue.behaviours || []}
+              behaviourTypes={definitionsContextValue.behaviourTypes || []}
             />
           )}
         </DefinitionsContext.Provider>
