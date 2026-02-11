@@ -1,16 +1,4 @@
-const styles = {
-  selector: {
-    display: 'inline-block',
-    width: 'auto',
-    margin: '5px'
-  },
-  label: {
-    display: 'block',
-    width: '100%',
-    fontSize: '120%',
-    color: '#555'
-  }
-}
+import styles from './selector.module.css'
 
 export default function Selector(props) {
   const { id, label, value, choices, onUpdate } = props
@@ -26,11 +14,16 @@ export default function Selector(props) {
   }
 
   return (
-    <div style={styles.selector}>
-      <label htmlFor={id} style={styles.label}>
+    <div className={styles.selector}>
+      <label htmlFor={id} className={styles.label}>
         {label}
       </label>
-      <select id={id} onChange={handleSelect} value={index(value)}>
+      <select
+        id={id}
+        className={styles.select}
+        onChange={handleSelect}
+        value={index(value)}
+      >
         {choices.map(({ name }, i) => (
           <option key={i} value={i}>{name}</option>
         ))}

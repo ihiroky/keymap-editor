@@ -1,0 +1,43 @@
+.selector {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: min(220px, 100%);
+  width: 280px;
+  max-width: 100%;
+}
+
+.label {
+  color: #556;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: var(--editor-field-height);
+  line-height: var(--editor-field-line-height);
+  padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
+  border: var(--editor-field-border);
+  border-radius: var(--editor-field-radius);
+  background: var(--editor-field-bg);
+  color: var(--editor-field-color);
+  font-size: var(--editor-field-font-size);
+  transition: var(--editor-field-transition);
+}
+
+.select:focus-visible {
+  outline: none;
+  border-color: var(--editor-field-focus-border);
+  box-shadow: var(--editor-field-focus-ring);
+}
+
+.select:disabled {
+  border: var(--editor-field-disabled-border);
+  background: var(--editor-field-disabled-bg);
+  color: var(--editor-field-disabled-color);
+}

@@ -1,0 +1,31 @@
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.openButton {
+  height: var(--editor-field-height);
+  border: none;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--selection);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.openButton:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.openButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

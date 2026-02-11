@@ -6,6 +6,7 @@ import Spinner from '../../Common/Spinner'
 import { validateInfoJson, selectDefaultLayoutAndSensors } from '../../shared/zmk/layout'
 import { parseKeymapCode } from '../../shared/zmk/keymap-code'
 import { parseKeymap } from '../../shared/zmk/keymap'
+import styles from './styles.module.css'
 
 function isWritableBrowserFileSupported () {
   return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function'
@@ -175,8 +176,8 @@ function BrowserFilePicker (props) {
   return (
     <div>
       {writeCapable ? (
-        <>
-          <button onClick={openDirectory}>
+        <div className={styles.controls}>
+          <button type="button" className={styles.openButton} onClick={openDirectory}>
             Open Config Folder
           </button>
 
@@ -189,7 +190,7 @@ function BrowserFilePicker (props) {
               onUpdate={loadSelectedKeymap}
             />
           )}
-        </>
+        </div>
       ) : (
         <>
           <p>Direct file write is unavailable in this browser. Save uses download.</p>
