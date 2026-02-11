@@ -32,6 +32,7 @@
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 7px;
   background: white;
+  color: #334155;
   padding: 8px 10px;
 }
 
@@ -51,6 +52,25 @@
   border-radius: 10px;
   background: #fff;
   padding: 14px;
+}
+
+.editor button:not(.listItem) {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: var(--selection);
+  color: white;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.editor button:not(.listItem):hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.editor button:not(.listItem):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .group {
@@ -73,26 +93,11 @@
   margin-bottom: 8px;
 }
 
-.formRow input,
-.formRow select,
-.formRow textarea {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.formRow textarea {
-  min-height: 68px;
-}
-
 .rawRow {
   display: grid;
   grid-template-columns: 190px 130px minmax(0, 1fr) auto;
   gap: 8px;
   margin-bottom: 8px;
-}
-
-.rawRow textarea {
-  min-height: 54px;
 }
 
 .knownRow {
@@ -132,6 +137,148 @@
   gap: 6px;
 }
 
+.formRow input[type='text'],
+.formRow input[type='number'],
+.formRow select,
+.formRow textarea,
+.rawRow input[type='text'],
+.rawRow input[type='number'],
+.rawRow select,
+.rawRow textarea,
+.knownRow input[type='text'],
+.knownRow input[type='number'],
+.knownRow select,
+.knownRow textarea,
+.bindingRow input[type='text'],
+.bindingRow input[type='number'],
+.bindingRow select,
+.bindingRow textarea,
+.childrenJson {
+  width: 100%;
+  box-sizing: border-box;
+  border: var(--editor-field-border);
+  border-radius: var(--editor-field-radius);
+  background: var(--editor-field-bg);
+  color: var(--editor-field-color);
+  font-size: var(--editor-field-font-size);
+  transition: var(--editor-field-transition);
+}
+
+.formRow input[type='text'],
+.formRow input[type='number'],
+.formRow select,
+.rawRow input[type='text'],
+.rawRow input[type='number'],
+.rawRow select,
+.knownRow input[type='text'],
+.knownRow input[type='number'],
+.knownRow select,
+.bindingRow input[type='text'],
+.bindingRow input[type='number'],
+.bindingRow select {
+  min-height: var(--editor-field-height);
+  line-height: var(--editor-field-line-height);
+  padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
+}
+
+.formRow textarea,
+.rawRow textarea,
+.knownRow textarea,
+.bindingRow textarea,
+.childrenJson {
+  min-height: var(--editor-field-textarea-min-height);
+  line-height: var(--editor-field-textarea-line-height);
+  padding: 7px var(--editor-field-padding-x);
+  resize: vertical;
+}
+
+.rawRow textarea {
+  min-height: 54px;
+}
+
+.knownInput textarea {
+  min-height: var(--editor-field-textarea-min-height);
+}
+
+.childrenJson {
+  min-height: 150px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.formRow input[type='text']::placeholder,
+.formRow input[type='number']::placeholder,
+.formRow textarea::placeholder,
+.rawRow input[type='text']::placeholder,
+.rawRow input[type='number']::placeholder,
+.rawRow textarea::placeholder,
+.knownRow input[type='text']::placeholder,
+.knownRow input[type='number']::placeholder,
+.knownRow textarea::placeholder,
+.bindingRow input[type='text']::placeholder,
+.bindingRow input[type='number']::placeholder,
+.bindingRow textarea::placeholder,
+.childrenJson::placeholder {
+  color: var(--editor-field-placeholder);
+}
+
+.formRow input[type='text']:focus-visible,
+.formRow input[type='number']:focus-visible,
+.formRow select:focus-visible,
+.formRow textarea:focus-visible,
+.rawRow input[type='text']:focus-visible,
+.rawRow input[type='number']:focus-visible,
+.rawRow select:focus-visible,
+.rawRow textarea:focus-visible,
+.knownRow input[type='text']:focus-visible,
+.knownRow input[type='number']:focus-visible,
+.knownRow select:focus-visible,
+.knownRow textarea:focus-visible,
+.bindingRow input[type='text']:focus-visible,
+.bindingRow input[type='number']:focus-visible,
+.bindingRow select:focus-visible,
+.bindingRow textarea:focus-visible,
+.childrenJson:focus-visible {
+  outline: none;
+  border-color: var(--editor-field-focus-border);
+  box-shadow: var(--editor-field-focus-ring);
+}
+
+.formRow input[type='text']:disabled,
+.formRow input[type='number']:disabled,
+.formRow select:disabled,
+.formRow textarea:disabled,
+.rawRow input[type='text']:disabled,
+.rawRow input[type='number']:disabled,
+.rawRow select:disabled,
+.rawRow textarea:disabled,
+.knownRow input[type='text']:disabled,
+.knownRow input[type='number']:disabled,
+.knownRow select:disabled,
+.knownRow textarea:disabled,
+.bindingRow input[type='text']:disabled,
+.bindingRow input[type='number']:disabled,
+.bindingRow select:disabled,
+.bindingRow textarea:disabled,
+.childrenJson:disabled {
+  border: var(--editor-field-disabled-border);
+  background: var(--editor-field-disabled-bg);
+  color: var(--editor-field-disabled-color);
+}
+
+.formRow input[type='checkbox'],
+.rawRow input[type='checkbox'],
+.knownRow input[type='checkbox'],
+.bindingRow input[type='checkbox'] {
+  width: auto;
+  height: auto;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: var(--selection);
+}
+
 .addKnownList {
   display: flex;
   flex-wrap: wrap;
@@ -166,13 +313,6 @@
 .note {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: rgba(0, 0, 0, 0.03);
-}
-
-.childrenJson {
-  width: 100%;
-  min-height: 150px;
-  box-sizing: border-box;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .childrenHelp {

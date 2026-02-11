@@ -32,6 +32,7 @@
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 7px;
   background: white;
+  color: #334155;
   padding: 8px 10px;
 }
 
@@ -53,6 +54,25 @@
   padding: 14px;
 }
 
+.editor button:not(.listItem) {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: var(--selection);
+  color: white;
+  cursor: pointer;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+.editor button:not(.listItem):hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.editor button:not(.listItem):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .formRow {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
@@ -67,22 +87,18 @@
   align-items: center;
 }
 
-.formRow input,
-.formRow select,
-.formRow textarea {
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .modeSwitch {
   display: inline-flex;
   gap: 8px;
   margin: 12px 0;
 }
 
+.modeSwitch button[data-active='false'] {
+  opacity: 0.65;
+}
+
 .modeSwitch button[data-active='true'] {
-  border-color: var(--selection);
-  background: rgba(60, 179, 113, 0.14);
+  opacity: 1;
 }
 
 .group {
@@ -141,6 +157,120 @@
   opacity: 0.7;
 }
 
+.formRow input[type='text'],
+.formRow input[type='number'],
+.formRow select,
+.formRow textarea,
+.knownRow input[type='text'],
+.knownRow input[type='number'],
+.knownRow select,
+.knownRow textarea,
+.stepRow input[type='text'],
+.stepRow input[type='number'],
+.stepRow select,
+.stepRow textarea,
+.rawTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: var(--editor-field-border);
+  border-radius: var(--editor-field-radius);
+  background: var(--editor-field-bg);
+  color: var(--editor-field-color);
+  font-size: var(--editor-field-font-size);
+  transition: var(--editor-field-transition);
+}
+
+.formRow input[type='text'],
+.formRow input[type='number'],
+.formRow select,
+.knownRow input[type='text'],
+.knownRow input[type='number'],
+.knownRow select,
+.stepRow input[type='text'],
+.stepRow input[type='number'],
+.stepRow select {
+  min-height: var(--editor-field-height);
+  line-height: var(--editor-field-line-height);
+  padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
+}
+
+.formRow textarea,
+.knownRow textarea,
+.stepRow textarea,
+.rawTextarea {
+  min-height: var(--editor-field-textarea-min-height);
+  line-height: var(--editor-field-textarea-line-height);
+  padding: 7px var(--editor-field-padding-x);
+  resize: vertical;
+}
+
+.rawTextarea {
+  min-height: 170px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.formRow input[type='text']::placeholder,
+.formRow input[type='number']::placeholder,
+.formRow textarea::placeholder,
+.knownRow input[type='text']::placeholder,
+.knownRow input[type='number']::placeholder,
+.knownRow textarea::placeholder,
+.stepRow input[type='text']::placeholder,
+.stepRow input[type='number']::placeholder,
+.stepRow textarea::placeholder,
+.rawTextarea::placeholder {
+  color: var(--editor-field-placeholder);
+}
+
+.formRow input[type='text']:focus-visible,
+.formRow input[type='number']:focus-visible,
+.formRow select:focus-visible,
+.formRow textarea:focus-visible,
+.knownRow input[type='text']:focus-visible,
+.knownRow input[type='number']:focus-visible,
+.knownRow select:focus-visible,
+.knownRow textarea:focus-visible,
+.stepRow input[type='text']:focus-visible,
+.stepRow input[type='number']:focus-visible,
+.stepRow select:focus-visible,
+.stepRow textarea:focus-visible,
+.rawTextarea:focus-visible {
+  outline: none;
+  border-color: var(--editor-field-focus-border);
+  box-shadow: var(--editor-field-focus-ring);
+}
+
+.formRow input[type='text']:disabled,
+.formRow input[type='number']:disabled,
+.formRow select:disabled,
+.formRow textarea:disabled,
+.knownRow input[type='text']:disabled,
+.knownRow input[type='number']:disabled,
+.knownRow select:disabled,
+.knownRow textarea:disabled,
+.stepRow input[type='text']:disabled,
+.stepRow input[type='number']:disabled,
+.stepRow select:disabled,
+.stepRow textarea:disabled,
+.rawTextarea:disabled {
+  border: var(--editor-field-disabled-border);
+  background: var(--editor-field-disabled-bg);
+  color: var(--editor-field-disabled-color);
+}
+
+.formRow input[type='checkbox'],
+.knownRow input[type='checkbox'],
+.stepRow input[type='checkbox'] {
+  width: auto;
+  height: auto;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  accent-color: var(--selection);
+}
+
 .removeButton {
   width: auto;
   grid-column: 5;
@@ -153,13 +283,6 @@
   color: #556;
   font-weight: 700;
   cursor: grab;
-}
-
-.rawTextarea {
-  width: 100%;
-  min-height: 170px;
-  box-sizing: border-box;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .rawActions {
