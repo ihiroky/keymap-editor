@@ -1,6 +1,7 @@
 [
   {
     "names": ["A"],
+    "symbol": "A",
     "description": "a and A",
     "context": "Keyboard",
     "clarify": false,
@@ -16,6 +17,7 @@
   },
   {
     "names": ["B"],
+    "symbol": "B",
     "description": "b and B",
     "context": "Keyboard",
     "clarify": false,
@@ -31,6 +33,7 @@
   },
   {
     "names": ["C"],
+    "symbol": "C",
     "description": "c and C",
     "context": "Keyboard",
     "clarify": false,
@@ -46,6 +49,7 @@
   },
   {
     "names": ["D"],
+    "symbol": "D",
     "description": "d and D",
     "context": "Keyboard",
     "clarify": false,
@@ -61,6 +65,7 @@
   },
   {
     "names": ["E"],
+    "symbol": "E",
     "description": "e and E",
     "context": "Keyboard",
     "clarify": false,
@@ -76,6 +81,7 @@
   },
   {
     "names": ["F"],
+    "symbol": "F",
     "description": "f and F",
     "context": "Keyboard",
     "clarify": false,
@@ -91,6 +97,7 @@
   },
   {
     "names": ["G"],
+    "symbol": "G",
     "description": "g and G",
     "context": "Keyboard",
     "clarify": false,
@@ -106,6 +113,7 @@
   },
   {
     "names": ["H"],
+    "symbol": "H",
     "description": "h and H",
     "context": "Keyboard",
     "clarify": false,
@@ -121,6 +129,7 @@
   },
   {
     "names": ["I"],
+    "symbol": "I",
     "description": "i and I",
     "context": "Keyboard",
     "clarify": false,
@@ -136,6 +145,7 @@
   },
   {
     "names": ["J"],
+    "symbol": "J",
     "description": "j and J",
     "context": "Keyboard",
     "clarify": false,
@@ -151,6 +161,7 @@
   },
   {
     "names": ["K"],
+    "symbol": "K",
     "description": "k and K",
     "context": "Keyboard",
     "clarify": false,
@@ -166,6 +177,7 @@
   },
   {
     "names": ["L"],
+    "symbol": "L",
     "description": "l and L",
     "context": "Keyboard",
     "clarify": false,
@@ -181,6 +193,7 @@
   },
   {
     "names": ["M"],
+    "symbol": "M",
     "description": "m and M",
     "context": "Keyboard",
     "clarify": false,
@@ -196,6 +209,7 @@
   },
   {
     "names": ["N"],
+    "symbol": "N",
     "description": "n and N",
     "context": "Keyboard",
     "clarify": false,
@@ -211,6 +225,7 @@
   },
   {
     "names": ["O"],
+    "symbol": "O",
     "description": "o and O",
     "context": "Keyboard",
     "clarify": false,
@@ -226,6 +241,7 @@
   },
   {
     "names": ["P"],
+    "symbol": "P",
     "description": "p and P",
     "context": "Keyboard",
     "clarify": false,
@@ -241,6 +257,7 @@
   },
   {
     "names": ["Q"],
+    "symbol": "Q",
     "description": "q and Q",
     "context": "Keyboard",
     "clarify": false,
@@ -256,6 +273,7 @@
   },
   {
     "names": ["R"],
+    "symbol": "R",
     "description": "r and R",
     "context": "Keyboard",
     "clarify": false,
@@ -271,6 +289,7 @@
   },
   {
     "names": ["S"],
+    "symbol": "S",
     "description": "s and S",
     "context": "Keyboard",
     "clarify": false,
@@ -286,6 +305,7 @@
   },
   {
     "names": ["T"],
+    "symbol": "T",
     "description": "t and T",
     "context": "Keyboard",
     "clarify": false,
@@ -301,6 +321,7 @@
   },
   {
     "names": ["U"],
+    "symbol": "U",
     "description": "u and U",
     "context": "Keyboard",
     "clarify": false,
@@ -316,6 +337,7 @@
   },
   {
     "names": ["V"],
+    "symbol": "V",
     "description": "v and V",
     "context": "Keyboard",
     "clarify": false,
@@ -331,6 +353,7 @@
   },
   {
     "names": ["W"],
+    "symbol": "W",
     "description": "w and W",
     "context": "Keyboard",
     "clarify": false,
@@ -346,6 +369,7 @@
   },
   {
     "names": ["X"],
+    "symbol": "X",
     "description": "x and X",
     "context": "Keyboard",
     "clarify": false,
@@ -361,6 +385,7 @@
   },
   {
     "names": ["Y"],
+    "symbol": "Y",
     "description": "y and Y",
     "context": "Keyboard",
     "clarify": false,
@@ -376,6 +401,7 @@
   },
   {
     "names": ["Z"],
+    "symbol": "Z",
     "description": "z and Z",
     "context": "Keyboard",
     "clarify": false,
@@ -391,6 +417,7 @@
   },
   {
     "names": ["NUMBER_1", "N1"],
+    "symbol": "1",
     "description": "1 and ! [Exclamation]",
     "context": "Keyboard",
     "clarify": false,
@@ -406,6 +433,7 @@
   },
   {
     "names": ["EXCLAMATION", "EXCL"],
+    "symbol": "!",
     "description": "! [Exclamation]",
     "context": "Keyboard",
     "clarify": false,
@@ -421,6 +449,7 @@
   },
   {
     "names": ["NUMBER_2", "N2"],
+    "symbol": "2",
     "description": "2 and @ [At Sign]",
     "context": "Keyboard",
     "clarify": false,
@@ -436,6 +465,7 @@
   },
   {
     "names": ["AT_SIGN", "AT"],
+    "symbol": "@",
     "description": "@ [At Sign]",
     "context": "Keyboard",
     "clarify": false,
@@ -451,6 +481,7 @@
   },
   {
     "names": ["NUMBER_3", "N3"],
+    "symbol": "3",
     "description": "3 and # [Hash / Pound]",
     "context": "Keyboard",
     "clarify": false,
@@ -466,6 +497,7 @@
   },
   {
     "names": ["HASH", "POUND"],
+    "symbol": "#",
     "description": "# [Hash / Pound]",
     "context": "Keyboard",
     "clarify": false,
@@ -481,6 +513,7 @@
   },
   {
     "names": ["NUMBER_4", "N4"],
+    "symbol": "4",
     "description": "4 and $ [Dollar]",
     "context": "Keyboard",
     "clarify": false,
@@ -496,6 +529,7 @@
   },
   {
     "names": ["DOLLAR", "DLLR"],
+    "symbol": "$",
     "description": "$ [Dollar]",
     "context": "Keyboard",
     "clarify": false,
@@ -511,6 +545,7 @@
   },
   {
     "names": ["NUMBER_5", "N5"],
+    "symbol": "5",
     "description": "5 and % [Percent]",
     "context": "Keyboard",
     "clarify": false,
@@ -526,6 +561,7 @@
   },
   {
     "names": ["PERCENT", "PRCNT"],
+    "symbol": "%",
     "description": "% [Percent]",
     "context": "Keyboard",
     "clarify": false,
@@ -541,6 +577,7 @@
   },
   {
     "names": ["NUMBER_6", "N6"],
+    "symbol": "6",
     "description": "6 and ^ [Caret]",
     "context": "Keyboard",
     "clarify": false,
@@ -556,6 +593,7 @@
   },
   {
     "names": ["CARET"],
+    "symbol": "^",
     "description": "^ [Caret]",
     "context": "Keyboard",
     "clarify": false,
@@ -571,6 +609,7 @@
   },
   {
     "names": ["NUMBER_7", "N7"],
+    "symbol": "7",
     "description": "7 and & [Ampersand]",
     "context": "Keyboard",
     "clarify": false,
@@ -586,6 +625,7 @@
   },
   {
     "names": ["AMPERSAND", "AMPS"],
+    "symbol": "&",
     "description": "& [Ampersand]",
     "context": "Keyboard",
     "clarify": false,
@@ -601,6 +641,7 @@
   },
   {
     "names": ["NUMBER_8", "N8"],
+    "symbol": "8",
     "description": "8 and * [Asterisk / Star]",
     "context": "Keyboard",
     "clarify": false,
@@ -616,6 +657,7 @@
   },
   {
     "names": ["ASTERISK", "ASTRK", "STAR"],
+    "symbol": "*",
     "description": "* [Asterisk / Star]",
     "context": "Keyboard",
     "clarify": false,
@@ -631,6 +673,7 @@
   },
   {
     "names": ["NUMBER_9", "N9"],
+    "symbol": "9",
     "description": "9 and ( [Left Parenthesis]",
     "context": "Keyboard",
     "clarify": false,
@@ -662,6 +705,7 @@
   },
   {
     "names": ["NUMBER_0", "N0"],
+    "symbol": "0",
     "description": "0 and ) [Right Parenthesis]",
     "context": "Keyboard",
     "clarify": false,
@@ -724,6 +768,7 @@
   },
   {
     "names": ["BACKSPACE", "BSPC"],
+    "symbol": "⌫",
     "description": "Backspace",
     "context": "Keyboard",
     "clarify": false,
@@ -739,6 +784,7 @@
   },
   {
     "names": ["TAB"],
+    "symbol": "⇥",
     "description": "Tab",
     "context": "Keyboard",
     "clarify": false,
@@ -770,6 +816,7 @@
   },
   {
     "names": ["MINUS"],
+    "symbol": "-",
     "description": "- [Minus] and _ [Underscore]",
     "context": "Keyboard",
     "clarify": false,
@@ -785,6 +832,7 @@
   },
   {
     "names": ["UNDERSCORE", "UNDER"],
+    "symbol": "_",
     "description": "_ [Underscore]",
     "context": "Keyboard",
     "clarify": false,
@@ -800,6 +848,7 @@
   },
   {
     "names": ["EQUAL"],
+    "symbol": "=",
     "description": "= [Equal] and + [Plus]",
     "context": "Keyboard",
     "clarify": false,
@@ -815,6 +864,7 @@
   },
   {
     "names": ["PLUS"],
+    "symbol": "+",
     "description": "+ [Plus]",
     "context": "Keyboard",
     "clarify": false,
@@ -910,6 +960,7 @@
   },
   {
     "names": ["PIPE"],
+    "symbol": "|",
     "description": "| [Pipe]",
     "context": "Keyboard",
     "clarify": false,
@@ -925,6 +976,7 @@
   },
   {
     "names": ["NON_US_HASH"],
+    "symbol": "#",
     "description": "Non-US # [Hash/Pound] and ~ [Tilde]",
     "context": "Keyboard",
     "clarify": false,
@@ -940,6 +992,7 @@
   },
   {
     "names": ["TILDE2"],
+    "symbol": "~",
     "description": "~ [Tilde]",
     "context": "Keyboard",
     "clarify": false,
@@ -971,6 +1024,7 @@
   },
   {
     "names": ["COLON"],
+    "symbol": ":",
     "description": ": [Colon]",
     "context": "Keyboard",
     "clarify": false,
@@ -1018,6 +1072,7 @@
   },
   {
     "names": ["GRAVE"],
+    "symbol": "`",
     "description": "` [Grave Accent] and ~ [Tilde]",
     "context": "Keyboard",
     "clarify": false,
@@ -1033,6 +1088,7 @@
   },
   {
     "names": ["TILDE"],
+    "symbol": "~",
     "description": "~ [Tilde]",
     "context": "Keyboard",
     "clarify": false,
@@ -1064,6 +1120,7 @@
   },
   {
     "names": ["LESS_THAN", "LT"],
+    "symbol": "<",
     "description": "< [Less Than]",
     "context": "Keyboard",
     "clarify": false,
@@ -1413,6 +1470,7 @@
   },
   {
     "names": ["PAGE_UP", "PG_UP"],
+    "symbol": "PgUp",
     "description": "Page Up",
     "context": "Keyboard",
     "clarify": false,
@@ -1458,6 +1516,7 @@
   },
   {
     "names": ["PAGE_DOWN", "PG_DN"],
+    "symbol": "PgDn",
     "description": "Page Down",
     "context": "Keyboard",
     "clarify": false,
@@ -1612,6 +1671,7 @@
   },
   {
     "names": ["KP_PLUS"],
+    "symbol": "+ KP",
     "description": "+ [Plus]",
     "context": "Keypad",
     "clarify": false,
@@ -1627,6 +1687,7 @@
   },
   {
     "names": ["KP_ENTER"],
+    "symbol": "⏎ KP",
     "description": "Enter",
     "context": "Keypad",
     "clarify": false,
@@ -1642,6 +1703,7 @@
   },
   {
     "names": ["KP_NUMBER_1", "KP_N1"],
+    "symbol": "1 KP",
     "description": "1",
     "context": "Keypad",
     "clarify": false,
@@ -1657,6 +1719,7 @@
   },
   {
     "names": ["KP_NUMBER_2", "KP_N2"],
+    "symbol": "2 KP",
     "description": "2",
     "context": "Keypad",
     "clarify": false,
@@ -1672,6 +1735,7 @@
   },
   {
     "names": ["KP_NUMBER_3", "KP_N3"],
+    "symbol": "3 KP",
     "description": "3",
     "context": "Keypad",
     "clarify": false,
@@ -1687,6 +1751,7 @@
   },
   {
     "names": ["KP_NUMBER_4", "KP_N4"],
+    "symbol": "4 KP",
     "description": "4",
     "context": "Keypad",
     "clarify": false,
@@ -1702,6 +1767,7 @@
   },
   {
     "names": ["KP_NUMBER_5", "KP_N5"],
+    "symbol": "5 KP",
     "description": "5",
     "context": "Keypad",
     "clarify": false,
@@ -1717,6 +1783,7 @@
   },
   {
     "names": ["KP_NUMBER_6", "KP_N6"],
+    "symbol": "6 KP",
     "description": "6",
     "context": "Keypad",
     "clarify": false,
@@ -1732,6 +1799,7 @@
   },
   {
     "names": ["KP_NUMBER_7", "KP_N7"],
+    "symbol": "7 KP",
     "description": "7",
     "context": "Keypad",
     "clarify": false,
@@ -1747,6 +1815,7 @@
   },
   {
     "names": ["KP_NUMBER_8", "KP_N8"],
+    "symbol": "8 KP",
     "description": "8",
     "context": "Keypad",
     "clarify": false,
@@ -1762,6 +1831,7 @@
   },
   {
     "names": ["KP_NUMBER_9", "KP_N9"],
+    "symbol": "9 KP",
     "description": "9",
     "context": "Keypad",
     "clarify": false,
@@ -1777,6 +1847,7 @@
   },
   {
     "names": ["KP_NUMBER_0", "KP_N0"],
+    "symbol": "0 KP",
     "description": "0",
     "context": "Keypad",
     "clarify": false,
@@ -1792,6 +1863,7 @@
   },
   {
     "names": ["KP_DOT"],
+    "symbol": ". KP",
     "description": ". [Dot]",
     "context": "Keypad",
     "clarify": false,
@@ -1823,6 +1895,7 @@
   },
   {
     "names": ["PIPE2"],
+    "symbol": "|",
     "description": "| [Pipe]",
     "context": "Keyboard",
     "clarify": false,
@@ -1873,6 +1946,7 @@
   },
   {
     "names": ["KP_EQUAL"],
+    "symbol": "= KP",
     "description": "= [Equal]",
     "context": "Keypad",
     "clarify": false,
@@ -2324,6 +2398,7 @@
   },
   {
     "names": ["KP_COMMA"],
+    "symbol": ", KP",
     "description": ", [Comma]",
     "context": "Keypad",
     "clarify": false,
