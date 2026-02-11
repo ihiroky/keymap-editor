@@ -69,11 +69,13 @@ function KeymapDrawer(props) {
                 className={styles.key}
                 style={key.style}
                 data-key-index={key.index}
+                title={key.binding}
               >
                 {key.behaviorLabel && (
                   <span
                     className={styles.keyBehavior}
                     data-testid={`key-behavior-${layer.index}-${key.index}`}
+                    title={key.binding}
                   >
                     {key.behaviorLabel}
                   </span>
@@ -81,6 +83,7 @@ function KeymapDrawer(props) {
                 <span
                   className={styles.keyTap}
                   data-testid={`key-tap-${layer.index}-${key.index}`}
+                  title={key.binding}
                 >
                   {key.tapLabel}
                 </span>
@@ -89,6 +92,7 @@ function KeymapDrawer(props) {
                     href={key.layerMove.href}
                     className={styles.layerActivator}
                     data-testid={`layer-link-${layer.index}-${key.index}`}
+                    title={`Move to ${key.layerMove.label} (Layer ${key.layerMove.targetLayer})`}
                   >
                     {key.layerMove.label}
                   </a>
@@ -101,6 +105,7 @@ function KeymapDrawer(props) {
                 key={combo.id}
                 className={styles.comboBox}
                 data-testid={combo.id}
+                title={combo.title || combo.label}
                 style={{
                   left: `${combo.left}px`,
                   top: `${combo.top}px`,
