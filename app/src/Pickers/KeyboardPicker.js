@@ -8,6 +8,7 @@ import { loadKeymap } from '../keymap.js'
 import Selector from "../Common/Selector"
 import GithubPicker from './Github/Picker'
 import BrowserFilePicker from './BrowserFile/Picker'
+import styles from './styles.module.css'
 
 const sourceChoices = compact([
   config.enableLocal ? { id: 'local', name: 'Local' } : null,
@@ -58,7 +59,7 @@ function KeyboardPicker(props) {
   }, [source, fetchLocalKeyboard])
 
   return (
-    <div>
+    <div className={styles.picker}>
       <Selector
         id="source"
         label="Source"
