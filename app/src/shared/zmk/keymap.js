@@ -219,6 +219,16 @@ function getLineStartIndex (content, index) {
   return content.lastIndexOf('\n', Math.max(index - 1, 0)) + 1
 }
 
+function getLineStartIfOnlyIndentBeforeIndex (content, index) {
+  if (!Number.isInteger(index)) {
+    return index
+  }
+
+  const lineStart = getLineStartIndex(content, index)
+  const prefix = content.slice(lineStart, index)
+  return /^[ \t]*$/.test(prefix) ? lineStart : index
+}
+
 function applyTextReplacements (content, replacements) {
   const sorted = [...replacements]
     .filter(item => Number.isInteger(item.start) && Number.isInteger(item.end) && item.end >= item.start)
@@ -451,11 +461,22 @@ function collectNodeRange (nodes) {
   return { start, end }
 }
 
-function replaceBehaviorSectionLocally (sectionNodes, targetNodes, behaviourTypeByCompatible, replacements, insertAt) {
+function replaceBehaviorSectionLocally (
+  sourceCode,
+  sectionNodes,
+  targetNodes,
+  behaviourTypeByCompatible,
+  replacements,
+  insertAt
+) {
   const rendered = renderBehaviorOverrides(targetNodes, behaviourTypeByCompatible)
   const range = collectNodeRange(sectionNodes)
   if (range) {
-    replacements.push({ start: range.start, end: range.end, replacement: rendered })
+    replacements.push({
+      start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, range.start),
+      end: range.end,
+      replacement: rendered
+    })
     return true
   }
 
@@ -509,7 +530,7 @@ function planBehaviorNodeUpdates (params) {
     }
 
     replacements.push({
-      start: sourceRangeNode.start,
+      start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceRangeNode.start),
       end: sourceRangeNode.end,
       replacement: renderBehaviorNode(
         targetNode,
@@ -594,7 +615,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
 
   if (!layerShapeMatches) {
     replacements.push({
-      start: keymapNode.start,
+      start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, keymapNode.start),
       end: keymapNode.end,
       replacement: renderFullKeymapBlock(layout, keymap, encoded, options.sensors)
     })
@@ -605,7 +626,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       const sourceLayerName = String(sourceLayerNames[index])
       if (sourceLayer.name !== targetLayerName || sourceLayer.name !== sourceLayerName) {
         replacements.push({
-          start: keymapNode.start,
+          start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, keymapNode.start),
           end: keymapNode.end,
           replacement: renderFullKeymapBlock(layout, keymap, encoded, options.sensors)
         })
@@ -658,7 +679,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
         replacements.push(...localReplacements)
       } else {
         replacements.push({
-          start: sourceLayer.start,
+          start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceLayer.start),
           end: sourceLayer.end,
           replacement: renderLayerBlock(
             layout,
@@ -684,6 +705,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
     })
   ) {
     const replaced = replaceBehaviorSectionLocally(
+      sourceCode,
       sourceOverrideNodes,
       behaviorOverrides,
       behaviourTypeByCompatible,
@@ -723,7 +745,11 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
     sectionInsertions.push(renderComboDefinitions(comboTargets, behaviourTypeByCompatible, sectionIndentUnit))
   } else if (sourceCombosNode) {
     if (sourceCombos.length > 0 && comboTargets.length === 0) {
-      replacements.push({ start: sourceCombosNode.start, end: sourceCombosNode.end, replacement: '' })
+      replacements.push({
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceCombosNode.start),
+        end: sourceCombosNode.end,
+        replacement: ''
+      })
     } else if (
       sourceCombos.length !== comboTargets.length ||
       !planBehaviorNodeUpdates({
@@ -736,7 +762,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       })
     ) {
       replacements.push({
-        start: sourceCombosNode.start,
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceCombosNode.start),
         end: sourceCombosNode.end,
         replacement: renderComboDefinitions(comboTargets, behaviourTypeByCompatible, sectionIndentUnit)
       })
@@ -752,7 +778,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   } else if (sourceConditionalLayersNode) {
     if (sourceConditionalLayers.length > 0 && conditionalLayerTargets.length === 0) {
       replacements.push({
-        start: sourceConditionalLayersNode.start,
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceConditionalLayersNode.start),
         end: sourceConditionalLayersNode.end,
         replacement: ''
       })
@@ -768,7 +794,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       })
     ) {
       replacements.push({
-        start: sourceConditionalLayersNode.start,
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceConditionalLayersNode.start),
         end: sourceConditionalLayersNode.end,
         replacement: renderConditionalLayerDefinitions(
           conditionalLayerTargets,
@@ -784,7 +810,11 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   } else if (sourceMacrosNode) {
     const sourceMacros = sourceSplitDefinitions.macroDefinitions
     if (sourceMacros.length > 0 && macroTargets.length === 0) {
-      replacements.push({ start: sourceMacrosNode.start, end: sourceMacrosNode.end, replacement: '' })
+      replacements.push({
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceMacrosNode.start),
+        end: sourceMacrosNode.end,
+        replacement: ''
+      })
     } else if (
       sourceMacros.length !== macroTargets.length ||
       !planBehaviorNodeUpdates({
@@ -797,7 +827,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       })
     ) {
       replacements.push({
-        start: sourceMacrosNode.start,
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceMacrosNode.start),
         end: sourceMacrosNode.end,
         replacement: renderMacroDefinitions(macroTargets, behaviourTypeByCompatible, sectionIndentUnit)
       })
@@ -809,7 +839,11 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   } else if (sourceBehaviorsNode) {
     const sourceBehaviors = sourceSplitDefinitions.behaviorDefinitions
     if (sourceBehaviors.length > 0 && behaviorTargets.length === 0) {
-      replacements.push({ start: sourceBehaviorsNode.start, end: sourceBehaviorsNode.end, replacement: '' })
+      replacements.push({
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceBehaviorsNode.start),
+        end: sourceBehaviorsNode.end,
+        replacement: ''
+      })
     } else if (
       sourceBehaviors.length !== behaviorTargets.length ||
       !planBehaviorNodeUpdates({
@@ -822,7 +856,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       })
     ) {
       replacements.push({
-        start: sourceBehaviorsNode.start,
+        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceBehaviorsNode.start),
         end: sourceBehaviorsNode.end,
         replacement: renderBehaviorDefinitions(behaviorTargets, behaviourTypeByCompatible, sectionIndentUnit)
       })
