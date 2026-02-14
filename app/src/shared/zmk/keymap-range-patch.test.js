@@ -137,6 +137,81 @@ describe('keymap range patch generation', () => {
     expect(generated.code).toContain('macro_b: macro_b')
   })
 
+  test('does not deepen behavior node indentation across repeated structural edits', () => {
+    let source = `
+/ {
+    behaviors {
+        td_a: td_a {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            bindings = <&kp A>, <&kp B>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&none>;
+        };
+    };
+};
+`
+
+    for (let index = 1; index <= 3; index += 1) {
+      const parsed = parseKeymap(parseKeymapCode(source))
+      const definition = parsed.behavior_definitions[0]
+      const customKey = `custom-ms-${index}`
+      definition.properties[customKey] = index
+      definition.property_types[customKey] = 'int'
+      if (!definition.property_order.includes(customKey)) {
+        definition.property_order.push(customKey)
+      }
+
+      const generated = generateKeymap(singleKeyLayout, parsed)
+      source = generated.code
+
+      const behaviorNodeIndent = source.match(/\n( +)td_a: td_a \{/)
+      expect(behaviorNodeIndent).not.toBeNull()
+      expect(behaviorNodeIndent[1]).toHaveLength(8)
+    }
+  })
+
+  test('does not deepen behaviors section indentation across repeated section replacements', () => {
+    let source = `
+/ {
+    behaviors {
+        td_a: td_a {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            bindings = <&kp A>, <&kp B>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&none>;
+        };
+    };
+};
+`
+
+    for (let index = 1; index <= 3; index += 1) {
+      const parsed = parseKeymap(parseKeymapCode(source))
+      parsed.behavior_definitions[0].label = `td_${index}`
+
+      const generated = generateKeymap(singleKeyLayout, parsed)
+      source = generated.code
+
+      const sectionIndent = source.match(/\n( +)behaviors \{/)
+      const behaviorNodeIndent = source.match(/\n( +)td_[0-9]+: td_a \{/)
+      expect(sectionIndent).not.toBeNull()
+      expect(behaviorNodeIndent).not.toBeNull()
+      expect(sectionIndent[1]).toHaveLength(4)
+      expect(behaviorNodeIndent[1]).toHaveLength(8)
+    }
+  })
+
   test('localizes regeneration when combo structure changes', () => {
     const source = `
 / {
