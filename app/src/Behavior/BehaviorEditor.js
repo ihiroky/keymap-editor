@@ -1,4 +1,5 @@
 import keyBy from 'lodash/keyBy'
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -829,6 +830,22 @@ function BehaviorEditor (props) {
   const validationErrors = useMemo(() => (
     validateNodes(definitions, overrides, typeByCompatible, overrideTypeByBind)
   ), [definitions, overrides, typeByCompatible, overrideTypeByBind])
+
+  const applyParsedChildren = () => {
+    if (!selectedNode || !parsedChildrenDraft.children) {
+      return
+    }
+
+    if (isEqual(selectedNode.children || [], parsedChildrenDraft.children)) {
+      return
+    }
+
+    updateSelectedNode(current => {
+      const next = cloneNode(current)
+      next.children = parsedChildrenDraft.children
+      return next
+    })
+  }
 
   const updateCollection = (kind, nextCollection) => {
     const payload = {
@@ -1674,12 +1691,14 @@ function BehaviorEditor (props) {
               <div className={styles.groupTitle}>Children (.keymap)</div>
               <div className={styles.childrenHelp}>
                 Enter only child nodes that belong inside the parent block, for example <code>{'foo: bar { ... };'}</code>.
+                Changes are applied automatically when this field loses focus.
               </div>
               <textarea
                 className={styles.childrenJson}
                 aria-label="Children (.keymap)"
                 value={childrenDraft}
                 onChange={event => setChildrenDraft(event.target.value)}
+                onBlur={applyParsedChildren}
               />
               <div className={styles.childrenActions}>
                 <button
@@ -1696,23 +1715,6 @@ function BehaviorEditor (props) {
                   disabled={Boolean(parsedChildrenDraft.error)}
                 >
                   Format
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!parsedChildrenDraft.children) {
-                      return
-                    }
-
-                    updateSelectedNode(current => {
-                      const next = cloneNode(current)
-                      next.children = parsedChildrenDraft.children
-                      return next
-                    })
-                  }}
-                  disabled={Boolean(parsedChildrenDraft.error)}
-                >
-                  Apply Children
                 </button>
                 {parsedChildrenDraft.error && (
                   <span className={styles.childrenError}>{parsedChildrenDraft.error}</span>

@@ -167,32 +167,31 @@ describe('BehaviorEditor children DSL', () => {
     expect(screen.getByText('Add Known Properties')).toBeTruthy()
   })
 
-  test('shows parse errors live and disables apply', () => {
-    renderEditor()
-
-    const textarea = screen.getByLabelText('Children (.keymap)')
-    const applyButton = screen.getByRole('button', { name: 'Apply Children' })
-
-    fireEvent.change(textarea, { target: { value: 'broken_node { value = <1>;' } })
-
-    expect(screen.getByText(/Invalid children snippet/i)).toBeTruthy()
-    expect(applyButton.disabled).toBe(true)
-  })
-
-  test('applies valid DSL to behavior definition children', () => {
+  test('shows parse errors live and keeps formatter disabled', () => {
     const { onUpdate } = renderEditor()
 
     const textarea = screen.getByLabelText('Children (.keymap)')
-    const applyButton = screen.getByRole('button', { name: 'Apply Children' })
+    const formatButton = screen.getByRole('button', { name: 'Format' })
+
+    fireEvent.change(textarea, { target: { value: 'broken_node { value = <1>;' } })
+    fireEvent.blur(textarea)
+
+    expect(screen.getByText(/Invalid children snippet/i)).toBeTruthy()
+    expect(formatButton.disabled).toBe(true)
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('applies valid DSL to behavior definition children on blur', () => {
+    const { onUpdate } = renderEditor()
+
+    const textarea = screen.getByLabelText('Children (.keymap)')
 
     fireEvent.change(textarea, {
       target: {
         value: 'child_label: child_node { bindings = <&kp B>; };'
       }
     })
-
-    expect(applyButton.disabled).toBe(false)
-    fireEvent.click(applyButton)
+    fireEvent.blur(textarea)
 
     expect(onUpdate).toHaveBeenCalledTimes(1)
     const nextKeymap = onUpdate.mock.calls[0][0]
