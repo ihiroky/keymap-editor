@@ -28,17 +28,36 @@
 }
 
 .listItem {
+  position: relative;
+  overflow: hidden;
   text-align: left;
   border: 1px solid var(--theme-border-strong);
   border-radius: 7px;
   background: var(--theme-surface-1);
   color: var(--theme-text);
   padding: 8px 10px;
+  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.listItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
 }
 
 .listItem[data-selected="true"] {
   border-color: var(--selection);
   background: var(--selection-soft);
+  box-shadow: 0 0 0 2px var(--selection-ring);
+  font-weight: 600;
+}
+
+.listItem[data-selected="true"]::before {
+  background: var(--selection);
 }
 
 .actions {
