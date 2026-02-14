@@ -44,7 +44,7 @@ function Loader(props) {
 
   return (
     <Modal>
-      <Spinner style={{ color: 'white' }}>
+      <Spinner style={{ color: 'var(--theme-text)' }}>
         <p>Waiting for API...</p>
       </Spinner>
     </Modal>

@@ -15,7 +15,9 @@ const listStyle = {
   padding: '10px',
   fontFamily: 'monospace',
   fontSize: '80%',
-  backgroundColor: '#efefef'
+  backgroundColor: 'var(--theme-surface-2)',
+  border: '1px solid var(--theme-border)',
+  color: 'var(--theme-text)'
 }
 
 const listItemStyle = { margin: '10px' }

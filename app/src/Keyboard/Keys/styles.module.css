@@ -4,8 +4,8 @@
 	justify-content: center;
 	align-items: center;
 
-	color: #999;
-	background-color: whitesmoke;
+	color: var(--theme-text-subtle);
+	background-color: var(--theme-surface-2);
 	font-size: 110%;
 	border-radius: 5px;
 }
@@ -42,7 +42,7 @@
 	cursor: pointer;
 }
 .code.highlight {
-	background-color: white !important;
+	background-color: var(--theme-surface-1) !important;
 	color: var(--hover-selection) !important;
 }
 
@@ -62,7 +62,7 @@
 
 .behaviour-binding:hover {
   color: var(--hover-selection) !important;
-  background-color: white;
+  background-color: var(--theme-surface-1);
   border-radius: 5px 0;
   opacity: 1;
 }

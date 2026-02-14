@@ -1,10 +1,12 @@
 const styles = {
   dialog: {
-    backgroundColor: 'white',
+    backgroundColor: 'var(--theme-surface-1)',
+    color: 'var(--theme-text)',
+    border: '1px solid var(--theme-border)',
     padding: '20px 40px',
     margin: '40px',
     maxWidth: '500px',
-    boxShadow: '0px 10px 25px rgba(0, 0, 0, 0.4)',
+    boxShadow: 'var(--theme-shadow-strong)',
   },
   button: {
     display: 'block',
