@@ -598,13 +598,23 @@ function Keyboard(props) {
     }
 
     const duplicatedLayer = cloneValue(keymap.layers[layerIndex])
+    const insertAt = layerIndex + 1
     const layer_names = [
-      ...keymap.layer_names,
-      buildDuplicatedLayerName(keymap.layer_names, layerIndex)
+      ...keymap.layer_names.slice(0, insertAt),
+      buildDuplicatedLayerName(keymap.layer_names, layerIndex),
+      ...keymap.layer_names.slice(insertAt)
     ]
-    const layers = [...keymap.layers, duplicatedLayer]
+    const layers = [
+      ...keymap.layers.slice(0, insertAt),
+      duplicatedLayer,
+      ...keymap.layers.slice(insertAt)
+    ]
     const sensor_layers = Array.isArray(keymap.sensor_layers)
-      ? [...keymap.sensor_layers, cloneValue(keymap.sensor_layers[layerIndex] || [])]
+      ? [
+          ...keymap.sensor_layers.slice(0, insertAt),
+          cloneValue(keymap.sensor_layers[layerIndex] || []),
+          ...keymap.sensor_layers.slice(insertAt)
+        ]
       : undefined
 
     const nextKeymap = { ...keymap, layer_names, layers }
@@ -612,7 +622,7 @@ function Keyboard(props) {
       nextKeymap.sensor_layers = sensor_layers
     }
 
-    setActiveLayer(layers.length - 1)
+    setActiveLayer(insertAt)
     onUpdate(nextKeymap)
   }, [keymap, setActiveLayer, onUpdate])
 
