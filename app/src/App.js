@@ -597,6 +597,7 @@ function App() {
               keymap={behaviorEditorKeymap}
               behaviorTypes={definitions?.behaviourTypes || []}
               availableBehaviours={mergedBehaviours}
+              keycodes={definitions?.keycodes || []}
               onUpdate={handleUpdateBehaviorDefinitions}
             />
           )}

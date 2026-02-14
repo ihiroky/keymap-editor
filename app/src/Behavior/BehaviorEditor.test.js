@@ -34,6 +34,46 @@ function createBehaviorType () {
   }
 }
 
+function createModMorphBehaviorType () {
+  return {
+    compatible: 'zmk,behavior-mod-morph',
+    displayName: 'Mod-Morph',
+    propertyTypes: {
+      compatible: 'string',
+      '#binding-cells': 'int',
+      bindings: 'bindings',
+      mods: 'token-array',
+      'keep-mods': 'token-array'
+    },
+    propertySpecs: {
+      compatible: {
+        type: 'string',
+        required: true,
+        fixed: 'zmk,behavior-mod-morph'
+      },
+      '#binding-cells': {
+        type: 'int',
+        required: true,
+        fixed: 0
+      },
+      bindings: {
+        type: 'behavior-bindings',
+        required: true,
+        minItems: 2
+      },
+      mods: {
+        type: 'token-array',
+        required: true
+      },
+      'keep-mods': {
+        type: 'token-array'
+      }
+    },
+    overrideBinds: [],
+    overridePropertyKeys: []
+  }
+}
+
 function createDefinitionNode () {
   return {
     label: 'macro_test',
@@ -55,6 +95,29 @@ function createDefinitionNode () {
   }
 }
 
+function createModMorphDefinitionNode () {
+  return {
+    label: 'mm_test',
+    name: 'mm_test_node',
+    bind: '&mm_test',
+    compatible: 'zmk,behavior-mod-morph',
+    properties: {
+      compatible: 'zmk,behavior-mod-morph',
+      '#binding-cells': 0,
+      bindings: ['&kp A', '&kp B'],
+      mods: ['(MOD_LGUI|MOD_RSFT)']
+    },
+    property_types: {
+      compatible: 'string',
+      '#binding-cells': 'int',
+      bindings: 'bindings',
+      mods: 'token-array'
+    },
+    property_order: ['compatible', '#binding-cells', 'bindings', 'mods'],
+    children: []
+  }
+}
+
 function createOverrideNode (overrides = {}) {
   return {
     label: null,
@@ -72,6 +135,7 @@ function createOverrideNode (overrides = {}) {
 function renderEditor (options = {}) {
   const onUpdate = options.onUpdate || jest.fn()
   const keymap = {
+    layer_names: options.layerNames || ['Base', 'Nav', 'Fn'],
     layers: [],
     sensor_layers: [],
     behavior_definitions: options.behaviorDefinitions || [createDefinitionNode()],
@@ -82,10 +146,11 @@ function renderEditor (options = {}) {
     <BehaviorEditor
       keymap={keymap}
       behaviorTypes={options.behaviorTypes || [createBehaviorType()]}
-      availableBehaviours={[
+      availableBehaviours={options.availableBehaviours || [
         { code: '&none', name: 'None' },
         { code: '&kp', name: 'Key Press' }
       ]}
+      keycodes={options.keycodes || []}
       onUpdate={onUpdate}
     />
   )
@@ -186,5 +251,102 @@ describe('BehaviorEditor children DSL', () => {
     const customKeyInput = rawGroup.querySelector('input[value="custom_raw"]')
     fireEvent.change(customKeyInput, { target: { value: 'compatible' } })
     expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('uses ValuePicker when binding parameters have explicit choices', () => {
+    const node = createDefinitionNode()
+    node.properties.bindings = ['&to 0']
+
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [node],
+      availableBehaviours: [
+        { code: '&none', name: 'None' },
+        { code: '&to', name: 'To Layer', params: ['layer'] }
+      ],
+      layerNames: Array.from({ length: 30 }, (_, index) => `Layer_${index}`)
+    })
+
+    fireEvent.click(screen.getByLabelText('binding-param-picker-bindings-0-0'))
+    const result = document.querySelector('li[data-result-index="12"]')
+    expect(result).toBeTruthy()
+    fireEvent.click(result)
+
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].properties.bindings).toEqual(['&to 12'])
+  })
+
+  test('shows space-separated parameter guidance when parameter choices are open-ended', () => {
+    const node = createDefinitionNode()
+    node.properties.bindings = ['&foo A B']
+
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [node],
+      availableBehaviours: [
+        { code: '&none', name: 'None' },
+        { code: '&foo', name: 'Foo', params: ['left', 'right'] }
+      ]
+    })
+
+    expect(screen.getByText(/space-separated tokens/i)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('binding-params-manual-bindings-0'), {
+      target: { value: 'C D' }
+    })
+
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].properties.bindings).toEqual(['&foo C D'])
+  })
+
+  test('renders mod-morph mods as checkboxes and serializes selected mask', () => {
+    const node = createModMorphDefinitionNode()
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [node],
+      behaviorTypes: [createModMorphBehaviorType()],
+      availableBehaviours: [
+        { code: '&none', name: 'None' },
+        { code: '&kp', name: 'Key Press', params: ['code'] }
+      ]
+    })
+
+    const lgui = screen.getByLabelText('mods-MOD_LGUI')
+    const rsft = screen.getByLabelText('mods-MOD_RSFT')
+    const lsft = screen.getByLabelText('mods-MOD_LSFT')
+    expect(lgui.checked).toBe(true)
+    expect(rsft.checked).toBe(true)
+    expect(lsft.checked).toBe(false)
+    expect(screen.getByText(/mods =/i)).toBeTruthy()
+
+    fireEvent.click(lsft)
+
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].properties.mods).toEqual(['(MOD_LSFT|MOD_RSFT|MOD_LGUI)'])
+  })
+
+  test('renders mod-morph keep-mods as checkboxes and serializes selected mask', () => {
+    const node = createModMorphDefinitionNode()
+    node.properties['keep-mods'] = ['(MOD_LCTL|MOD_RALT)']
+    node.property_types['keep-mods'] = 'token-array'
+    node.property_order.push('keep-mods')
+
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [node],
+      behaviorTypes: [createModMorphBehaviorType()],
+      availableBehaviours: [
+        { code: '&none', name: 'None' },
+        { code: '&kp', name: 'Key Press', params: ['code'] }
+      ]
+    })
+
+    const lctl = screen.getByLabelText('keep-mods-MOD_LCTL')
+    const ralt = screen.getByLabelText('keep-mods-MOD_RALT')
+    const lgui = screen.getByLabelText('keep-mods-MOD_LGUI')
+    expect(lctl.checked).toBe(true)
+    expect(ralt.checked).toBe(true)
+    expect(lgui.checked).toBe(false)
+    expect(screen.getByText(/keep-mods =/i)).toBeTruthy()
+
+    fireEvent.click(lgui)
+
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].properties['keep-mods']).toEqual(['(MOD_LCTL|MOD_RALT|MOD_LGUI)'])
   })
 })
