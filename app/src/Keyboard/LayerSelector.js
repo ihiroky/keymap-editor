@@ -22,9 +22,11 @@ function onKey(mapping) {
 function LayerSelector(props) {
   const ref = useRef(null)
   const { activeLayer, layers } = props
-  const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer } = props
+  const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer, onDuplicateLayer, onMoveLayer } = props
   const [renaming, setRenaming] = useState(false)
   const [editing, setEditing] = useState('')
+  const [draggingLayer, setDraggingLayer] = useState(null)
+  const [dropLayer, setDropLayer] = useState(null)
 
   const handleSelect = useMemo(() => function(layer) {
     if (layer === activeLayer) {
@@ -45,6 +47,49 @@ function LayerSelector(props) {
     const confirmation = `Really delete layer: ${layerName}?`
     window.confirm(confirmation) && onDeleteLayer(layerIndex)
   }, [onDeleteLayer])
+
+  const handleDuplicate = useMemo(() => function(layerIndex) {
+    onDuplicateLayer(layerIndex)
+  }, [onDuplicateLayer])
+
+  const handleDragStart = useMemo(() => function(layerIndex, event) {
+    if (renaming) {
+      return
+    }
+
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(layerIndex))
+    setDraggingLayer(layerIndex)
+    setDropLayer(layerIndex)
+  }, [renaming])
+
+  const handleDragOver = useMemo(() => function(layerIndex, event) {
+    if (draggingLayer === null) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDropLayer(layerIndex)
+  }, [draggingLayer])
+
+  const handleDrop = useMemo(() => function(layerIndex, event) {
+    if (draggingLayer === null) {
+      return
+    }
+
+    event.preventDefault()
+    if (draggingLayer !== layerIndex) {
+      onMoveLayer(draggingLayer, layerIndex)
+    }
+    setDraggingLayer(null)
+    setDropLayer(null)
+  }, [draggingLayer, onMoveLayer])
+
+  const handleDragEnd = useMemo(() => function() {
+    setDraggingLayer(null)
+    setDropLayer(null)
+  }, [])
 
   const finishEditing = useCallback(() => {
     if (!renaming) {
@@ -97,9 +142,18 @@ function LayerSelector(props) {
         {layers.map((name, i) => (
           <li
             key={`layer-${i}`}
-            className={activeLayer === i ? styles.active : ''}
+            className={[
+              activeLayer === i ? styles.active : '',
+              draggingLayer === i ? styles.dragging : '',
+              dropLayer === i && draggingLayer !== null && draggingLayer !== i ? styles['drag-over'] : ''
+            ].join(' ')}
             data-layer={i}
+            draggable={!renaming}
             onClick={stop(() => handleSelect(i))}
+            onDragStart={event => handleDragStart(i, event)}
+            onDragOver={event => handleDragOver(i, event)}
+            onDrop={event => handleDrop(i, event)}
+            onDragEnd={handleDragEnd}
           >
             <span className={styles.index}>{i}</span>
             {(activeLayer === i && renaming) ? (
@@ -121,9 +175,16 @@ function LayerSelector(props) {
               <span className={styles.name}>
                 {name}
                 <Icon
+                  name="copy"
+                  className={styles.duplicate}
+                  onClick={stop(() => handleDuplicate(i))}
+                  title={`Duplicate layer ${name}`}
+                />
+                <Icon
                   name="times-circle"
                   className={styles.delete}
                   onClick={stop(() => handleDelete(i, name))}
+                  title={`Delete layer ${name}`}
                 />
               </span>
             )}
@@ -144,7 +205,9 @@ LayerSelector.propTypes = {
   onSelect: PropTypes.func.isRequired,
   onNewLayer: PropTypes.func.isRequired,
   onRenameLayer: PropTypes.func.isRequired,
-  onDeleteLayer: PropTypes.func.isRequired
+  onDeleteLayer: PropTypes.func.isRequired,
+  onDuplicateLayer: PropTypes.func.isRequired,
+  onMoveLayer: PropTypes.func.isRequired
 }
 
 export default LayerSelector

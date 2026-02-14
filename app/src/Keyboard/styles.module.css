@@ -162,6 +162,15 @@
 	color: white;
 }
 
+.layer-selector li.dragging {
+  opacity: 0.55;
+}
+
+.layer-selector li.drag-over {
+  outline: 2px dashed rgba(60, 179, 113, 0.95);
+  outline-offset: 2px;
+}
+
 .layer-selector li .index {
   display: inline-flex;
   align-items: center;
@@ -208,6 +217,7 @@
   color: white;
 }
 
+.layer-selector .duplicate,
 .layer-selector .delete {
   margin-left: auto;
   display: inline-flex;
@@ -216,6 +226,10 @@
   height: 30px;
   line-height: 1;
   width: 30px;
+}
+
+.layer-selector .delete {
+  margin-left: 0;
 }
 
 .layer-selector li.active .name {
