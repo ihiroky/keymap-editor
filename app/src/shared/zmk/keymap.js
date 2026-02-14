@@ -1110,6 +1110,23 @@ function renderDefaultPropertyValue (value) {
 }
 
 function renderPropertyValue (value, type) {
+  const renderNumericLikeValue = () => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return `<${value}>`
+    }
+
+    const trimmed = String(value ?? '').trim()
+    if (!trimmed) {
+      return '<0>'
+    }
+
+    if (/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(trimmed)) {
+      return `<${Number(trimmed)}>`
+    }
+
+    return `<${trimmed}>`
+  }
+
   switch (type) {
     case 'string':
       return `"${escapeString(value)}"`
@@ -1117,7 +1134,7 @@ function renderPropertyValue (value, type) {
     case 'uint':
     case 'number':
     case 'angle':
-      return `<${Number(value)}>`
+      return renderNumericLikeValue()
     case 'bindings':
       return renderBindingsValue(value)
     case 'token':
