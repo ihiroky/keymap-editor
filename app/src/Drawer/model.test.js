@@ -16,7 +16,8 @@ const baseLayout = [
 const baseKeycodes = [
   { code: 'A', symbol: 'A' },
   { code: 'TAB', symbol: 'TAB' },
-  { code: 'SPACE', symbol: 'SPACE' }
+  { code: 'SPACE', symbol: 'SPACE' },
+  { code: 'LEFT_SHIFT', symbol: '⇧' }
 ]
 
 const baseBehaviours = [
@@ -153,12 +154,20 @@ describe('Drawer model', () => {
 
     expect(formatKeyBindingDisplay('&bootloader', baseKeycodes, baseBehaviours)).toEqual({
       tapLabel: '',
-      behaviorLabel: 'bootloader'
+      behaviorLabel: 'bootloader',
+      holdLabel: null
     })
 
     expect(formatKeyBindingDisplay('&mkp MB1', baseKeycodes, baseBehaviours)).toEqual({
       tapLabel: 'MB1',
-      behaviorLabel: 'mkp'
+      behaviorLabel: 'mkp',
+      holdLabel: null
+    })
+
+    expect(formatKeyBindingDisplay('&mt LEFT_SHIFT A', baseKeycodes, baseBehaviours)).toEqual({
+      tapLabel: '⇧ A',
+      behaviorLabel: null,
+      holdLabel: null
     })
 
     const model = buildLayerRenderModel({

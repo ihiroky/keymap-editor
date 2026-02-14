@@ -776,31 +776,49 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
       sectionIndentUnit
     ))
   } else if (sourceConditionalLayersNode) {
+    let conditionalLayersSectionReplaced = false
     if (sourceConditionalLayers.length > 0 && conditionalLayerTargets.length === 0) {
       replacements.push({
         start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceConditionalLayersNode.start),
         end: sourceConditionalLayersNode.end,
         replacement: ''
       })
-    } else if (
-      sourceConditionalLayers.length !== conditionalLayerTargets.length ||
-      !planBehaviorNodeUpdates({
-        sourceCode,
-        sourceRangeNodes: sourceConditionalLayersNode.children || [],
-        sourceParsedNodes: sourceConditionalLayers,
-        targetNodes: conditionalLayerTargets,
-        behaviourTypeByCompatible,
-        replacements
-      })
-    ) {
-      replacements.push({
-        start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceConditionalLayersNode.start),
-        end: sourceConditionalLayersNode.end,
-        replacement: renderConditionalLayerDefinitions(
-          conditionalLayerTargets,
+      conditionalLayersSectionReplaced = true
+    } else {
+      const patchable = sourceConditionalLayers.length === conditionalLayerTargets.length &&
+        planBehaviorNodeUpdates({
+          sourceCode,
+          sourceRangeNodes: sourceConditionalLayersNode.children || [],
+          sourceParsedNodes: sourceConditionalLayers,
+          targetNodes: conditionalLayerTargets,
           behaviourTypeByCompatible,
-          sectionIndentUnit
-        )
+          replacements
+        })
+
+      if (!patchable) {
+        replacements.push({
+          start: getLineStartIfOnlyIndentBeforeIndex(sourceCode, sourceConditionalLayersNode.start),
+          end: sourceConditionalLayersNode.end,
+          replacement: renderConditionalLayerDefinitions(
+            conditionalLayerTargets,
+            behaviourTypeByCompatible,
+            sectionIndentUnit
+          )
+        })
+        conditionalLayersSectionReplaced = true
+      }
+    }
+
+    const hasConditionalSectionCompatible = Boolean(sourceConditionalLayersNode.properties?.compatible)
+    if (!conditionalLayersSectionReplaced && conditionalLayerTargets.length > 0 && !hasConditionalSectionCompatible) {
+      const sectionIndent = getLineIndent(sourceCode, sourceConditionalLayersNode.start)
+      const indentUnit = getIndentUnitFromLineIndent(sectionIndent)
+      const propertyIndent = `${sectionIndent}${indentUnit}`
+
+      replacements.push({
+        start: sourceConditionalLayersNode.bodyStart,
+        end: sourceConditionalLayersNode.bodyStart,
+        replacement: `\n${propertyIndent}compatible = "${CONDITIONAL_LAYER_SECTION_COMPATIBLE}";`
       })
     }
   }
@@ -1241,14 +1259,20 @@ function renderComboDefinitions (nodes, behaviourTypeByCompatible, indentUnit = 
     `${sectionIndent}};\n`
 }
 
+const CONDITIONAL_LAYER_SECTION_COMPATIBLE = 'zmk,conditional-layers'
+
 function renderConditionalLayerDefinitions (nodes, behaviourTypeByCompatible, indentUnit = '    ') {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     return ''
   }
 
   const sectionIndent = indentUnit
+  const propertyIndent = `${indentUnit}${indentUnit}`
   const children = nodes.map(node => renderBehaviorNode(node, 2, behaviourTypeByCompatible, indentUnit)).join('')
-  return `${sectionIndent}conditional_layers {\n${children}${sectionIndent}};\n`
+  return `${sectionIndent}conditional_layers {\n` +
+    `${propertyIndent}compatible = "${CONDITIONAL_LAYER_SECTION_COMPATIBLE}";\n` +
+    `${children}` +
+    `${sectionIndent}};\n`
 }
 
 function renderBehaviorDefinitions (nodes, behaviourTypeByCompatible, indentUnit = '    ') {

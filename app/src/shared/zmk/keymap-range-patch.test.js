@@ -298,6 +298,7 @@ describe('keymap range patch generation', () => {
     const generated = generateKeymap(singleKeyLayout, parsed)
 
     expect(generated.code).toContain('// keep-conditional-layer-comment')
+    expect(generated.code).toContain('compatible = "zmk,conditional-layers";')
     expect(generated.code).toContain('then-layer = <4>;')
   })
 
@@ -337,6 +338,7 @@ describe('keymap range patch generation', () => {
 
     expect(generated.code).toContain('// keep-layer-comment')
     expect(generated.code).toContain('conditional_layers {')
+    expect(generated.code).toContain('compatible = "zmk,conditional-layers";')
     expect(generated.code).toContain('nav_num: nav_num')
   })
 
@@ -382,6 +384,7 @@ describe('keymap range patch generation', () => {
     const generated = generateKeymap(singleKeyLayout, parsed)
 
     expect(generated.code).toMatch(/\n\tconditional_layers \{/)
+    expect(generated.code).toMatch(/\n\t\tcompatible = "zmk,conditional-layers";/)
     expect(generated.code).toMatch(/\n\t\tnav_num: nav_num \{/)
     expect(generated.code).toMatch(/\n\tkeymap \{/)
   })

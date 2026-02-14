@@ -236,28 +236,42 @@ function formatBindingDisplay(binding, keycodes, behaviours, splitFallbackBehavi
   const behaviourByCode = keyBy(behaviours || [], 'code')
 
   if (!code) {
-    return { tapLabel: '', behaviorLabel: null }
+    return { tapLabel: '', behaviorLabel: null, holdLabel: null }
   }
 
   if (code === '&trans') {
-    return { tapLabel: '▽', behaviorLabel: null }
+    return { tapLabel: '▽', behaviorLabel: null, holdLabel: null }
   }
 
   if (code === '&none') {
-    return { tapLabel: 'none', behaviorLabel: null }
+    return { tapLabel: 'none', behaviorLabel: null, holdLabel: null }
   }
 
   if (code === '&kp') {
     return {
       tapLabel: truncateLabel(keycodeDisplayValue(params[0], keycodeByCode) || 'KP'),
-      behaviorLabel: null
+      behaviorLabel: null,
+      holdLabel: null
     }
   }
 
   if (code === '&lt') {
     const tapValue = keycodeDisplayValue(params[1], keycodeByCode)
     if (tapValue) {
-      return { tapLabel: truncateLabel(tapValue), behaviorLabel: null }
+      return { tapLabel: truncateLabel(tapValue), behaviorLabel: null, holdLabel: null }
+    }
+  }
+
+  if (code === '&mt') {
+    const holdValue = keycodeDisplayValue(params[0], keycodeByCode)
+    const tapValue = keycodeDisplayValue(params[1], keycodeByCode)
+    const combinedLabel = [holdValue, tapValue].filter(Boolean).join(' ')
+    if (combinedLabel) {
+      return {
+        tapLabel: truncateLabel(combinedLabel),
+        behaviorLabel: null,
+        holdLabel: null
+      }
     }
   }
 
@@ -265,7 +279,8 @@ function formatBindingDisplay(binding, keycodes, behaviours, splitFallbackBehavi
   if (firstKnownKeycode) {
     return {
       tapLabel: truncateLabel(keycodeDisplayValue(firstKnownKeycode, keycodeByCode)),
-      behaviorLabel: null
+      behaviorLabel: null,
+      holdLabel: null
     }
   }
 
@@ -273,31 +288,35 @@ function formatBindingDisplay(binding, keycodes, behaviours, splitFallbackBehavi
   if (splitFallbackBehavior && !params.length) {
     return {
       tapLabel: '',
-      behaviorLabel: truncateLabel(code.replace(/^&/, ''))
+      behaviorLabel: truncateLabel(code.replace(/^&/, '')),
+      holdLabel: null
     }
   }
 
   if (behaviour && !params.length) {
     return {
       tapLabel: truncateLabel(behaviour.name || code.replace(/^&/, '')),
-      behaviorLabel: null
+      behaviorLabel: null,
+      holdLabel: null
     }
   }
 
   if (!params.length) {
-    return { tapLabel: truncateLabel(code.replace(/^&/, '')), behaviorLabel: null }
+    return { tapLabel: truncateLabel(code.replace(/^&/, '')), behaviorLabel: null, holdLabel: null }
   }
 
   if (splitFallbackBehavior) {
     return {
       tapLabel: truncateLabel(params.join(' ')),
-      behaviorLabel: truncateLabel(code.replace(/^&/, ''))
+      behaviorLabel: truncateLabel(code.replace(/^&/, '')),
+      holdLabel: null
     }
   }
 
   return {
     tapLabel: truncateLabel(`${code.replace(/^&/, '')} ${params.join(' ')}`),
-    behaviorLabel: null
+    behaviorLabel: null,
+    holdLabel: null
   }
 }
 
@@ -525,6 +544,7 @@ function buildLayerRenderModel({
       binding: normalizedBinding,
       tapLabel: display.tapLabel,
       behaviorLabel: display.behaviorLabel,
+      holdLabel: display.holdLabel || null,
       hasError: errorMessages.length > 0,
       errorMessage: errorMessages.length > 0 ? errorMessages.join('\n') : null,
       style: computedGeometry.keyStyles[keyIndex] || {},
