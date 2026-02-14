@@ -180,4 +180,30 @@ describe('ComboEditor', () => {
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].combos[0].properties.bindings).toEqual(['&to 15'])
   })
+
+  test('preselects current parameter value when ValuePicker opens', () => {
+    renderEditor({
+      combos: [createCombo({
+        properties: {
+          'timeout-ms': 30,
+          'key-positions': [0, 1],
+          bindings: ['&to 15'],
+          layers: [],
+          'require-prior-idle-ms': 0,
+          'slow-release': false
+        }
+      })],
+      availableBehaviours: [
+        { code: '&none', name: 'None' },
+        { code: '&to', name: 'To Layer', params: ['layer'] }
+      ],
+      layerNames: Array.from({ length: 30 }, (_, index) => `Layer_${index}`)
+    })
+
+    fireEvent.click(screen.getByLabelText('binding-param-0'))
+
+    const result = document.querySelector('li[data-result-index="15"]')
+    expect(result).toBeTruthy()
+    expect(result.className).toMatch(/highlighted/)
+  })
 })

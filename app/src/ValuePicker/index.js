@@ -10,6 +10,10 @@ const cycle = (array, index, step=1) => {
 }
 
 function scrollIntoViewIfNeeded (element, alignToTop) {
+  if (!element || !element.offsetParent) {
+    return
+  }
+
   const scroll = element.offsetParent.scrollTop
   const height = element.offsetParent.offsetHeight
   const top = element.offsetTop
@@ -129,6 +133,28 @@ function ValuePicker (props) {
       search: result
     }))
   }, [query, choices, searchKey, showAll, searchThreshold])
+
+  useEffect(() => {
+    if (query !== null || highlighted !== null || results.length === 0) {
+      return
+    }
+
+    const currentValue = String(displayValue ?? '').trim()
+    if (!currentValue) {
+      return
+    }
+
+    const initialIndex = results.findIndex(result => (
+      String(result?.[searchKey] ?? '') === currentValue
+    ))
+
+    if (initialIndex !== -1) {
+      setHighlighted(initialIndex)
+      const selector = `li[data-result-index="${initialIndex}"]`
+      const element = listRef.current?.querySelector(selector)
+      scrollIntoViewIfNeeded(element, false)
+    }
+  }, [query, highlighted, results, displayValue, searchKey, listRef])
 
   const enableShowAllButton = useMemo(() => {
     return (
@@ -313,12 +339,20 @@ function ValuePicker (props) {
             onMouseOver={() => setHighlightPosition(i)}
           >
             {result.search ? (
-              <span dangerouslySetInnerHTML={{
-                __html: fuzzysort.highlight(result.search)
-              }} />
+              <span
+                className={style['result-value']}
+                dangerouslySetInnerHTML={{
+                  __html: fuzzysort.highlight(result.search)
+                }}
+              />
             ) : (
-              <span>
+              <span className={style['result-value']}>
                 {result[searchKey]}
+              </span>
+            )}
+            {result.description && (
+              <span className={style['result-description']}>
+                {result.description}
               </span>
             )}
           </li>
