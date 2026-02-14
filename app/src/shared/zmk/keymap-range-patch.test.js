@@ -377,6 +377,38 @@ describe('keymap range patch generation', () => {
     expect(generated.code).toContain('&kp B')
   })
 
+  test('keeps non-numeric angle expressions in override properties during full regeneration', () => {
+    const source = `
+#include <dt-bindings/zmk/keys.h>
+
+&trackball {
+    workspace_actions {
+        layers = <0>;
+        modifiers = <(MOD_LCTL)>;
+        bindings = <&kp A>, <&kp B>, <&kp C>, <&kp D>;
+    };
+};
+
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&kp A>;
+        };
+    };
+};
+`
+
+    const parsed = parseKeymap(parseKeymapCode(source))
+    delete parsed.__keymap_editor
+    parsed.layers[0][0] = parseKeyBinding('&kp B')
+
+    const generated = generateKeymap(singleKeyLayout, parsed)
+
+    expect(generated.code).toContain('modifiers = <(MOD_LCTL)>;')
+    expect(generated.code).not.toContain('modifiers = <NaN>;')
+  })
+
   test('falls back to full generation when required include is missing in patched source', () => {
     const source = `
 #include <dt-bindings/zmk/keys.h>
