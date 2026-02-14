@@ -201,6 +201,15 @@ function KeymapDrawer(props) {
                     >
                       {key.tapLabel}
                     </span>
+                    {key.holdLabel && (
+                      <span
+                        className={styles.keyHold}
+                        data-testid={`key-hold-${layer.index}-${key.index}`}
+                        title={key.binding}
+                      >
+                        {key.holdLabel}
+                      </span>
+                    )}
                     {key.layerMove && (
                       <a
                         href={key.layerMove.href}

@@ -6033,7 +6033,7 @@
     "footnotes": {}
   },
   {
-    "names": ["JP_LESS_THAN"],
+    "names": ["JP_LESS_THAN", "JP_LT"],
     "symbol": "<",
     "description": "Less than (<) for JP Keyboard",
     "context": "Keyboard",
@@ -6065,7 +6065,7 @@
     "footnotes": {}
   },
   {
-    "names": ["JP_GREATER_THAN"],
+    "names": ["JP_GREATER_THAN", "JP_GT"],
     "symbol": ">",
     "description": "Greater than (>) for JP Keyboard",
     "context": "Keyboard",
@@ -6161,7 +6161,7 @@
     "footnotes": {}
   },
   {
-    "names": ["JP_ZENKAKUHANKAKU"],
+    "names": ["JP_ZENKAKUHANKAKU", "JP_ZENHAN"],
     "symbol": "半/全",
     "description": "ZEN/HAN (半角/全角) for JP Keyboard",
     "context": "Keyboard",

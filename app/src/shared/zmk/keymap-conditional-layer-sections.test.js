@@ -105,6 +105,7 @@ describe('keymap conditional layer section support', () => {
 
     expect(generated.code).toMatch(/\n\s*combos\s*\{/)
     expect(generated.code).toMatch(/\n\s*conditional_layers\s*\{/)
+    expect(generated.code).toContain('compatible = "zmk,conditional-layers";')
     expect(generated.code).toMatch(/\n\s*macros\s*\{/)
     expect(generated.code).toMatch(/\n\s*behaviors\s*\{/)
 

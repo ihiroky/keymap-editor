@@ -12,7 +12,7 @@ const layout = [
 const keymap = {
   layer_names: ['Base', 'Fn'],
   layers: [
-    ['&mkp MB1', '&kp TAB', '&lt 1 TAB'],
+    ['&mkp MB1', '&mt LEFT_SHIFT TAB', '&lt 1 TAB'],
     ['&trans', '&trans', '&trans']
   ],
   combos: [
@@ -39,12 +39,14 @@ const keymap = {
 
 const keycodes = [
   { code: 'A', symbol: 'A' },
-  { code: 'TAB', symbol: 'TAB' }
+  { code: 'TAB', symbol: 'TAB' },
+  { code: 'LEFT_SHIFT', symbol: '⇧' }
 ]
 
 const behaviours = [
   { code: '&mkp', name: 'Mouse Press' },
   { code: '&kp', name: 'Key Press' },
+  { code: '&mt', name: 'Mod Tap' },
   { code: '&lt', name: 'Layer Tap' },
   { code: '&trans', name: 'Transparent' }
 ]
@@ -78,6 +80,8 @@ describe('KeymapDrawer', () => {
     expect(screen.getByTestId('key-behavior-0-0').getAttribute('title')).toBe('&mkp MB1')
     expect(screen.getByTestId('key-tap-0-0').textContent).toBe('MB1')
     expect(screen.getByTestId('key-tap-0-0').getAttribute('title')).toBe('&mkp MB1')
+    expect(screen.getByTestId('key-tap-0-1').textContent).toBe('⇧ TAB')
+    expect(screen.queryByTestId('key-hold-0-1')).toBeNull()
 
     const layerLink = screen.getByTestId('layer-link-0-2')
     expect(layerLink.getAttribute('href')).toBe('#drawer-layer-1')
