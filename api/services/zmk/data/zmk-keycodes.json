@@ -1626,6 +1626,7 @@
   },
   {
     "names": ["KP_DIVIDE", "KP_SLASH"],
+    "symbol": "/ KP",
     "description": "/ [Divide]",
     "context": "Keypad",
     "clarify": false,
@@ -1641,6 +1642,7 @@
   },
   {
     "names": ["KP_MULTIPLY", "KP_ASTERISK"],
+    "symbol": "* KP",
     "description": "* [Multiply]",
     "context": "Keypad",
     "clarify": false,
@@ -1656,6 +1658,7 @@
   },
   {
     "names": ["KP_MINUS", "KP_SUBTRACT"],
+    "symbol": "- KP",
     "description": "- [Minus]",
     "context": "Keypad",
     "clarify": false,
