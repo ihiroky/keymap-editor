@@ -14,7 +14,7 @@ import styles from './styles.module.css'
 function Key(props) {
   const { sources } = useContext(SearchContext)
   const { position, rotation, size } = props
-  const { label, value, params, selected, onSelect } = props
+  const { label, value, params, selected, onSelect, hasError, errorMessage } = props
 
   const bind = value
   const behaviour = get(sources.behaviours, bind)
@@ -43,11 +43,16 @@ function Key(props) {
       data-simple={isSimple(normalized)}
       data-long={isComplex(normalized, behaviourParams)}
       data-selected={selected ? 'true' : 'false'}
+      data-error={hasError ? 'true' : 'false'}
       style={positioningStyle}
+      title={errorMessage || undefined}
       onMouseOver={onMouseOver}
       onMouseLeave={onMouseLeave}
       onClick={onSelect}
     >
+    {hasError && (
+      <span className={styles['error-marker']} aria-hidden='true'>!</span>
+    )}
     {behaviour ? (
       <span
         className={styles['behaviour-binding']}
@@ -83,6 +88,8 @@ Key.propTypes = {
   label: PropTypes.string,
   value: keyPropTypes.value.isRequired,
   params: PropTypes.arrayOf(keyPropTypes.node),
+  hasError: PropTypes.bool,
+  errorMessage: PropTypes.string,
   selected: PropTypes.bool,
   onSelect: PropTypes.func
 }
