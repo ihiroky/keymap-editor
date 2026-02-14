@@ -727,6 +727,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
   const macroTargets = splitDefinitions.macroDefinitions
   const behaviorTargets = splitDefinitions.behaviorDefinitions
   const sectionInsertions = []
+  let removedTopLevelSection = false
 
   if (!sourceCombosNode && sourceCombos.length > 0) {
     return null
@@ -750,6 +751,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
         end: sourceCombosNode.end,
         replacement: ''
       })
+      removedTopLevelSection = true
     } else if (
       sourceCombos.length !== comboTargets.length ||
       !planBehaviorNodeUpdates({
@@ -783,6 +785,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
         end: sourceConditionalLayersNode.end,
         replacement: ''
       })
+      removedTopLevelSection = true
       conditionalLayersSectionReplaced = true
     } else {
       const patchable = sourceConditionalLayers.length === conditionalLayerTargets.length &&
@@ -833,6 +836,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
         end: sourceMacrosNode.end,
         replacement: ''
       })
+      removedTopLevelSection = true
     } else if (
       sourceMacros.length !== macroTargets.length ||
       !planBehaviorNodeUpdates({
@@ -862,6 +866,7 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
         end: sourceBehaviorsNode.end,
         replacement: ''
       })
+      removedTopLevelSection = true
     } else if (
       sourceBehaviors.length !== behaviorTargets.length ||
       !planBehaviorNodeUpdates({
@@ -889,7 +894,8 @@ function tryGenerateKeymapCodeWithRangePatch (layout, originalKeymap, keymap, en
     })
   }
 
-  return applyTextReplacements(sourceCode, replacements)
+  const patched = applyTextReplacements(sourceCode, replacements)
+  return removedTopLevelSection ? collapseBlankLinesBeforeKeymap(patched) : patched
 }
 
 function generateKeymap (layout, keymap, template, options = {}) {
@@ -1350,7 +1356,46 @@ function insertBeforeKeymap (template, section) {
   return `${template}\n${section}`
 }
 
+function replaceStandalonePlaceholderLine (template, placeholder, replacement) {
+  const lines = String(template).split('\n')
+  const index = lines.findIndex(line => line.trim() === placeholder)
+  if (index === -1) {
+    return null
+  }
+
+  if (replacement) {
+    const replacementLines = String(replacement)
+      .replace(/\r?\n$/, '')
+      .split('\n')
+    lines.splice(index, 1, ...replacementLines)
+    return lines.join('\n')
+  }
+
+  lines.splice(index, 1)
+
+  // Keep at most one blank separator where the placeholder line was removed.
+  while (
+    index > 0 &&
+    index < lines.length &&
+    lines[index - 1].trim() === '' &&
+    lines[index].trim() === ''
+  ) {
+    lines.splice(index, 1)
+  }
+
+  return lines.join('\n')
+}
+
+function collapseBlankLinesBeforeKeymap (template) {
+  return String(template).replace(/\r?\n(?:[ \t]*\r?\n){2,}([ \t]*keymap\s*\{)/m, '\n\n$1')
+}
+
 function renderTemplate (template, params) {
+  const overridesPlaceholder = '{{rendered_behavior_overrides}}'
+  const comboDefinitionsPlaceholder = '{{rendered_combo_definitions}}'
+  const conditionalLayerDefinitionsPlaceholder = '{{rendered_conditional_layer_definitions}}'
+  const macroDefinitionsPlaceholder = '{{rendered_macro_definitions}}'
+  const definitionsPlaceholder = '{{rendered_behavior_definitions}}'
   const includesPattern = /\{\{\s*behaviour_includes\s*\}\}/
   const layersPattern = /\{\{\s*rendered_layers\s*\}\}/
   const keymapPattern = /\{\{\s*rendered_keymap\s*\}\}/
@@ -1390,36 +1435,44 @@ function renderTemplate (template, params) {
   }
 
   if (overridesPattern.test(output)) {
-    output = output.replace(overridesPattern, renderedBehaviorOverrides)
+    output = replaceStandalonePlaceholderLine(output, overridesPlaceholder, renderedBehaviorOverrides) ||
+      output.replace(overridesPattern, renderedBehaviorOverrides)
   } else {
     output = insertBeforeRoot(output, renderedBehaviorOverrides)
   }
 
   if (comboDefinitionsPattern.test(output)) {
-    output = output.replace(comboDefinitionsPattern, renderedComboDefinitions)
+    output = replaceStandalonePlaceholderLine(output, comboDefinitionsPlaceholder, renderedComboDefinitions) ||
+      output.replace(comboDefinitionsPattern, renderedComboDefinitions)
   } else {
     output = insertBeforeKeymap(output, renderedComboDefinitions)
   }
 
   if (conditionalLayerDefinitionsPattern.test(output)) {
-    output = output.replace(conditionalLayerDefinitionsPattern, renderedConditionalLayerDefinitions)
+    output = replaceStandalonePlaceholderLine(
+      output,
+      conditionalLayerDefinitionsPlaceholder,
+      renderedConditionalLayerDefinitions
+    ) || output.replace(conditionalLayerDefinitionsPattern, renderedConditionalLayerDefinitions)
   } else {
     output = insertBeforeKeymap(output, renderedConditionalLayerDefinitions)
   }
 
   if (macroDefinitionsPattern.test(output)) {
-    output = output.replace(macroDefinitionsPattern, renderedMacroDefinitions)
+    output = replaceStandalonePlaceholderLine(output, macroDefinitionsPlaceholder, renderedMacroDefinitions) ||
+      output.replace(macroDefinitionsPattern, renderedMacroDefinitions)
   } else {
     output = insertBeforeKeymap(output, renderedMacroDefinitions)
   }
 
   if (definitionsPattern.test(output)) {
-    output = output.replace(definitionsPattern, renderedBehaviorDefinitions)
+    output = replaceStandalonePlaceholderLine(output, definitionsPlaceholder, renderedBehaviorDefinitions) ||
+      output.replace(definitionsPattern, renderedBehaviorDefinitions)
   } else {
     output = insertBeforeKeymap(output, renderedBehaviorDefinitions)
   }
 
-  return output
+  return collapseBlankLinesBeforeKeymap(output)
 }
 
 function collectBehaviorTypeIncludes (nodes, behaviourTypeByCompatible) {
