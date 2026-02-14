@@ -12,6 +12,7 @@ function renderSelector(overrides = {}) {
     onRenameLayer: jest.fn(),
     onDeleteLayer: jest.fn(),
     onDuplicateLayer: jest.fn(),
+    onMoveLayer: jest.fn(),
     ...overrides
   }
 
@@ -34,5 +35,23 @@ describe('LayerSelector', () => {
     renderSelector()
 
     expect(screen.getByTitle('Delete layer Base')).toBeTruthy()
+  })
+
+  test('moves layer by drag and drop', () => {
+    const props = renderSelector()
+    const source = screen.getByText('Base').closest('li')
+    const target = screen.getByText('Nav').closest('li')
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: jest.fn()
+    }
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(target, { dataTransfer })
+    fireEvent.drop(target, { dataTransfer })
+
+    expect(props.onMoveLayer).toHaveBeenCalledTimes(1)
+    expect(props.onMoveLayer).toHaveBeenCalledWith(0, 1)
   })
 })

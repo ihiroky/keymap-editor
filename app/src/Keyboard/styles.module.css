@@ -162,6 +162,15 @@
 	color: white;
 }
 
+.layer-selector li.dragging {
+  opacity: 0.55;
+}
+
+.layer-selector li.drag-over {
+  outline: 2px dashed rgba(60, 179, 113, 0.95);
+  outline-offset: 2px;
+}
+
 .layer-selector li .index {
   display: inline-flex;
   align-items: center;

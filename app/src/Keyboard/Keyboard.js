@@ -62,6 +62,46 @@ function buildDuplicatedLayerName(layerNames, layerIndex) {
   return `${base} ${Date.now()}`
 }
 
+function moveArrayItem(list, from, to) {
+  if (!Array.isArray(list)) {
+    return list
+  }
+
+  if (
+    !Number.isInteger(from) ||
+    !Number.isInteger(to) ||
+    from < 0 ||
+    to < 0 ||
+    from >= list.length ||
+    to >= list.length ||
+    from === to
+  ) {
+    return [...list]
+  }
+
+  const next = [...list]
+  const [moved] = next.splice(from, 1)
+  next.splice(to, 0, moved)
+  return next
+}
+
+function moveIndex(index, from, to) {
+  if (!Number.isInteger(index) || from === to) {
+    return index
+  }
+
+  if (index === from) {
+    return to
+  }
+  if (from < to && index > from && index <= to) {
+    return index - 1
+  }
+  if (to < from && index >= to && index < from) {
+    return index + 1
+  }
+  return index
+}
+
 function Keyboard(props) {
   const { layout, keymap, sensors, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
@@ -576,6 +616,26 @@ function Keyboard(props) {
     onUpdate(nextKeymap)
   }, [keymap, setActiveLayer, onUpdate])
 
+  const handleMoveLayer = useMemo(() => function (fromLayer, toLayer) {
+    if (fromLayer === toLayer) {
+      return
+    }
+
+    const layers = moveArrayItem(keymap.layers, fromLayer, toLayer)
+    const layer_names = moveArrayItem(keymap.layer_names, fromLayer, toLayer)
+    const sensor_layers = Array.isArray(keymap.sensor_layers)
+      ? moveArrayItem(keymap.sensor_layers, fromLayer, toLayer)
+      : undefined
+
+    const nextKeymap = { ...keymap, layers, layer_names }
+    if (sensor_layers !== undefined) {
+      nextKeymap.sensor_layers = sensor_layers
+    }
+
+    setActiveLayer(currentLayer => moveIndex(currentLayer, fromLayer, toLayer))
+    onUpdate(nextKeymap)
+  }, [keymap, onUpdate, setActiveLayer])
+
   return (
     <>
       <SearchContext.Provider value={{ getSearchTargets, sources }}>
@@ -589,6 +649,7 @@ function Keyboard(props) {
               onRenameLayer={handleRenameLayer}
               onDeleteLayer={handleDeleteLayer}
               onDuplicateLayer={handleDuplicateLayer}
+              onMoveLayer={handleMoveLayer}
             />
             <div className={styles['keyboard-wrapper']} style={wrapperStyle}>
               {isReady() && (
