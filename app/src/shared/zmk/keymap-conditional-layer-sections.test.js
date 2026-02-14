@@ -137,4 +137,25 @@ describe('keymap conditional layer section support', () => {
     expect(reparsed.conditional_layers[0].properties['if-layers']).toEqual([1, 2])
     expect(reparsed.conditional_layers[0].properties['then-layer']).toBe(3)
   })
+
+  test('does not emit consecutive blank lines when optional sections are empty', () => {
+    const parsed = parseKeymap(parseKeymapCode(sourceWithConditionalLayerSections))
+    parsed.combos = []
+    parsed.conditional_layers = []
+    parsed.behavior_definitions = []
+
+    const generated = generateKeymap(layout, parsed, undefined, {
+      behaviours,
+      behaviorTypes
+    })
+
+    const rootIndex = generated.code.indexOf('/ {')
+    const keymapIndex = generated.code.indexOf('    keymap {')
+    expect(rootIndex).toBeGreaterThan(-1)
+    expect(keymapIndex).toBeGreaterThan(rootIndex)
+
+    const betweenRootAndKeymap = generated.code.slice(rootIndex, keymapIndex)
+    expect(betweenRootAndKeymap).not.toMatch(/\n[ \t]*\n[ \t]*\n/)
+    expect(generated.code).toMatch(/\/ \{\n\s*keymap \{/)
+  })
 })
