@@ -22,7 +22,7 @@ function onKey(mapping) {
 function LayerSelector(props) {
   const ref = useRef(null)
   const { activeLayer, layers } = props
-  const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer } = props
+  const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer, onDuplicateLayer } = props
   const [renaming, setRenaming] = useState(false)
   const [editing, setEditing] = useState('')
 
@@ -45,6 +45,10 @@ function LayerSelector(props) {
     const confirmation = `Really delete layer: ${layerName}?`
     window.confirm(confirmation) && onDeleteLayer(layerIndex)
   }, [onDeleteLayer])
+
+  const handleDuplicate = useMemo(() => function(layerIndex) {
+    onDuplicateLayer(layerIndex)
+  }, [onDuplicateLayer])
 
   const finishEditing = useCallback(() => {
     if (!renaming) {
@@ -121,9 +125,16 @@ function LayerSelector(props) {
               <span className={styles.name}>
                 {name}
                 <Icon
+                  name="copy"
+                  className={styles.duplicate}
+                  onClick={stop(() => handleDuplicate(i))}
+                  title={`Duplicate layer ${name}`}
+                />
+                <Icon
                   name="times-circle"
                   className={styles.delete}
                   onClick={stop(() => handleDelete(i, name))}
+                  title={`Delete layer ${name}`}
                 />
               </span>
             )}
@@ -144,7 +155,8 @@ LayerSelector.propTypes = {
   onSelect: PropTypes.func.isRequired,
   onNewLayer: PropTypes.func.isRequired,
   onRenameLayer: PropTypes.func.isRequired,
-  onDeleteLayer: PropTypes.func.isRequired
+  onDeleteLayer: PropTypes.func.isRequired,
+  onDuplicateLayer: PropTypes.func.isRequired
 }
 
 export default LayerSelector

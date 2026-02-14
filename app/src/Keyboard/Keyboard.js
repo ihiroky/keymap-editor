@@ -29,6 +29,39 @@ function isSensorEditable(sensor) {
   return hasCompatible || sensor.enabled === true
 }
 
+function cloneValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(cloneValue)
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+
+  return Object.keys(value).reduce((copy, key) => {
+    copy[key] = cloneValue(value[key])
+    return copy
+  }, {})
+}
+
+function buildDuplicatedLayerName(layerNames, layerIndex) {
+  const sourceName = String(layerNames[layerIndex] || `Layer ${layerIndex}`).trim()
+  const base = `${sourceName || 'Layer'} Copy`
+  const existing = new Set(layerNames.map(name => String(name)))
+  if (!existing.has(base)) {
+    return base
+  }
+
+  for (let suffix = 2; suffix < Number.MAX_SAFE_INTEGER; suffix += 1) {
+    const candidate = `${base} ${suffix}`
+    if (!existing.has(candidate)) {
+      return candidate
+    }
+  }
+
+  return `${base} ${Date.now()}`
+}
+
 function Keyboard(props) {
   const { layout, keymap, sensors, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
@@ -519,6 +552,30 @@ function Keyboard(props) {
     onUpdate(nextKeymap)
   }, [keymap, activeLayer, setActiveLayer, onUpdate])
 
+  const handleDuplicateLayer = useMemo(() => function (layerIndex) {
+    if (!Array.isArray(keymap.layers) || !keymap.layers[layerIndex]) {
+      return
+    }
+
+    const duplicatedLayer = cloneValue(keymap.layers[layerIndex])
+    const layer_names = [
+      ...keymap.layer_names,
+      buildDuplicatedLayerName(keymap.layer_names, layerIndex)
+    ]
+    const layers = [...keymap.layers, duplicatedLayer]
+    const sensor_layers = Array.isArray(keymap.sensor_layers)
+      ? [...keymap.sensor_layers, cloneValue(keymap.sensor_layers[layerIndex] || [])]
+      : undefined
+
+    const nextKeymap = { ...keymap, layer_names, layers }
+    if (sensor_layers !== undefined) {
+      nextKeymap.sensor_layers = sensor_layers
+    }
+
+    setActiveLayer(layers.length - 1)
+    onUpdate(nextKeymap)
+  }, [keymap, setActiveLayer, onUpdate])
+
   return (
     <>
       <SearchContext.Provider value={{ getSearchTargets, sources }}>
@@ -531,6 +588,7 @@ function Keyboard(props) {
               onNewLayer={handleCreateLayer}
               onRenameLayer={handleRenameLayer}
               onDeleteLayer={handleDeleteLayer}
+              onDuplicateLayer={handleDuplicateLayer}
             />
             <div className={styles['keyboard-wrapper']} style={wrapperStyle}>
               {isReady() && (

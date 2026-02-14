@@ -208,6 +208,7 @@
   color: white;
 }
 
+.layer-selector .duplicate,
 .layer-selector .delete {
   margin-left: auto;
   display: inline-flex;
@@ -216,6 +217,10 @@
   height: 30px;
   line-height: 1;
   width: 30px;
+}
+
+.layer-selector .delete {
+  margin-left: 0;
 }
 
 .layer-selector li.active .name {
