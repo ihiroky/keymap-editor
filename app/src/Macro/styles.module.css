@@ -6,9 +6,9 @@
 }
 
 .sidebar {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--theme-border);
   border-radius: 10px;
-  background: rgba(247, 247, 247, 0.85);
+  background: var(--theme-surface-2);
   padding: 12px;
 }
 
@@ -16,7 +16,7 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #556;
+  color: var(--theme-text-muted);
   margin: 2px 0 8px;
 }
 
@@ -29,16 +29,16 @@
 
 .listItem {
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--theme-border-strong);
   border-radius: 7px;
-  background: white;
-  color: #334155;
+  background: var(--theme-surface-1);
+  color: var(--theme-text);
   padding: 8px 10px;
 }
 
 .listItem[data-selected='true'] {
   border-color: var(--selection);
-  background: rgba(60, 179, 113, 0.14);
+  background: var(--selection-soft);
 }
 
 .actions {
@@ -48,9 +48,9 @@
 }
 
 .panel {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--theme-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--theme-surface-1);
   padding: 14px;
 }
 
@@ -109,7 +109,7 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #556;
+  color: var(--theme-text-muted);
   margin-bottom: 8px;
   display: inline-flex;
   gap: 8px;
@@ -138,7 +138,7 @@
 
 .emptyHint {
   margin: 0;
-  color: #556;
+  color: var(--theme-text-muted);
   font-size: 13px;
 }
 
@@ -149,7 +149,7 @@
   align-items: center;
   margin-bottom: 8px;
   padding: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
 }
 
@@ -280,7 +280,7 @@
 .dragHandle {
   text-align: center;
   user-select: none;
-  color: #556;
+  color: var(--theme-text-muted);
   font-weight: 700;
   cursor: grab;
 }
@@ -296,8 +296,8 @@
   padding: 10px;
   margin-bottom: 10px;
   font-size: 13px;
-  border: 1px solid rgba(185, 0, 0, 0.25);
-  background: rgba(185, 0, 0, 0.08);
+  border: 1px solid var(--theme-danger-border);
+  background: var(--theme-danger-bg);
 }
 
 @media (max-width: 960px) {

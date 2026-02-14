@@ -2,9 +2,9 @@
   position: absolute;
   top: 0;
   left: 0;
-  background: white;
+  background: var(--theme-surface-1);
   border-radius: 10px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--theme-shadow-soft);
   padding: 16px;
   max-height: calc(100vh - 40px);
   overflow: auto;
@@ -15,12 +15,12 @@
 }
 
 .dragging {
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--theme-shadow-strong);
   user-select: none;
 }
 
 .panel button {
-  color: #555;
+  color: var(--theme-text-muted);
 }
 
 .panel .apply {
@@ -57,8 +57,8 @@
   height: 21px;
   border: 0px;
   border-radius: 4px;
-  background-color: #f7f7f7;
-  background-image: radial-gradient(circle at 2px 2px, rgba(0, 0, 0, 0.33) 2px, transparent 0px);
+  background-color: var(--theme-surface-2);
+  background-image: radial-gradient(circle at 2px 2px, rgba(188, 200, 216, 0.45) 2px, transparent 0px);
   background-size: 7px 7px;
   background-position: right;
   cursor: grab;
@@ -72,7 +72,7 @@
 }
 
 .subtitle {
-  color: #666;
+  color: var(--theme-text-subtle);
   font-size: 12px;
   margin-top: 2px;
 }
@@ -86,7 +86,7 @@
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #666;
+  color: var(--theme-text-subtle);
 }
 
 .param-list {
@@ -96,7 +96,7 @@
 }
 
 .param-list > .param-row + .param-row {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--theme-border);
   padding-top: 8px;
 }
 
@@ -117,12 +117,12 @@
 
 .param-label {
   font-size: 13px;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .param-value {
-  border: 1px solid #ddd;
-  background: #f7f7f7;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface-2);
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
@@ -142,7 +142,7 @@
 }
 
 .param-children > .param-row + .param-row {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--theme-border);
   padding-top: 8px;
 }
 
@@ -171,7 +171,7 @@
 }
 
 .empty {
-  color: #777;
+  color: var(--theme-text-subtle);
   font-size: 12px;
 }
 

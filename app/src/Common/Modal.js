@@ -7,7 +7,7 @@ const styles = {
     left: '0',
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(104, 123, 162, 0.39)',
+    backgroundColor: 'var(--theme-overlay)',
     zIndex: '50',
     display: 'flex',
     justifyContent: 'center',

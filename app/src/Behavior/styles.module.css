@@ -6,9 +6,9 @@
 }
 
 .sidebar {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--theme-border);
   border-radius: 10px;
-  background: rgba(247, 247, 247, 0.85);
+  background: var(--theme-surface-2);
   padding: 12px;
 }
 
@@ -16,7 +16,7 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #556;
+  color: var(--theme-text-muted);
   margin: 2px 0 8px;
 }
 
@@ -29,16 +29,16 @@
 
 .listItem {
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--theme-border-strong);
   border-radius: 7px;
-  background: white;
-  color: #334155;
+  background: var(--theme-surface-1);
+  color: var(--theme-text);
   padding: 8px 10px;
 }
 
 .listItem[data-selected="true"] {
   border-color: var(--selection);
-  background: rgba(60, 179, 113, 0.14);
+  background: var(--selection-soft);
 }
 
 .actions {
@@ -48,9 +48,9 @@
 }
 
 .panel {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--theme-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--theme-surface-1);
   padding: 14px;
 }
 
@@ -81,7 +81,7 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #556;
+  color: var(--theme-text-muted);
   margin-bottom: 8px;
 }
 
@@ -115,7 +115,7 @@
 }
 
 .knownLabel small {
-  color: #667;
+  color: var(--theme-text-subtle);
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -287,7 +287,7 @@
 
 .emptyHint {
   margin: 0;
-  color: #556;
+  color: var(--theme-text-muted);
   font-size: 13px;
 }
 
@@ -301,23 +301,23 @@
 }
 
 .errors {
-  border: 1px solid rgba(185, 0, 0, 0.25);
-  background: rgba(185, 0, 0, 0.08);
+  border: 1px solid var(--theme-danger-border);
+  background: var(--theme-danger-bg);
 }
 
 .warnings {
-  border: 1px solid rgba(185, 120, 0, 0.25);
-  background: rgba(185, 120, 0, 0.08);
+  border: 1px solid var(--theme-warning-border);
+  background: var(--theme-warning-bg);
 }
 
 .note {
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--theme-note-border);
+  background: var(--theme-note-bg);
 }
 
 .childrenHelp {
   font-size: 12px;
-  color: #556;
+  color: var(--theme-text-muted);
   margin-bottom: 8px;
 }
 
@@ -330,7 +330,7 @@
 }
 
 .childrenError {
-  color: #900;
+  color: var(--theme-danger-text);
   font-size: 12px;
 }
 
