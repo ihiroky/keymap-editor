@@ -3,7 +3,8 @@
   --dark-blue: #3d59a1;
   --selection: #3d59a1;
   --hover-selection: #4a67b3;
-  --selection-soft: #202330;
+  --selection-soft: rgba(61, 89, 161, 0.22);
+  --selection-ring: rgba(61, 89, 161, 0.34);
 
   --theme-bg: #1a1b26;
   --theme-surface-1: #1e2030;
@@ -32,6 +33,7 @@
   --selection: #2f9f64;
   --hover-selection: #2a8d59;
   --selection-soft: rgba(47, 159, 100, 0.18);
+  --selection-ring: rgba(47, 159, 100, 0.28);
 
   --theme-bg: #eef2f7;
   --theme-surface-1: #ffffff;
