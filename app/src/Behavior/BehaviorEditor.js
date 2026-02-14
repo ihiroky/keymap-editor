@@ -2,6 +2,8 @@ import keyBy from 'lodash/keyBy'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import { getBehaviourParams } from '../keymap'
+import ValuePicker from '../ValuePicker'
 import styles from './styles.module.css'
 import { parseBehaviorChildrenSnippet } from '../shared/zmk/keymap-code'
 import { renderBehaviorChildrenSnippet } from '../shared/zmk/keymap'
@@ -15,6 +17,19 @@ const RAW_TYPE_CHOICES = [
   'token-array',
   'bindings'
 ]
+
+const MOD_MORPH_MOD_CHOICES = [
+  'MOD_LSFT',
+  'MOD_RSFT',
+  'MOD_LCTL',
+  'MOD_RCTL',
+  'MOD_LALT',
+  'MOD_RALT',
+  'MOD_LGUI',
+  'MOD_RGUI'
+]
+
+const MOD_MORPH_MOD_SET = new Set(MOD_MORPH_MOD_CHOICES)
 
 function cloneNode (node) {
   return {
@@ -193,6 +208,199 @@ function getBindingListMinCount (spec, node) {
   return 0
 }
 
+function parseBinding (binding) {
+  const text = String(binding || '').trim()
+  if (!text) {
+    return { behavior: '&none', paramsText: '' }
+  }
+
+  const [behavior, ...rest] = text.split(/\s+/)
+  return {
+    behavior: behavior || '&none',
+    paramsText: rest.join(' ')
+  }
+}
+
+function renderBinding ({ behavior, paramsText }) {
+  return `${String(behavior || '&none').trim()} ${String(paramsText || '').trim()}`.trim()
+}
+
+function splitParamsText (text) {
+  return String(text || '')
+    .trim()
+    .split(/\s+/)
+    .map(value => value.trim())
+    .filter(Boolean)
+}
+
+function toParamNodes (tokens) {
+  return (tokens || []).map(value => ({ value, params: [] }))
+}
+
+function getParamType (spec) {
+  if (typeof spec === 'string') {
+    return spec
+  }
+  if (spec && typeof spec === 'object' && typeof spec.type === 'string') {
+    return spec.type
+  }
+  return 'raw'
+}
+
+function getParamLabel (spec, index) {
+  if (spec && typeof spec === 'object' && typeof spec.name === 'string' && spec.name.trim()) {
+    return spec.name.trim()
+  }
+
+  if (typeof spec === 'string') {
+    return spec
+  }
+
+  return `Param ${index + 1}`
+}
+
+function getParamOptions (spec, behavior, layerNames, keycodes) {
+  if (spec && typeof spec === 'object' && Array.isArray(spec.enum)) {
+    return spec.enum.map(option => String(option))
+  }
+
+  const type = getParamType(spec)
+  if (type === 'layer') {
+    if (Array.isArray(layerNames) && layerNames.length > 0) {
+      return layerNames.map((_, index) => String(index))
+    }
+    return []
+  }
+
+  if (type === 'mod') {
+    return (Array.isArray(keycodes) ? keycodes : [])
+      .filter(item => item?.isModifier === true)
+      .map(item => String(item.code || '').trim())
+      .filter(Boolean)
+  }
+
+  if (type === 'code') {
+    return (Array.isArray(keycodes) ? keycodes : [])
+      .map(item => String(item.code || '').trim())
+      .filter(Boolean)
+  }
+
+  if (type === 'command') {
+    return (Array.isArray(behavior?.commands) ? behavior.commands : [])
+      .map(item => String(item?.code || '').trim())
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+function getDefaultParamValue (spec, behavior, layerNames, keycodes) {
+  const options = getParamOptions(spec, behavior, layerNames, keycodes)
+  if (options.length > 0) {
+    return options[0]
+  }
+
+  const type = getParamType(spec)
+  if (type === 'layer') {
+    return '0'
+  }
+
+  return ''
+}
+
+function buildPickerChoices (options, spec, behavior, layerNames) {
+  const type = getParamType(spec)
+
+  if (type === 'layer' && Array.isArray(layerNames) && layerNames.length > 0) {
+    return options.map(option => {
+      const index = Number(option)
+      const label = layerNames[index]
+      return {
+        code: String(option),
+        description: label ? `Layer ${option}: ${label}` : `Layer ${option}`
+      }
+    })
+  }
+
+  if (type === 'command') {
+    return options.map(option => {
+      const command = (Array.isArray(behavior?.commands) ? behavior.commands : [])
+        .find(item => String(item?.code || '') === String(option))
+      return {
+        code: String(option),
+        description: command?.description || ''
+      }
+    })
+  }
+
+  return options.map(option => ({ code: String(option) }))
+}
+
+function normalizeParamsForBehavior (behavior, seedTokens, layerNames, keycodes) {
+  if (!behavior || typeof behavior !== 'object') {
+    return []
+  }
+
+  let tokens = Array.isArray(seedTokens) ? [...seedTokens] : []
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    const specs = getBehaviourParams(toParamNodes(tokens), behavior)
+    const filled = specs.map((spec, index) => {
+      const current = String(tokens[index] || '').trim()
+      if (current) {
+        return current
+      }
+      return getDefaultParamValue(spec, behavior, layerNames, keycodes)
+    })
+
+    const stable = filled.length === tokens.length && filled.every((value, index) => value === tokens[index])
+    tokens = filled
+    if (stable) {
+      break
+    }
+  }
+
+  return tokens
+}
+
+function parseModMaskSelection (value) {
+  const rawValues = Array.isArray(value)
+    ? value.map(entry => String(entry || '').trim())
+    : typeof value === 'string'
+      ? [String(value).trim()]
+      : []
+
+  const parsed = new Set()
+  for (const token of rawValues) {
+    if (!token) {
+      continue
+    }
+
+    const inner = token.replace(/^\(/, '').replace(/\)$/, '')
+    const parts = inner
+      .split('|')
+      .map(part => part.trim())
+      .filter(Boolean)
+
+    for (const part of parts) {
+      if (MOD_MORPH_MOD_SET.has(part)) {
+        parsed.add(part)
+      }
+    }
+  }
+
+  return MOD_MORPH_MOD_CHOICES.filter(code => parsed.has(code))
+}
+
+function renderModMaskSelection (selected) {
+  const normalized = MOD_MORPH_MOD_CHOICES.filter(code => selected.includes(code))
+  if (!normalized.length) {
+    return []
+  }
+
+  return [`(${normalized.join('|')})`]
+}
+
 function getPropertySpecMap (type) {
   if (!type || typeof type !== 'object') {
     return {}
@@ -342,6 +550,13 @@ function validateNodes (definitions, overrides, typeByCompatible, overrideTypeBy
         errors.push(`${ref}: property "${key}" must be numeric`)
       }
     }
+
+    if (compatible === 'zmk,behavior-mod-morph') {
+      const selectedMods = parseModMaskSelection(node.properties?.mods)
+      if (selectedMods.length === 0) {
+        errors.push(`${ref}: property "mods" must include at least one modifier`)
+      }
+    }
   })
 
   overrides.forEach((node, index) => {
@@ -382,7 +597,16 @@ function validateNodes (definitions, overrides, typeByCompatible, overrideTypeBy
 }
 
 function BehaviorEditor (props) {
-  const { keymap, behaviorTypes, availableBehaviours, onUpdate } = props
+  const { keymap, behaviorTypes, availableBehaviours, keycodes, onUpdate } = props
+
+  const layerNames = useMemo(() => {
+    if (Array.isArray(keymap?.layer_names) && keymap.layer_names.length > 0) {
+      return keymap.layer_names
+    }
+
+    const layerCount = Array.isArray(keymap?.layers) ? keymap.layers.length : 0
+    return Array.from({ length: layerCount }, (_, index) => `Layer ${index}`)
+  }, [keymap])
 
   const behaviourChoices = useMemo(() => {
     const map = new Map()
@@ -394,13 +618,27 @@ function BehaviorEditor (props) {
         map.set(behaviour.code, {
           code: behaviour.code,
           name: behaviour.name || behaviour.code,
-          description: behaviour.description || ''
+          description: behaviour.description || '',
+          params: Array.isArray(behaviour.params) ? behaviour.params : [],
+          commands: Array.isArray(behaviour.commands) ? behaviour.commands : []
         })
       }
     }
 
+    if (!map.has('&none')) {
+      map.set('&none', { code: '&none', name: 'None', description: '', params: [], commands: [] })
+    }
+
     return [...map.values()].sort((a, b) => a.code.localeCompare(b.code))
   }, [availableBehaviours])
+
+  const behaviourByCode = useMemo(() => {
+    const map = {}
+    for (const behaviour of behaviourChoices) {
+      map[behaviour.code] = behaviour
+    }
+    return map
+  }, [behaviourChoices])
 
   const typeByCompatible = useMemo(() => keyBy(behaviorTypes || [], 'compatible'), [behaviorTypes])
   const overrideTypeByBind = useMemo(() => {
@@ -435,6 +673,7 @@ function BehaviorEditor (props) {
     return null
   })
   const [childrenDraft, setChildrenDraft] = useState('')
+  const [bindingParamPicker, setBindingParamPicker] = useState(null)
 
   useEffect(() => {
     if (!selection) {
@@ -479,6 +718,10 @@ function BehaviorEditor (props) {
       behaviorTypes
     ))
   }, [selectedNode, behaviorTypes])
+
+  useEffect(() => {
+    setBindingParamPicker(null)
+  }, [selection, selectedNode])
 
   const parsedChildrenDraft = useMemo(() => {
     if (!selectedNode) {
@@ -762,43 +1005,186 @@ function BehaviorEditor (props) {
     return (
       <div className={styles.bindingList}>
         {normalized.map((value, index) => {
-          const textValue = String(value || '')
-          const selectedCode = behaviourChoices.find(choice => textValue.startsWith(choice.code))
-            ? textValue.split(/\s+/)[0]
-            : '__custom__'
+          const parsed = parseBinding(value)
+          const knownBindingChoice = behaviourChoices.some(choice => choice.code === parsed.behavior)
+          const selectedBehavior = knownBindingChoice ? (behaviourByCode[parsed.behavior] || null) : null
+          const selectedCode = knownBindingChoice ? parsed.behavior : '__custom__'
+          const rawParamTokens = splitParamsText(parsed.paramsText)
+          const normalizedParamTokens = selectedBehavior
+            ? normalizeParamsForBehavior(selectedBehavior, rawParamTokens, layerNames, keycodes)
+            : rawParamTokens
+          const selectedParamSpecs = selectedBehavior
+            ? getBehaviourParams(toParamNodes(normalizedParamTokens), selectedBehavior)
+            : []
+          const selectedParamOptions = selectedParamSpecs.map(spec => (
+            getParamOptions(spec, selectedBehavior, layerNames, keycodes)
+          ))
+          const canUsePicker = selectedBehavior &&
+            selectedParamSpecs.length > 0 &&
+            selectedParamOptions.every(options => options.length > 0)
+          const showManualParams = !knownBindingChoice || (selectedParamSpecs.length > 0 && !canUsePicker)
+
+          const setKnownBehaviorBinding = behaviorCode => {
+            const definition = behaviourByCode[behaviorCode]
+            if (!definition) {
+              updateAt(index, renderBinding({ behavior: behaviorCode, paramsText: parsed.paramsText }))
+              return
+            }
+
+            const tokens = normalizeParamsForBehavior(
+              definition,
+              rawParamTokens,
+              layerNames,
+              keycodes
+            )
+            updateAt(index, renderBinding({
+              behavior: behaviorCode,
+              paramsText: tokens.join(' ')
+            }))
+          }
+
+          const setKnownBehaviorParam = (paramIndex, paramValue) => {
+            if (!selectedBehavior) {
+              return
+            }
+
+            const nextSeed = [...normalizedParamTokens]
+            nextSeed[paramIndex] = String(paramValue || '').trim()
+            const nextTokens = normalizeParamsForBehavior(
+              selectedBehavior,
+              nextSeed,
+              layerNames,
+              keycodes
+            )
+            updateAt(index, renderBinding({
+              behavior: parsed.behavior,
+              paramsText: nextTokens.join(' ')
+            }))
+          }
 
           return (
-            <div className={styles.bindingRow} key={`binding-${key}-${index}`}>
-              <select
-                value={selectedCode}
-                onChange={event => {
-                  const nextCode = event.target.value
-                  if (nextCode === '__custom__') {
-                    return
-                  }
-                  updateAt(index, nextCode)
-                }}
-              >
-                {behaviourChoices.map(choice => (
-                  <option key={`binding-option-${key}-${index}-${choice.code}`} value={choice.code}>
-                    {choice.code}
-                  </option>
-                ))}
-                <option value="__custom__">Custom</option>
-              </select>
-              <input
-                type="text"
-                value={textValue}
-                onChange={event => updateAt(index, event.target.value)}
-                placeholder="&kp"
-              />
-              <button
-                type="button"
-                onClick={() => removeAt(index)}
-                disabled={fixedLength || normalized.length <= minCount}
-              >
-                Remove
-              </button>
+            <div className={styles.bindingEntry} key={`binding-${key}-${index}`}>
+              <div className={styles.bindingRow}>
+                <select
+                  value={selectedCode}
+                  onChange={event => {
+                    const nextCode = event.target.value
+                    if (nextCode === '__custom__') {
+                      return
+                    }
+                    setKnownBehaviorBinding(nextCode)
+                  }}
+                >
+                  {behaviourChoices.map(choice => (
+                    <option key={`binding-option-${key}-${index}-${choice.code}`} value={choice.code}>
+                      {choice.code}
+                    </option>
+                  ))}
+                  <option value='__custom__'>Custom</option>
+                </select>
+                <input
+                  type='text'
+                  aria-label={`binding-behavior-custom-${key}-${index}`}
+                  value={parsed.behavior}
+                  placeholder='&my_behavior'
+                  disabled={knownBindingChoice}
+                  onChange={event => {
+                    if (knownBindingChoice) {
+                      return
+                    }
+
+                    updateAt(index, renderBinding({
+                      behavior: event.target.value,
+                      paramsText: parsed.paramsText
+                    }))
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeAt(index)}
+                  disabled={fixedLength || normalized.length <= minCount}
+                >
+                  Remove
+                </button>
+              </div>
+
+              {showManualParams && (
+                <div className={styles.bindingMeta}>
+                  <div className={styles.bindingHint}>
+                    Parameter candidates are open-ended. Enter them as space-separated tokens.
+                  </div>
+                  <input
+                    type='text'
+                    aria-label={`binding-params-manual-${key}-${index}`}
+                    value={parsed.paramsText}
+                    placeholder='PARAM1 PARAM2'
+                    onChange={event => {
+                      updateAt(index, renderBinding({
+                        behavior: parsed.behavior,
+                        paramsText: event.target.value
+                      }))
+                    }}
+                  />
+                </div>
+              )}
+
+              {canUsePicker && (
+                <div className={styles.paramList}>
+                  {selectedParamSpecs.map((spec, paramIndex) => {
+                    const label = getParamLabel(spec, paramIndex)
+                    const options = selectedParamOptions[paramIndex]
+                    const pickerChoices = buildPickerChoices(options, spec, selectedBehavior, layerNames)
+                    const value = String(normalizedParamTokens[paramIndex] || '')
+                    const pickerOpen = (
+                      bindingParamPicker?.propertyKey === key &&
+                      bindingParamPicker?.bindingIndex === index &&
+                      bindingParamPicker?.paramIndex === paramIndex
+                    )
+
+                    return (
+                      <div className={styles.paramRow} key={`binding-param-${key}-${index}-${paramIndex}`}>
+                        <label>{label}</label>
+                        <button
+                          type='button'
+                          className={styles.paramPickerButton}
+                          aria-label={`binding-param-picker-${key}-${index}-${paramIndex}`}
+                          onClick={() => {
+                            setBindingParamPicker({
+                              propertyKey: key,
+                              bindingIndex: index,
+                              paramIndex,
+                              value,
+                              label,
+                              choices: pickerChoices
+                            })
+                          }}
+                        >
+                          {value || '(select)'}
+                        </button>
+                        {pickerOpen && (
+                          <div className={styles.paramPicker}>
+                            <ValuePicker
+                              target={{}}
+                              value={String(bindingParamPicker?.value || '')}
+                              param={{ type: 'raw', name: label }}
+                              currentNode={{ value: bindingParamPicker?.value || '', params: [] }}
+                              choices={bindingParamPicker?.choices || []}
+                              prompt={`Select ${label}`}
+                              searchKey='code'
+                              onSelect={choice => {
+                                const nextValue = String(choice?.code ?? choice?.value ?? '').trim()
+                                setKnownBehaviorParam(paramIndex, nextValue)
+                                setBindingParamPicker(null)
+                              }}
+                              onCancel={() => setBindingParamPicker(null)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )
         })}
@@ -809,6 +1195,49 @@ function BehaviorEditor (props) {
         >
           Add Binding
         </button>
+      </div>
+    )
+  }
+
+  const renderModMaskInput = (node, key, spec) => {
+    const selected = parseModMaskSelection(node.properties?.[key])
+    const selectedSet = new Set(selected)
+    const rendered = renderModMaskSelection(selected)
+    const renderedValue = rendered[0] || ''
+
+    const updateSelection = nextSelection => {
+      setKnownProperty(key, renderModMaskSelection(nextSelection), spec)
+    }
+
+    return (
+      <div className={styles.modMaskInput}>
+        <div className={styles.modMaskGrid}>
+          {MOD_MORPH_MOD_CHOICES.map(code => (
+            <label className={styles.modMaskOption} key={`${key}-${code}`}>
+              <input
+                type='checkbox'
+                aria-label={`${key}-${code}`}
+                checked={selectedSet.has(code)}
+                onChange={event => {
+                  const next = new Set(selected)
+                  if (event.target.checked) {
+                    next.add(code)
+                  } else {
+                    next.delete(code)
+                  }
+                  updateSelection(MOD_MORPH_MOD_CHOICES.filter(item => next.has(item)))
+                }}
+              />
+              <span>{code}</span>
+            </label>
+          ))}
+        </div>
+        <div className={styles.modMaskPreview}>
+          {renderedValue
+            ? `${key} = <${renderedValue}>;`
+            : `Select one or more modifiers for ${key}.`
+          }
+        </div>
       </div>
     )
   }
@@ -852,6 +1281,12 @@ function BehaviorEditor (props) {
     }
 
     if (specType === 'token-array' || specType === 'bindings') {
+      const isModMask = selectedType?.compatible === 'zmk,behavior-mod-morph' &&
+        (key === 'mods' || key === 'keep-mods')
+      if (isModMask) {
+        return renderModMaskInput(node, key, spec)
+      }
+
       return (
         <textarea
           value={inputValue}
@@ -1295,11 +1730,13 @@ BehaviorEditor.propTypes = {
   keymap: PropTypes.object.isRequired,
   behaviorTypes: PropTypes.array.isRequired,
   availableBehaviours: PropTypes.array,
+  keycodes: PropTypes.array,
   onUpdate: PropTypes.func.isRequired
 }
 
 BehaviorEditor.defaultProps = {
-  availableBehaviours: []
+  availableBehaviours: [],
+  keycodes: []
 }
 
 export default BehaviorEditor

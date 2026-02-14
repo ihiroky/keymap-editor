@@ -54,7 +54,7 @@
   padding: 14px;
 }
 
-.editor button:not(.listItem) {
+.editor button:not(.listItem):not(.paramPickerButton) {
   border: none;
   border-radius: 6px;
   padding: 6px 12px;
@@ -64,11 +64,11 @@
   transition: filter 120ms ease, opacity 120ms ease;
 }
 
-.editor button:not(.listItem):hover:not(:disabled) {
+.editor button:not(.listItem):not(.paramPickerButton):hover:not(:disabled) {
   filter: brightness(0.94);
 }
 
-.editor button:not(.listItem):disabled {
+.editor button:not(.listItem):not(.paramPickerButton):disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -131,10 +131,95 @@
   gap: 6px;
 }
 
+.bindingEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .bindingRow {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) auto;
   gap: 6px;
+}
+
+.bindingMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bindingHint {
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.modMaskInput {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modMaskGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+
+.modMaskOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--theme-text);
+}
+
+.modMaskPreview {
+  font-size: 12px;
+  color: var(--theme-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.paramList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paramRow {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.paramRow label {
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.paramPickerButton {
+  width: 100%;
+  box-sizing: border-box;
+  border: var(--editor-field-border);
+  border-radius: var(--editor-field-radius);
+  background: var(--editor-field-bg);
+  color: var(--editor-field-color);
+  font-size: var(--editor-field-font-size);
+  transition: var(--editor-field-transition);
+  min-height: var(--editor-field-height);
+  line-height: var(--editor-field-line-height);
+  text-align: left;
+  padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
+  cursor: pointer;
+}
+
+.paramPicker {
+  grid-column: 1 / -1;
+  padding: 8px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface-2);
 }
 
 .formRow input[type='text'],
@@ -153,6 +238,11 @@
 .bindingRow input[type='number'],
 .bindingRow select,
 .bindingRow textarea,
+.bindingMeta input[type='text'],
+.paramRow input[type='text'],
+.paramRow input[type='number'],
+.paramRow select,
+.paramPickerButton,
 .childrenJson {
   width: 100%;
   box-sizing: border-box;
@@ -175,7 +265,11 @@
 .knownRow select,
 .bindingRow input[type='text'],
 .bindingRow input[type='number'],
-.bindingRow select {
+.bindingRow select,
+.bindingMeta input[type='text'],
+.paramRow input[type='text'],
+.paramRow input[type='number'],
+.paramRow select {
   min-height: var(--editor-field-height);
   line-height: var(--editor-field-line-height);
   padding: var(--editor-field-padding-y) var(--editor-field-padding-x);
@@ -217,6 +311,9 @@
 .bindingRow input[type='text']::placeholder,
 .bindingRow input[type='number']::placeholder,
 .bindingRow textarea::placeholder,
+.bindingMeta input[type='text']::placeholder,
+.paramRow input[type='text']::placeholder,
+.paramRow input[type='number']::placeholder,
 .childrenJson::placeholder {
   color: var(--editor-field-placeholder);
 }
@@ -237,6 +334,11 @@
 .bindingRow input[type='number']:focus-visible,
 .bindingRow select:focus-visible,
 .bindingRow textarea:focus-visible,
+.bindingMeta input[type='text']:focus-visible,
+.paramRow input[type='text']:focus-visible,
+.paramRow input[type='number']:focus-visible,
+.paramRow select:focus-visible,
+.paramPickerButton:focus-visible,
 .childrenJson:focus-visible {
   outline: none;
   border-color: var(--editor-field-focus-border);
@@ -259,6 +361,11 @@
 .bindingRow input[type='number']:disabled,
 .bindingRow select:disabled,
 .bindingRow textarea:disabled,
+.bindingMeta input[type='text']:disabled,
+.paramRow input[type='text']:disabled,
+.paramRow input[type='number']:disabled,
+.paramRow select:disabled,
+.paramPickerButton:disabled,
 .childrenJson:disabled {
   border: var(--editor-field-disabled-border);
   background: var(--editor-field-disabled-bg);
@@ -268,7 +375,8 @@
 .formRow input[type='checkbox'],
 .rawRow input[type='checkbox'],
 .knownRow input[type='checkbox'],
-.bindingRow input[type='checkbox'] {
+.bindingRow input[type='checkbox'],
+.paramRow input[type='checkbox'] {
   width: auto;
   height: auto;
   min-height: auto;
@@ -353,6 +461,14 @@
   }
 
   .bindingRow {
+    grid-template-columns: 1fr;
+  }
+
+  .paramRow {
+    grid-template-columns: 1fr;
+  }
+
+  .modMaskGrid {
     grid-template-columns: 1fr;
   }
 }
