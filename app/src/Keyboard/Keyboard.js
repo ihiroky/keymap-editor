@@ -144,9 +144,13 @@ function Keyboard(props) {
         sensitivity: 'base'
       })
     ))
+    const behaviourTargets = sortedBehaviours.map(behaviour => ({
+      ...behaviour,
+      description: behaviour?.description || behaviour?.name || ''
+    }))
 
     return {
-      behaviour: sortedBehaviours,
+      behaviour: behaviourTargets,
       layer: availableLayers,
       mod: filter(keycodes, 'isModifier'),
       code: keycodes
