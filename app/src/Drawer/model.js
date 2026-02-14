@@ -1,6 +1,17 @@
 import keyBy from 'lodash/keyBy'
 
 import { getKeyBoundingBox, getKeyStyles } from '../key-units'
+import {
+  buildAvailableBindingSet,
+  collectComboReferenceIssues,
+  getNodeBind,
+  getUnresolvedBindingCode,
+  isComboVisibleOnLayer as isComboVisibleOnLayerShared,
+  normalizeBindingText as normalizeBindingTextShared,
+  normalizeComboLayers as normalizeComboLayersShared,
+  normalizeComboPositions as normalizeComboPositionsShared,
+  splitBindingList as splitBindingListShared
+} from '../shared/keymap-reference-errors'
 
 const DIRECT_LAYER_BEHAVIOURS = new Set(['&mo', '&to', '&tog', '&sl', '&lt'])
 const LAYER_LINK_BEHAVIOURS = new Set(['&mo', '&to', '&tog', '&sl', '&lt'])
@@ -43,13 +54,9 @@ function renderParamNode(node) {
 }
 
 function normalizeBindingText(binding) {
-  if (typeof binding === 'string') {
-    const trimmed = binding.trim()
-    return trimmed || '&none'
-  }
-
-  if (typeof binding === 'number') {
-    return String(binding)
+  const normalized = normalizeBindingTextShared(binding)
+  if (normalized) {
+    return normalized
   }
 
   if (binding && typeof binding === 'object' && typeof binding.value === 'string') {
@@ -57,7 +64,7 @@ function normalizeBindingText(binding) {
       ? binding.params.map(renderParamNode).filter(Boolean)
       : []
 
-    return `${binding.value} ${params.join(' ')}`.trim()
+    return `${binding.value} ${params.join(' ')}`.trim() || '&none'
   }
 
   return '&none'
@@ -71,70 +78,7 @@ function parseBindingText(binding) {
 }
 
 function splitBindingList(rawBindings) {
-  if (Array.isArray(rawBindings)) {
-    return rawBindings
-      .map(value => String(value || '').trim())
-      .filter(Boolean)
-  }
-
-  if (typeof rawBindings !== 'string') {
-    return []
-  }
-
-  const tokens = rawBindings
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-
-  const bindings = []
-  let current = []
-
-  for (const token of tokens) {
-    if (token.startsWith('&')) {
-      if (current.length > 0) {
-        bindings.push(current.join(' '))
-      }
-      current = [token]
-      continue
-    }
-
-    if (current.length > 0) {
-      current.push(token)
-    }
-  }
-
-  if (current.length > 0) {
-    bindings.push(current.join(' '))
-  }
-
-  return bindings
-}
-
-function getCustomBehaviorBind(node) {
-  if (!node || typeof node !== 'object') {
-    return ''
-  }
-
-  if (typeof node.bind === 'string' && node.bind.trim()) {
-    return node.bind.trim()
-  }
-
-  const name = typeof node.name === 'string' ? node.name.trim() : ''
-  const label = typeof node.label === 'string' ? node.label.trim() : ''
-
-  if (name.startsWith('&')) {
-    return name
-  }
-
-  if (label) {
-    return `&${label}`
-  }
-
-  if (name) {
-    return `&${name}`
-  }
-
-  return ''
+  return splitBindingListShared(rawBindings)
 }
 
 function buildLayerMoveContext(keymap, behaviourTypes) {
@@ -145,7 +89,7 @@ function buildLayerMoveContext(keymap, behaviourTypes) {
   ]
 
   for (const definition of definitionGroups) {
-    const bind = getCustomBehaviorBind(definition)
+    const bind = getNodeBind(definition)
     if (bind && !behaviorByBind[bind]) {
       behaviorByBind[bind] = definition
     }
@@ -265,30 +209,11 @@ function resolveLayerMove(binding, keymap, behaviourTypes) {
 }
 
 function normalizeComboLayers(combo) {
-  const layers = combo?.properties?.layers
-  if (!Array.isArray(layers)) {
-    return []
-  }
-
-  const seen = new Set()
-  const normalized = []
-
-  for (const value of layers) {
-    const layer = parseLayerIndex(value)
-    if (layer === null || seen.has(layer)) {
-      continue
-    }
-
-    seen.add(layer)
-    normalized.push(layer)
-  }
-
-  return normalized
+  return normalizeComboLayersShared(combo)
 }
 
 function isComboVisibleOnLayer(combo, layerIndex) {
-  const layers = normalizeComboLayers(combo)
-  return layers.length === 0 || layers.includes(layerIndex)
+  return isComboVisibleOnLayerShared(combo, layerIndex)
 }
 
 function keycodeDisplayValue(keycodeToken, keycodeByCode) {
@@ -482,24 +407,7 @@ function getComboBindingTitle(combo) {
 }
 
 function normalizeComboPositions(combo, keyCount) {
-  const positions = Array.isArray(combo?.properties?.['key-positions'])
-    ? combo.properties['key-positions']
-    : []
-
-  const seen = new Set()
-  const normalized = []
-
-  for (const value of positions) {
-    const index = parseLayerIndex(value)
-    if (index === null || index >= keyCount || seen.has(index)) {
-      continue
-    }
-
-    seen.add(index)
-    normalized.push(index)
-  }
-
-  return normalized
+  return normalizeComboPositionsShared(combo, keyCount)
 }
 
 function buildComboRenderModels({
@@ -508,7 +416,8 @@ function buildComboRenderModels({
   layout,
   geometry,
   keycodes,
-  behaviours
+  behaviours,
+  comboMessagesByIndex
 }) {
   const combos = Array.isArray(keymap?.combos) ? keymap.combos : []
   const positionedCombos = []
@@ -559,6 +468,8 @@ function buildComboRenderModels({
       id: `combo-${layerIndex}-${comboIndex}`,
       label,
       title,
+      hasError: comboMessagesByIndex.has(comboIndex),
+      errorMessage: comboMessagesByIndex.get(comboIndex) || null,
       left,
       top,
       width,
@@ -583,6 +494,13 @@ function buildLayerRenderModel({
   const layerBindings = getLayerBindings(keymap, layerIndex)
   const layerNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
   const layerName = String(layerNames[layerIndex] || `Layer ${layerIndex}`)
+  const availableBindings = buildAvailableBindingSet({ behaviours, keymap })
+  const comboReferenceIssues = collectComboReferenceIssues({
+    keymap,
+    layerIndex,
+    keyCount: Array.isArray(layout) ? layout.length : 0,
+    availableBindings
+  })
 
   const keys = (Array.isArray(layout) ? layout : []).map((key, keyIndex) => {
     const normalizedBinding = normalizeBindingText(layerBindings[keyIndex])
@@ -591,6 +509,15 @@ function buildLayerRenderModel({
     const targetLayerName = layerMove
       ? String(layerNames[layerMove.targetLayer] || layerMove.targetLayer)
       : null
+    const unresolvedBindingCode = getUnresolvedBindingCode(normalizedBinding, availableBindings)
+    const comboMessages = comboReferenceIssues.keyMessagesByIndex.get(keyIndex) || []
+    const errorMessages = []
+
+    if (unresolvedBindingCode) {
+      errorMessages.push(`Unresolved binding: ${unresolvedBindingCode}`)
+    }
+
+    errorMessages.push(...comboMessages)
 
     return {
       id: `layer-${layerIndex}-key-${keyIndex}`,
@@ -598,6 +525,8 @@ function buildLayerRenderModel({
       binding: normalizedBinding,
       tapLabel: display.tapLabel,
       behaviorLabel: display.behaviorLabel,
+      hasError: errorMessages.length > 0,
+      errorMessage: errorMessages.length > 0 ? errorMessages.join('\n') : null,
       style: computedGeometry.keyStyles[keyIndex] || {},
       layerMove: layerMove
         ? {
@@ -615,7 +544,8 @@ function buildLayerRenderModel({
     layout,
     geometry: computedGeometry,
     keycodes,
-    behaviours
+    behaviours,
+    comboMessagesByIndex: comboReferenceIssues.comboMessagesByIndex
   })
 
   return {

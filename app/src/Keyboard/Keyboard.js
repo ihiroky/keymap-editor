@@ -14,6 +14,11 @@ import { getKeyBoundingBox } from '../key-units'
 import { getBehaviourParams } from '../keymap'
 import { hydrateTree, makeIndex } from './Keys/util'
 import { DefinitionsContext, SearchContext } from '../providers'
+import {
+  buildAvailableBindingSet,
+  collectComboReferenceIssues,
+  getUnresolvedBindingCode
+} from '../shared/keymap-reference-errors'
 import styles from './styles.module.css'
 
 function isSensorEditable(sensor) {
@@ -200,6 +205,43 @@ function Keyboard(props) {
   const activeBindings = useMemo(() => layout.map((_, i) => (
     get(keymap, ['layers', activeLayer, i], { value: '&none', params: [] })
   )), [layout, keymap, activeLayer])
+
+  const keyErrors = useMemo(() => {
+    const availableBindings = buildAvailableBindingSet({
+      behaviours,
+      keymap
+    })
+    const errorsByIndex = {}
+
+    activeBindings.forEach((binding, index) => {
+      const unresolvedCode = getUnresolvedBindingCode(binding, availableBindings)
+      if (!unresolvedCode) {
+        return
+      }
+
+      errorsByIndex[index] = `Unresolved binding: ${unresolvedCode}`
+    })
+
+    const comboIssues = collectComboReferenceIssues({
+      keymap,
+      layerIndex: activeLayer,
+      keyCount: layout.length,
+      availableBindings
+    })
+
+    for (const [index, messages] of comboIssues.keyMessagesByIndex.entries()) {
+      if (!messages.length) {
+        continue
+      }
+
+      const current = errorsByIndex[index]
+      errorsByIndex[index] = current
+        ? `${current}\n${messages.join('\n')}`
+        : messages.join('\n')
+    }
+
+    return errorsByIndex
+  }, [activeBindings, activeLayer, behaviours, keymap, layout.length])
 
   const sensorCount = useMemo(() => {
     if (Array.isArray(sensors) && sensors.length > 0) {
@@ -671,6 +713,7 @@ function Keyboard(props) {
                   data-layer={activeLayer}
                   layout={layout}
                   bindings={activeBindings}
+                  keyErrors={keyErrors}
                   selectedKeyIndex={selectedKeyIndex}
                   onSelectKey={handleSelectKey}
                   onUpdate={event => handleUpdateLayer(activeLayer, event)}

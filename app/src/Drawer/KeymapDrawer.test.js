@@ -23,6 +23,14 @@ const keymap = {
         'key-positions': [0, 1],
         layers: [0]
       }
+    },
+    {
+      name: 'combo_broken',
+      properties: {
+        bindings: ['&missing_behavior'],
+        'key-positions': [1, 2],
+        layers: [0]
+      }
     }
   ],
   behavior_overrides: [],
@@ -76,5 +84,10 @@ describe('KeymapDrawer', () => {
     expect(layerLink.textContent).toBe('Fn')
     expect(layerLink.getAttribute('title')).toBe('Move to Fn (Layer 1)')
     expect(screen.getByTestId('combo-0-0').getAttribute('title')).toBe('&kp TAB')
+    expect(screen.getByTestId('drawer-key-0-0').getAttribute('data-error')).toBe('false')
+    expect(screen.getByTestId('drawer-key-0-1').getAttribute('data-error')).toBe('true')
+    expect(screen.getByTestId('drawer-key-0-2').getAttribute('data-error')).toBe('true')
+    expect(screen.getByTestId('combo-0-0').getAttribute('data-error')).toBe('false')
+    expect(screen.getByTestId('combo-0-1').getAttribute('data-error')).toBe('true')
   })
 })

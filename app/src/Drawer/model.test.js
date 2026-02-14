@@ -193,4 +193,41 @@ describe('Drawer model', () => {
     expect(resolveLayerMove('&mo foo', keymap, baseBehaviourTypes)).toBeNull()
     expect(resolveLayerMove('not_a_binding', keymap, baseBehaviourTypes)).toBeNull()
   })
+
+  test('marks keys as error when unresolved bindings remain in keymap and combos', () => {
+    const keymap = createKeymap({
+      layers: [
+        ['&ghost', '&kp A', '&kp TAB']
+      ],
+      combos: [
+        {
+          name: 'broken_combo',
+          bind: '&broken_combo',
+          properties: {
+            bindings: ['&missing_combo_binding'],
+            'key-positions': [1, 2],
+            layers: [0]
+          }
+        }
+      ]
+    })
+
+    const model = buildLayerRenderModel({
+      layout: baseLayout,
+      keymap,
+      layerIndex: 0,
+      keycodes: baseKeycodes,
+      behaviours: baseBehaviours,
+      behaviourTypes: baseBehaviourTypes
+    })
+
+    expect(model.keys[0].hasError).toBe(true)
+    expect(model.keys[0].errorMessage).toContain('Unresolved binding: &ghost')
+    expect(model.keys[1].hasError).toBe(true)
+    expect(model.keys[1].errorMessage).toContain('broken_combo')
+    expect(model.keys[2].hasError).toBe(true)
+    expect(model.keys[2].errorMessage).toContain('broken_combo')
+    expect(model.combos[0].hasError).toBe(true)
+    expect(model.combos[0].errorMessage).toContain('&missing_combo_binding')
+  })
 })

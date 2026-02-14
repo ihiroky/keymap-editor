@@ -62,6 +62,21 @@
   z-index: 2;
 }
 
+.keyError {
+  border-color: var(--theme-danger-border);
+  background: var(--theme-danger-bg);
+}
+
+.keyErrorBadge {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--theme-danger-text);
+}
+
 .keyTap {
   font-size: 14px;
   line-height: 1.2;
@@ -129,6 +144,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   z-index: 5;
+}
+
+.comboBoxError {
+  border-color: var(--theme-danger-border);
+  background: var(--theme-danger-bg);
+  color: var(--theme-danger-text);
 }
 
 @media print {

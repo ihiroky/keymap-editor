@@ -175,11 +175,16 @@ function KeymapDrawer(props) {
                 {layer.keys.map(key => (
                   <div
                     key={key.id}
-                    className={styles.key}
+                    className={`${styles.key} ${key.hasError ? styles.keyError : ''}`.trim()}
                     style={key.style}
                     data-key-index={key.index}
-                    title={key.binding}
+                    data-testid={`drawer-key-${layer.index}-${key.index}`}
+                    data-error={key.hasError ? 'true' : 'false'}
+                    title={key.errorMessage || key.binding}
                   >
+                    {key.hasError && (
+                      <span className={styles.keyErrorBadge} aria-hidden='true'>!</span>
+                    )}
                     {key.behaviorLabel && (
                       <span
                         className={styles.keyBehavior}
@@ -212,9 +217,10 @@ function KeymapDrawer(props) {
                 {layer.combos.map(combo => (
                   <div
                     key={combo.id}
-                    className={styles.comboBox}
+                    className={`${styles.comboBox} ${combo.hasError ? styles.comboBoxError : ''}`.trim()}
                     data-testid={combo.id}
-                    title={combo.title || combo.label}
+                    data-error={combo.hasError ? 'true' : 'false'}
+                    title={combo.errorMessage || combo.title || combo.label}
                     style={{
                       left: `${combo.left}px`,
                       top: `${combo.top}px`,

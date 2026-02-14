@@ -9,6 +9,26 @@
 	font-size: 110%;
 	border-radius: 5px;
 }
+
+.key[data-error="true"] {
+  border: 1px solid var(--theme-danger-border);
+  background-color: var(--theme-danger-bg);
+}
+
+.key[data-error="true"] .code,
+.key[data-error="true"] .behaviour-binding {
+  color: var(--theme-danger-text);
+}
+
+.error-marker {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--theme-danger-text);
+}
 .key:hover {
 	background-color: var(--hover-selection);
 	transition: 200ms;
