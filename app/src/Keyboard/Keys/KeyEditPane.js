@@ -1,5 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep'
 import get from 'lodash/get'
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -53,8 +54,26 @@ function normalizeDraft(draft, sources) {
   }
 }
 
+function getNodeAtPath(binding, path) {
+  if (!binding) {
+    return undefined
+  }
+
+  let node = binding
+  for (const index of path) {
+    if (!Array.isArray(node.params)) {
+      return undefined
+    }
+    node = node.params[index]
+    if (!node) {
+      return undefined
+    }
+  }
+  return node
+}
+
 function KeyEditPane(props) {
-  const { selectedKey, onApply, onClose, className, style } = props
+  const { selectedKey, baselineBinding, onApply, onClose, className, style } = props
   const { getSearchTargets, sources } = useContext(SearchContext)
   const [draft, setDraft] = useState(null)
   const [picker, setPicker] = useState(null)
@@ -104,8 +123,26 @@ function KeyEditPane(props) {
     if (!selectedKey || !draft) {
       return false
     }
-    return JSON.stringify(draft) !== JSON.stringify(selectedKey.binding)
+    return !isEqual(draft, selectedKey.binding)
   }, [draft, selectedKey])
+  const baseline = useMemo(() => (
+    baselineBinding || selectedKey?.binding || null
+  ), [baselineBinding, selectedKey])
+  const isBehaviorChanged = useMemo(() => {
+    if (!draft || !baseline) {
+      return false
+    }
+    return draft.value !== baseline.value
+  }, [draft, baseline])
+  const isParamChanged = useMemo(() => function(path) {
+    if (!draft || !baseline) {
+      return false
+    }
+
+    const draftNode = getNodeAtPath(draft, path)
+    const baseNode = getNodeAtPath(baseline, path)
+    return !isEqual(draftNode, baseNode)
+  }, [draft, baseline])
 
   const openPicker = useMemo(() => function(param, path, value, node) {
     setPicker({ param, path, value, node })
@@ -293,6 +330,7 @@ function KeyEditPane(props) {
           key={`${path.join('-')}-${depth}`}
           className={styles['param-row']}
           data-depth={depth}
+          data-changed={isParamChanged(path) ? 'true' : 'false'}
         >
           <div className={styles['param-label']}>{label}</div>
           <button
@@ -334,6 +372,7 @@ function KeyEditPane(props) {
     openPicker,
     picker,
     isPickerForPath,
+    isParamChanged,
     draft,
     getSearchTargets,
     handleSelectValue
@@ -377,7 +416,7 @@ function KeyEditPane(props) {
 
       <section className={styles.section}>
         <h3>Behavior</h3>
-        <div className={styles['param-row']}>
+        <div className={styles['param-row']} data-changed={isBehaviorChanged ? 'true' : 'false'}>
           <div className={styles['param-label']}>Value</div>
           <button
             type="button"
@@ -435,6 +474,10 @@ function KeyEditPane(props) {
 KeyEditPane.propTypes = {
   className: PropTypes.string,
   style: PropTypes.object,
+  baselineBinding: PropTypes.shape({
+    value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    params: PropTypes.array.isRequired
+  }),
   selectedKey: PropTypes.shape({
     index: PropTypes.number.isRequired,
     label: PropTypes.string.isRequired,

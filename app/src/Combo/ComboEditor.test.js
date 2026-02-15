@@ -47,6 +47,7 @@ function renderEditor (options = {}) {
     behavior_definitions: [],
     combos: options.combos || [createCombo()]
   }
+  const baseKeymap = options.baseKeymap || keymap
 
   const layout = options.layout || [
     { x: 0, y: 0, w: 1, h: 1, label: 'A' },
@@ -57,6 +58,7 @@ function renderEditor (options = {}) {
   render(
     <ComboEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       layout={layout}
       availableBehaviours={options.availableBehaviours || [
         { code: '&none', name: 'None' },
@@ -205,5 +207,45 @@ describe('ComboEditor', () => {
     const result = document.querySelector('li[data-result-index="15"]')
     expect(result).toBeTruthy()
     expect(result.className).toMatch(/highlighted/)
+  })
+
+  test('shows changed marker for modified field against base keymap', () => {
+    renderEditor({
+      combos: [createCombo({
+        properties: {
+          ...createCombo().properties,
+          'timeout-ms': 45
+        }
+      })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    const row = screen.getByLabelText('timeout-ms').closest('[data-changed]')
+    expect(row).toBeTruthy()
+    expect(row.getAttribute('data-changed')).toBe('true')
+  })
+
+  test('shows Added badge for new combo rows', () => {
+    renderEditor({
+      combos: [createCombo(), createCombo({ name: 'combo_b', bind: '&combo_b' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
   })
 })

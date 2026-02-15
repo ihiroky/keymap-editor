@@ -1,7 +1,9 @@
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
 import styles from './styles.module.css'
+import { getListChangeInfo, isAddedIndex } from '../shared/change-tracking'
 
 import {
   MACRO_BINDING_CELLS,
@@ -102,11 +104,17 @@ function buildMacroNode (label, compatible) {
 }
 
 function MacroEditor (props) {
-  const { keymap, behaviorTypes, availableBehaviours, onUpdate } = props
+  const { keymap, baseKeymap, behaviorTypes, availableBehaviours, onUpdate } = props
 
+  const baseMacroDefinitions = useMemo(() => (
+    Array.isArray(baseKeymap?.behavior_definitions) ? baseKeymap.behavior_definitions : []
+  ), [baseKeymap])
   const macroDefinitions = useMemo(() => (
     Array.isArray(keymap.behavior_definitions) ? keymap.behavior_definitions : []
   ), [keymap])
+  const macroChangeInfo = useMemo(() => (
+    getListChangeInfo(baseMacroDefinitions, macroDefinitions)
+  ), [baseMacroDefinitions, macroDefinitions])
 
   const macroTypeMap = useMemo(() => getMacroTypeMap(behaviorTypes), [behaviorTypes])
   const missingMacroTypes = useMemo(() => getMissingMacroTypes(behaviorTypes), [behaviorTypes])
@@ -170,8 +178,16 @@ function MacroEditor (props) {
 
     return macroDefinitions[selection] || null
   }, [macroDefinitions, selection])
+  const selectedBaseNode = useMemo(() => {
+    if (selection === null) {
+      return null
+    }
+
+    return baseMacroDefinitions[selection] || null
+  }, [baseMacroDefinitions, selection])
 
   const selectedBindings = useMemo(() => ensureBindingArray(selectedNode?.properties?.bindings), [selectedNode])
+  const selectedBaseBindings = useMemo(() => ensureBindingArray(selectedBaseNode?.properties?.bindings), [selectedBaseNode])
   const selectedSteps = useMemo(() => selectedBindings.map(parseMacroBinding), [selectedBindings])
   const selectedCompatible = selectedNode?.properties?.compatible || selectedNode?.compatible || ''
   const selectedBindingCells = Number(selectedNode?.properties?.['#binding-cells'])
@@ -397,6 +413,9 @@ function MacroEditor (props) {
     <div className={styles.editor}>
       <div className={styles.sidebar}>
         <div className={styles.sectionHeader}>Macro Definitions</div>
+        {(macroChangeInfo.addedCount > 0 || macroChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{macroChangeInfo.addedCount} / Deleted {macroChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {macroDefinitions.map((node, index) => (
             <button
@@ -404,9 +423,12 @@ function MacroEditor (props) {
               key={`macro-${index}`}
               className={styles.listItem}
               data-selected={selection === index ? 'true' : 'false'}
+              data-changed={macroChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
               onClick={() => setSelection(index)}
             >
+              {macroChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
               {node.label ? `&${node.label}` : node.name}
+              {isAddedIndex(baseMacroDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
             </button>
           ))}
         </div>
@@ -435,7 +457,7 @@ function MacroEditor (props) {
             <div className={styles.group}>
               <div className={styles.groupTitle}>Required Properties</div>
 
-              <div className={styles.formRow}>
+              <div className={styles.formRow} data-changed={!isEqual(selectedNode.label, selectedBaseNode?.label) ? 'true' : 'false'}>
                 <label>Label</label>
                 <input
                   type="text"
@@ -455,7 +477,7 @@ function MacroEditor (props) {
                 />
               </div>
 
-              <div className={styles.formRow}>
+              <div className={styles.formRow} data-changed={!isEqual(selectedNode.name, selectedBaseNode?.name) ? 'true' : 'false'}>
                 <label>Node Name</label>
                 <input
                   type="text"
@@ -471,7 +493,10 @@ function MacroEditor (props) {
                 />
               </div>
 
-              <div className={styles.formRow}>
+              <div
+                className={styles.formRow}
+                data-changed={!isEqual(selectedCompatible, selectedBaseNode?.properties?.compatible || selectedBaseNode?.compatible || '') ? 'true' : 'false'}
+              >
                 <label>Compatible</label>
                 <select
                   aria-label='Compatible'
@@ -499,7 +524,10 @@ function MacroEditor (props) {
                 </select>
               </div>
 
-              <div className={styles.formRow}>
+              <div
+                className={styles.formRow}
+                data-changed={!isEqual(selectedBindingCells, Number(selectedBaseNode?.properties?.['#binding-cells'])) ? 'true' : 'false'}
+              >
                 <label>#binding-cells</label>
                 <input type="number" disabled value={Number.isInteger(selectedBindingCells) ? selectedBindingCells : ''} />
               </div>
@@ -533,6 +561,7 @@ function MacroEditor (props) {
                       <div
                         key={`step-${index}`}
                         className={styles.stepRow}
+                        data-changed={!isEqual(selectedBindings[index], selectedBaseBindings[index]) ? 'true' : 'false'}
                         draggable
                         onDragStart={event => {
                           if (event.dataTransfer) {
@@ -756,7 +785,10 @@ function MacroEditor (props) {
               )}
             </div>
 
-            <div className={styles.group}>
+            <div
+              className={styles.group}
+              data-changed={optionalKnownPresentKeys.some(key => !isEqual(selectedNode?.properties?.[key], selectedBaseNode?.properties?.[key])) ? 'true' : 'false'}
+            >
               <div className={styles.groupTitle}>Optional Properties</div>
               {optionalKnownPresentKeys.length === 0 && (
                 <p className={styles.emptyHint}>No optional properties added.</p>
@@ -768,7 +800,11 @@ function MacroEditor (props) {
                 const value = selectedNode.properties?.[key]
 
                 return (
-                  <div className={styles.knownRow} key={`optional-known-${key}`}>
+                  <div
+                    className={styles.knownRow}
+                    data-changed={!isEqual(value, selectedBaseNode?.properties?.[key]) ? 'true' : 'false'}
+                    key={`optional-known-${key}`}
+                  >
                     <label>{key === 'label' ? 'Property Label' : key}</label>
                     {specType === 'int' ? (
                       <input
@@ -832,6 +868,7 @@ function MacroEditor (props) {
 }
 
 MacroEditor.propTypes = {
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   behaviorTypes: PropTypes.array.isRequired,
   availableBehaviours: PropTypes.array,

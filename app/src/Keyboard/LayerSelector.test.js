@@ -54,4 +54,11 @@ describe('LayerSelector', () => {
     expect(props.onMoveLayer).toHaveBeenCalledTimes(1)
     expect(props.onMoveLayer).toHaveBeenCalledWith(0, 1)
   })
+
+  test('shows changed marker when changedLayers is true', () => {
+    renderSelector({ changedLayers: [true, false] })
+
+    const changedRow = screen.getByText('Base').closest('li')
+    expect(changedRow.getAttribute('data-changed')).toBe('true')
+  })
 })

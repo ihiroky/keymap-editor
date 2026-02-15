@@ -33,10 +33,12 @@ function renderEditor (options = {}) {
     combos: [],
     conditional_layers: options.conditionalLayers || [createRule()]
   }
+  const baseKeymap = options.baseKeymap || keymap
 
   render(
     <ConditionalLayerEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       onUpdate={onUpdate}
     />
   )
@@ -161,5 +163,47 @@ describe('ConditionalLayerEditor', () => {
 
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].conditional_layers[0].properties.extra).toBe('keep')
+  })
+
+  test('shows changed marker and summary against base keymap', () => {
+    renderEditor({
+      conditionalLayers: [createRule({
+        properties: {
+          'if-layers': [0, 1],
+          'then-layer': 2
+        }
+      })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    const row = screen.getByLabelText('then-layer').closest('[data-changed]')
+    expect(row).toBeTruthy()
+    expect(row.getAttribute('data-changed')).toBe('true')
+  })
+
+  test('shows Added badge when rule is newly added', () => {
+    renderEditor({
+      conditionalLayers: [createRule(), createRule({ name: 'nav_num_2', bind: '&nav_num_2' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
   })
 })

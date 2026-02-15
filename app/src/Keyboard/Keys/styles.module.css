@@ -15,6 +15,11 @@
   background-color: var(--theme-danger-bg);
 }
 
+.key[data-changed="true"]:not([data-error="true"]) {
+  box-shadow: inset 0 0 0 1px var(--editor-diff-border);
+  background-color: var(--editor-diff-bg);
+}
+
 .key[data-error="true"] .code,
 .key[data-error="true"] .behaviour-binding {
   color: var(--theme-danger-text);
@@ -28,6 +33,16 @@
   font-weight: 700;
   line-height: 1;
   color: var(--theme-danger-text);
+}
+
+.changed-marker {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--editor-diff-badge-bg);
 }
 .key:hover {
 	background-color: var(--hover-selection);

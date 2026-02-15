@@ -1,6 +1,8 @@
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import { getListChangeInfo, isAddedIndex } from '../shared/change-tracking'
 import styles from './styles.module.css'
 
 const KNOWN_PROPERTY_KEYS = [
@@ -250,16 +252,24 @@ function validateConditionalLayerCollection (rules, layerCount) {
 }
 
 function ConditionalLayerEditor (props) {
-  const { keymap, onUpdate } = props
+  const { keymap, baseKeymap, onUpdate } = props
   const layerNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
   const layerCount = Array.isArray(keymap?.layers) ? keymap.layers.length : 0
   const layerChoices = useMemo(() => buildLayerChoices(layerNames, layerCount), [layerNames, layerCount])
 
+  const baseRules = useMemo(() => (
+    Array.isArray(baseKeymap?.conditional_layers)
+      ? baseKeymap.conditional_layers.map(node => normalizeRuleNode(node, layerCount))
+      : []
+  ), [baseKeymap, layerCount])
   const rules = useMemo(() => (
     Array.isArray(keymap?.conditional_layers)
       ? keymap.conditional_layers.map(node => normalizeRuleNode(node, layerCount))
       : []
   ), [keymap, layerCount])
+  const ruleChangeInfo = useMemo(() => (
+    getListChangeInfo(baseRules, rules)
+  ), [baseRules, rules])
 
   const [selection, setSelection] = useState(() => (rules.length > 0 ? 0 : null))
   const [localErrors, setLocalErrors] = useState([])
@@ -302,6 +312,13 @@ function ConditionalLayerEditor (props) {
 
     return rules[selection] || null
   }, [selection, rules])
+  const selectedBaseRule = useMemo(() => {
+    if (selection === null) {
+      return null
+    }
+
+    return baseRules[selection] || null
+  }, [selection, baseRules])
 
   const commitRules = updater => {
     const nextRules = updater(rules.map(cloneRuleNode))
@@ -480,6 +497,9 @@ function ConditionalLayerEditor (props) {
     <div className={styles.editor}>
       <div className={styles.sidebar}>
         <div className={styles.sectionHeader}>Conditional Layers</div>
+        {(ruleChangeInfo.addedCount > 0 || ruleChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{ruleChangeInfo.addedCount} / Deleted {ruleChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {rules.map((rule, index) => (
             <button
@@ -487,9 +507,12 @@ function ConditionalLayerEditor (props) {
               key={`conditional-layer-${index}`}
               className={styles.listItem}
               data-selected={selection === index ? 'true' : 'false'}
+              data-changed={ruleChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
               onClick={() => setSelection(index)}
             >
+              {ruleChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
               {rule.name}
+              {isAddedIndex(baseRules, index) && <span className={styles.addedBadge}>Added</span>}
             </button>
           ))}
         </div>
@@ -515,7 +538,10 @@ function ConditionalLayerEditor (props) {
 
         {selectedRule && (
           <>
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={selectedRule.name !== selectedBaseRule?.name ? 'true' : 'false'}
+            >
               <label>Name</label>
               <input
                 type='text'
@@ -532,7 +558,10 @@ function ConditionalLayerEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={!isEqual(selectedIfLayers, selectedBaseRule?.properties?.['if-layers'] || []) ? 'true' : 'false'}
+            >
               <label>if-layers</label>
               <div className={styles.ifLayersEditor}>
                 {selectedIfLayers.map((ifLayer, ifLayerIndex) => {
@@ -579,7 +608,10 @@ function ConditionalLayerEditor (props) {
               </div>
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={!isEqual(selectedThenLayer, toNonNegativeInteger(selectedBaseRule?.properties?.['then-layer'])) ? 'true' : 'false'}
+            >
               <label>then-layer</label>
               <select
                 aria-label='then-layer'
@@ -602,6 +634,7 @@ function ConditionalLayerEditor (props) {
 }
 
 ConditionalLayerEditor.propTypes = {
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired
 }

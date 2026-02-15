@@ -85,10 +85,12 @@ function renderEditor (options = {}) {
     behavior_overrides: [],
     behavior_definitions: options.definitions || [createMacroDefinition()]
   }
+  const baseKeymap = options.baseKeymap || keymap
 
   render(
     <MacroEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       behaviorTypes={options.behaviorTypes || createBehaviorTypes()}
       availableBehaviours={options.availableBehaviours || [
         { code: '&none', name: 'None' },
@@ -254,5 +256,41 @@ describe('MacroEditor', () => {
     expect(screen.getByText('Required Properties')).toBeTruthy()
     expect(screen.getByText('Optional Properties')).toBeTruthy()
     expect(screen.getByText('Add Known Properties')).toBeTruthy()
+  })
+
+  test('marks changed step rows against base definitions', () => {
+    renderEditor({
+      definitions: [createMacroDefinition({
+        properties: {
+          compatible: 'zmk,behavior-macro-two-param',
+          '#binding-cells': 2,
+          bindings: ['&kp C', '&kp B']
+        }
+      })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    const changedStep = document.querySelector('[data-changed="true"][draggable="true"]')
+    expect(changedStep).toBeTruthy()
+  })
+
+  test('shows Added badge when macro is newly added in current state', () => {
+    renderEditor({
+      definitions: [createMacroDefinition(), createMacroDefinition({ label: 'macro_2', name: 'macro_2_node', bind: '&macro_2' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
   })
 })

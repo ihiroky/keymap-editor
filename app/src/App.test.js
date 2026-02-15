@@ -317,4 +317,18 @@ describe('App macro/behavior split integration', () => {
 
     window.print = originalPrint
   })
+
+  test('shows tab change marker when section is modified', async () => {
+    render(<App />)
+
+    await screen.findByText('Keymap')
+    fireEvent.click(screen.getByRole('button', { name: 'Macro' }))
+    await waitFor(() => {
+      expect(mockLastMacroProps).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Macro Update' }))
+
+    const macroTab = screen.getByRole('button', { name: 'Macro' })
+    expect(macroTab.querySelector('.tab-diff-dot')).toBeTruthy()
+  })
 })

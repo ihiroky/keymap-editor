@@ -37,6 +37,9 @@
   color: var(--theme-text);
   padding: 8px 10px;
   transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .listItem::before {
@@ -58,6 +61,35 @@
 
 .listItem[data-selected='true']::before {
   background: var(--selection);
+}
+
+.listItem[data-changed='true']:not([data-selected='true']) {
+  box-shadow: inset 0 0 0 1px var(--editor-diff-border);
+}
+
+.diffDot {
+  width: var(--editor-diff-dot-size);
+  height: var(--editor-diff-dot-size);
+  border-radius: 999px;
+  background: var(--editor-diff-badge-bg);
+  flex: 0 0 auto;
+}
+
+.addedBadge {
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--editor-diff-badge-bg);
+  color: var(--editor-diff-badge-text);
+}
+
+.changeSummary {
+  font-size: 12px;
+  color: var(--editor-diff-text);
+  margin: -2px 0 8px;
 }
 
 .actions {
@@ -98,6 +130,14 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.formRow[data-changed='true'] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
+  border-radius: 6px;
 }
 
 .formRow label {
@@ -122,6 +162,14 @@
 
 .group {
   margin-top: 12px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.group[data-changed='true'] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
+  border-radius: 8px;
 }
 
 .groupTitle {
@@ -141,6 +189,14 @@
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.knownRow[data-changed='true'] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
+  border-radius: 6px;
 }
 
 .knownRow label {
@@ -170,10 +226,17 @@
   padding: 6px;
   border: 1px solid var(--theme-border);
   border-radius: 8px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
 }
 
 .stepRow[data-dragging='true'] {
   opacity: 0.7;
+}
+
+.stepRow[data-changed='true'] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
 }
 
 .formRow input[type='text'],

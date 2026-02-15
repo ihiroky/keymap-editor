@@ -21,7 +21,7 @@ function onKey(mapping) {
 
 function LayerSelector(props) {
   const ref = useRef(null)
-  const { activeLayer, layers } = props
+  const { activeLayer, layers, changedLayers } = props
   const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer, onDuplicateLayer, onMoveLayer } = props
   const [renaming, setRenaming] = useState(false)
   const [editing, setEditing] = useState('')
@@ -148,6 +148,7 @@ function LayerSelector(props) {
               dropLayer === i && draggingLayer !== null && draggingLayer !== i ? styles['drag-over'] : ''
             ].join(' ')}
             data-layer={i}
+            data-changed={changedLayers?.[i] ? 'true' : 'false'}
             draggable={!renaming}
             onClick={stop(() => handleSelect(i))}
             onDragStart={event => handleDragStart(i, event)}
@@ -173,6 +174,7 @@ function LayerSelector(props) {
               />
             ) : (
               <span className={styles.name}>
+                {changedLayers?.[i] && <span className={styles['changed-dot']} aria-hidden='true' />}
                 {name}
                 <Icon
                   name="copy"
@@ -201,6 +203,7 @@ function LayerSelector(props) {
 
 LayerSelector.propTypes = {
   layers: PropTypes.array.isRequired,
+  changedLayers: PropTypes.array,
   activeLayer: PropTypes.number.isRequired,
   onSelect: PropTypes.func.isRequired,
   onNewLayer: PropTypes.func.isRequired,

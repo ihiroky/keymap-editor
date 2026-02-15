@@ -141,10 +141,12 @@ function renderEditor (options = {}) {
     behavior_definitions: options.behaviorDefinitions || [createDefinitionNode()],
     behavior_overrides: options.behaviorOverrides || []
   }
+  const baseKeymap = options.baseKeymap || keymap
 
   const view = render(
     <BehaviorEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       behaviorTypes={options.behaviorTypes || [createBehaviorType()]}
       availableBehaviours={options.availableBehaviours || [
         { code: '&none', name: 'None' },
@@ -347,5 +349,49 @@ describe('BehaviorEditor children DSL', () => {
 
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].behavior_definitions[0].properties['keep-mods']).toEqual(['(MOD_LCTL|MOD_RALT|MOD_LGUI)'])
+  })
+
+  test('shows changed marker on modified field against base keymap', () => {
+    const changed = createDefinitionNode()
+    changed.name = 'macro_changed_node'
+
+    renderEditor({
+      behaviorDefinitions: [changed],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: []
+      }
+    })
+
+    const row = screen.getByDisplayValue('macro_changed_node').closest('[data-changed]')
+    expect(row).toBeTruthy()
+    expect(row.getAttribute('data-changed')).toBe('true')
+  })
+
+  test('shows Added badge when definition is newly added', () => {
+    renderEditor({
+      behaviorDefinitions: [
+        createDefinitionNode(),
+        {
+          ...createDefinitionNode(),
+          label: 'macro_2',
+          name: 'macro_2_node',
+          bind: '&macro_2'
+        }
+      ],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: []
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
   })
 })

@@ -15,13 +15,26 @@ const size = key => {
 }
 
 function KeyboardLayout(props) {
-  const { layout, bindings, onUpdate, onSelectKey, selectedKeyIndex, keyErrors } = props
+  const {
+    layout,
+    bindings,
+    onUpdate,
+    onSelectKey,
+    selectedKeyIndex,
+    keyErrors,
+    changedKeyIndices
+  } = props
   const normalized = layout.map((_, i) => (
     bindings[i] || {
       value: '&none',
       params: []
     }
   ))
+  const changedSet = useMemo(() => (
+    changedKeyIndices instanceof Set
+      ? changedKeyIndices
+      : new Set(Array.isArray(changedKeyIndices) ? changedKeyIndices : [])
+  ), [changedKeyIndices])
 
   const handleUpdateBind = useMemo(() => function(keyIndex, updateBinding) {
     onUpdate([
@@ -44,6 +57,7 @@ function KeyboardLayout(props) {
           params={normalized[i].params}
           hasError={Boolean(keyErrors?.[i])}
           errorMessage={keyErrors?.[i] || null}
+          isChanged={changedSet.has(i)}
           selected={selectedKeyIndex === i}
           onSelect={onSelectKey ? () => onSelectKey(i) : undefined}
           onUpdate={bind => handleUpdateBind(i, bind)}
@@ -57,6 +71,7 @@ KeyboardLayout.propTypes = {
   layout: PropTypes.array.isRequired,
   bindings: PropTypes.array.isRequired,
   keyErrors: PropTypes.object,
+  changedKeyIndices: PropTypes.oneOfType([PropTypes.array, PropTypes.object]),
   onUpdate: PropTypes.func.isRequired,
   onSelectKey: PropTypes.func,
   selectedKeyIndex: PropTypes.number

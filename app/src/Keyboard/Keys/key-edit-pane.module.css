@@ -105,6 +105,14 @@
   grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
+  border-left: 2px solid transparent;
+  padding-left: 6px;
+}
+
+.param-row[data-changed="true"] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
+  border-radius: 6px;
 }
 
 .param-row[data-depth="1"] {

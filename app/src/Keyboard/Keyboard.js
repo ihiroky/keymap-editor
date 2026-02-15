@@ -1,5 +1,6 @@
 import filter from 'lodash/filter'
 import get from 'lodash/get'
+import isEqual from 'lodash/isEqual'
 import isEmpty from 'lodash/isEmpty'
 import keyBy from 'lodash/keyBy'
 import times from 'lodash/times'
@@ -107,8 +108,18 @@ function moveIndex(index, from, to) {
   return index
 }
 
+function normalizeBinding(binding) {
+  if (!binding) {
+    return { value: '&none', params: [] }
+  }
+  if (typeof binding === 'string' || typeof binding === 'number') {
+    return { value: binding, params: [] }
+  }
+  return binding
+}
+
 function Keyboard(props) {
-  const { layout, keymap, sensors, onUpdate } = props
+  const { layout, baseKeymap, keymap, sensors, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
   const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
   const [selectedSensorIndex, setSelectedSensorIndex] = useState(null)
@@ -203,8 +214,35 @@ function Keyboard(props) {
   }), [layoutBounds, wrapperPadding])
 
   const activeBindings = useMemo(() => layout.map((_, i) => (
-    get(keymap, ['layers', activeLayer, i], { value: '&none', params: [] })
+    normalizeBinding(get(keymap, ['layers', activeLayer, i], null))
   )), [layout, keymap, activeLayer])
+  const baselineBindings = useMemo(() => layout.map((_, i) => (
+    normalizeBinding(get(baseKeymap, ['layers', activeLayer, i], null))
+  )), [layout, baseKeymap, activeLayer])
+  const changedKeyIndices = useMemo(() => {
+    const changed = new Set()
+    activeBindings.forEach((binding, index) => {
+      if (!isEqual(binding, baselineBindings[index])) {
+        changed.add(index)
+      }
+    })
+    return changed
+  }, [activeBindings, baselineBindings])
+
+  const changedLayers = useMemo(() => {
+    const currentNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
+    const currentLayers = Array.isArray(keymap?.layers) ? keymap.layers : []
+    const currentSensorLayers = Array.isArray(keymap?.sensor_layers) ? keymap.sensor_layers : []
+    const baseNames = Array.isArray(baseKeymap?.layer_names) ? baseKeymap.layer_names : []
+    const baseLayers = Array.isArray(baseKeymap?.layers) ? baseKeymap.layers : []
+    const baseSensorLayers = Array.isArray(baseKeymap?.sensor_layers) ? baseKeymap.sensor_layers : []
+
+    return currentLayers.map((layer, index) => (
+      !isEqual(layer, baseLayers[index]) ||
+      !isEqual(currentSensorLayers[index] || [], baseSensorLayers[index] || []) ||
+      String(currentNames[index] || '') !== String(baseNames[index] || '')
+    ))
+  }, [keymap, baseKeymap])
 
   const keyErrors = useMemo(() => {
     const availableBindings = buildAvailableBindingSet({
@@ -262,16 +300,18 @@ function Keyboard(props) {
     const layer = get(keymap, ['sensor_layers', activeLayer], null)
 
     return Array.from({ length: sensorCount }, (_, sensorIndex) => {
-      const binding = Array.isArray(layer) ? layer[sensorIndex] : undefined
-      if (!binding) {
-        return { value: '&none', params: [] }
-      }
-      if (typeof binding === 'string' || typeof binding === 'number') {
-        return { value: binding, params: [] }
-      }
-      return binding
+      const binding = Array.isArray(layer) ? layer[sensorIndex] : null
+      return normalizeBinding(binding)
     })
   }, [keymap, activeLayer, sensorCount])
+  const baselineSensorBindings = useMemo(() => {
+    const layer = get(baseKeymap, ['sensor_layers', activeLayer], null)
+
+    return Array.from({ length: sensorCount }, (_, sensorIndex) => {
+      const binding = Array.isArray(layer) ? layer[sensorIndex] : null
+      return normalizeBinding(binding)
+    })
+  }, [baseKeymap, activeLayer, sensorCount])
 
   const sensorEditPaneStyle = useMemo(() => {
     if (selectedSensorIndex === null || !sensorAnchor) {
@@ -336,6 +376,7 @@ function Keyboard(props) {
       const sensor = sensors?.[sensorIndex]
       const sensorLabel = sensor?.name || sensor?.identifier || `Sensor ${sensorIndex + 1}`
       const editable = editableSensors ? editableSensors[sensorIndex] === true : true
+      const isChanged = !isEqual(binding, baselineSensorBindings[sensorIndex])
       const behaviour = get(sources.behaviours, binding.value)
       if (!behaviour) {
         return (
@@ -347,8 +388,12 @@ function Keyboard(props) {
             disabled={!editable}
             data-selected={selectedSensorIndex === sensorIndex ? 'true' : 'false'}
             data-editable={editable ? 'true' : 'false'}
+            data-changed={isChanged ? 'true' : 'false'}
           >
-            <div className={styles['sensor-label']}>{sensorLabel}</div>
+            <div className={styles['sensor-label']}>
+              {sensorLabel}
+              {isChanged && <span className={styles['sensor-changed-dot']} aria-hidden='true' />}
+            </div>
             <div className={styles['sensor-binding']}>{binding.value}</div>
           </button>
         )
@@ -367,8 +412,12 @@ function Keyboard(props) {
           disabled={!editable}
           data-selected={selectedSensorIndex === sensorIndex ? 'true' : 'false'}
           data-editable={editable ? 'true' : 'false'}
+          data-changed={isChanged ? 'true' : 'false'}
         >
-          <div className={styles['sensor-label']}>{sensorLabel}</div>
+          <div className={styles['sensor-label']}>
+            {sensorLabel}
+            {isChanged && <span className={styles['sensor-changed-dot']} aria-hidden='true' />}
+          </div>
           <div className={styles['sensor-binding']}>
             <span className={styles['sensor-behaviour']}>{behaviour.code}</span>
             <KeyParamlist
@@ -382,7 +431,15 @@ function Keyboard(props) {
         </button>
       )
     })
-  }, [activeSensorBindings, sensors, editableSensors, sources, handleSelectSensor, selectedSensorIndex])
+  }, [
+    activeSensorBindings,
+    baselineSensorBindings,
+    sensors,
+    editableSensors,
+    sources,
+    handleSelectSensor,
+    selectedSensorIndex
+  ])
 
   useEffect(() => {
     if (selectedKeyIndex === null) {
@@ -425,6 +482,13 @@ function Keyboard(props) {
       binding: activeBindings[selectedKeyIndex]
     }
   }, [selectedKeyIndex, activeBindings, layout])
+  const selectedKeyBaseline = useMemo(() => {
+    if (selectedKeyIndex === null) {
+      return null
+    }
+
+    return baselineBindings[selectedKeyIndex] || null
+  }, [selectedKeyIndex, baselineBindings])
 
   const selectedSensor = useMemo(() => {
     if (selectedSensorIndex === null) {
@@ -442,6 +506,13 @@ function Keyboard(props) {
       binding: activeSensorBindings[selectedSensorIndex]
     }
   }, [selectedSensorIndex, sensors, editableSensors, activeSensorBindings])
+  const selectedSensorBaseline = useMemo(() => {
+    if (selectedSensorIndex === null) {
+      return null
+    }
+
+    return baselineSensorBindings[selectedSensorIndex] || null
+  }, [selectedSensorIndex, baselineSensorBindings])
 
   const selectedKeyBounds = useMemo(() => {
     if (selectedKeyIndex === null) {
@@ -699,6 +770,7 @@ function Keyboard(props) {
           <div className={styles['keyboard-pane']} ref={keyboardPaneRef}>
             <LayerSelector
               layers={keymap.layer_names}
+              changedLayers={changedLayers}
               activeLayer={activeLayer}
               onSelect={setActiveLayer}
               onNewLayer={handleCreateLayer}
@@ -713,6 +785,7 @@ function Keyboard(props) {
                   data-layer={activeLayer}
                   layout={layout}
                   bindings={activeBindings}
+                  changedKeyIndices={changedKeyIndices}
                   keyErrors={keyErrors}
                   selectedKeyIndex={selectedKeyIndex}
                   onSelectKey={handleSelectKey}
@@ -724,6 +797,7 @@ function Keyboard(props) {
                   className={styles['floating-pane']}
                   style={editPaneStyle}
                   selectedKey={selectedKey}
+                  baselineBinding={selectedKeyBaseline}
                   onApply={handleApplyBinding}
                   onClose={() => setSelectedKeyIndex(null)}
                 />
@@ -740,6 +814,7 @@ function Keyboard(props) {
                 className={styles['floating-pane']}
                 style={sensorEditPaneStyle}
                 selectedKey={selectedSensor}
+                baselineBinding={selectedSensorBaseline}
                 onApply={handleApplySensorBinding}
                 onClose={() => setSelectedSensorIndex(null)}
               />
@@ -754,6 +829,7 @@ function Keyboard(props) {
 Keyboard.propTypes = {
   layout: PropTypes.array.isRequired,
   sensors: PropTypes.array,
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired
 }
