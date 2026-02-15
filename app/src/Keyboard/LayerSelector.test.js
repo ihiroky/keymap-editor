@@ -13,6 +13,7 @@ function renderSelector(overrides = {}) {
     onDeleteLayer: jest.fn(),
     onDuplicateLayer: jest.fn(),
     onMoveLayer: jest.fn(),
+    onRevertLayer: jest.fn(),
     ...overrides
   }
 
@@ -60,5 +61,16 @@ describe('LayerSelector', () => {
 
     const changedRow = screen.getByText('Base').closest('li')
     expect(changedRow.getAttribute('data-changed')).toBe('true')
+  })
+
+  test('calls onRevertLayer when revert icon is clicked', () => {
+    const props = renderSelector({
+      changedLayers: [true, false],
+      revertableLayers: [true, false]
+    })
+
+    fireEvent.click(screen.getByLabelText('Discard layer changes'))
+    expect(props.onRevertLayer).toHaveBeenCalledTimes(1)
+    expect(props.onRevertLayer).toHaveBeenCalledWith(0)
   })
 })

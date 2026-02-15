@@ -74,6 +74,31 @@ function createModMorphBehaviorType () {
   }
 }
 
+function createHoldTapBehaviorType () {
+  return {
+    compatible: 'zmk,behavior-hold-tap',
+    displayName: 'Hold Tap',
+    propertyTypes: {
+      compatible: 'string',
+      '#binding-cells': 'int',
+      'tapping-term-ms': 'int'
+    },
+    propertySpecs: {
+      compatible: {
+        type: 'string'
+      },
+      '#binding-cells': {
+        type: 'int'
+      },
+      'tapping-term-ms': {
+        type: 'int'
+      }
+    },
+    overrideBinds: ['&mt', '&lt'],
+    overridePropertyKeys: ['tapping-term-ms']
+  }
+}
+
 function createDefinitionNode () {
   return {
     label: 'macro_test',
@@ -393,5 +418,138 @@ describe('BehaviorEditor children DSL', () => {
 
     expect(screen.getByText('Added')).toBeTruthy()
     expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
+  })
+
+  test('discards changed definition row back to base value', () => {
+    const changed = createDefinitionNode()
+    changed.label = 'changed_label'
+    changed.bind = '&changed_label'
+
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [changed],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: []
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard definition changes/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].label).toBe('macro_test')
+  })
+
+  test('discards changed override row back to base value', () => {
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [createDefinitionNode()],
+      behaviorOverrides: [createOverrideNode({ name: '&mt_changed', bind: '&mt_changed' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: [createOverrideNode()]
+      }
+    })
+
+    fireEvent.click(screen.getByText('&mt_changed'))
+    fireEvent.click(screen.getByLabelText(/Discard override changes/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_overrides[0].name).toBe('&mt')
+  })
+
+  test('discards added definition row by removing it', () => {
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [
+        createDefinitionNode(),
+        {
+          ...createDefinitionNode(),
+          label: 'macro_2',
+          name: 'macro_2_node',
+          bind: '&macro_2'
+        }
+      ],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: []
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard definition changes macro_2/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions).toHaveLength(1)
+  })
+
+  test('restores exact base overrides after editing &mt tapping-term-ms then discarding', () => {
+    const baseBehaviorOverrides = [
+      createOverrideNode({
+        name: '&mt',
+        bind: '&mt',
+        properties: {
+          'tapping-term-ms': 200
+        },
+        property_types: {
+          'tapping-term-ms': 'int'
+        },
+        property_order: ['tapping-term-ms']
+      }),
+      createOverrideNode({
+        name: '&lt',
+        bind: '&lt',
+        properties: {
+          'tapping-term-ms': 180
+        }
+      })
+    ]
+    const baseKeymap = {
+      layer_names: ['Base', 'Nav', 'Fn'],
+      layers: [],
+      sensor_layers: [],
+      behavior_definitions: [createDefinitionNode()],
+      behavior_overrides: baseBehaviorOverrides
+    }
+    const behaviorTypes = [createBehaviorType(), createHoldTapBehaviorType()]
+    const availableBehaviours = [
+      { code: '&none', name: 'None' },
+      { code: '&kp', name: 'Key Press' }
+    ]
+    const keycodes = []
+
+    const { onUpdate, rerender } = renderEditor({
+      behaviorDefinitions: [createDefinitionNode()],
+      behaviorOverrides: baseBehaviorOverrides,
+      baseKeymap,
+      behaviorTypes,
+      availableBehaviours,
+      keycodes
+    })
+
+    fireEvent.click(screen.getByText('&mt'))
+    fireEvent.change(screen.getByDisplayValue('200'), { target: { value: '220' } })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+
+    const updatedKeymap = onUpdate.mock.calls[0][0]
+    rerender(
+      <BehaviorEditor
+        keymap={updatedKeymap}
+        baseKeymap={baseKeymap}
+        behaviorTypes={behaviorTypes}
+        availableBehaviours={availableBehaviours}
+        keycodes={keycodes}
+        onUpdate={onUpdate}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/Discard override changes/i))
+
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    const discardedPayload = onUpdate.mock.calls[1][0]
+    expect(discardedPayload.behavior_overrides).toEqual(baseKeymap.behavior_overrides)
+    expect(discardedPayload.behavior_definitions).toEqual(baseKeymap.behavior_definitions)
   })
 })

@@ -1,9 +1,17 @@
+import cloneDeep from 'lodash/cloneDeep'
 import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
 import styles from './styles.module.css'
-import { getListChangeInfo, isAddedIndex } from '../shared/change-tracking'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
 
 import {
   MACRO_BINDING_CELLS,
@@ -241,7 +249,7 @@ function MacroEditor (props) {
   }, [localErrors, persistedErrors])
 
   const commitDefinitions = updater => {
-    const nextDefinitions = updater(macroDefinitions.map(cloneDefinition))
+    const nextDefinitions = updater(cloneDeep(macroDefinitions))
     const errors = validateMacroCollection(nextDefinitions)
     if (errors.length > 0) {
       setLocalErrors(errors)
@@ -358,6 +366,15 @@ function MacroEditor (props) {
     commitDefinitions(definitions => definitions.filter((_, index) => index !== selection))
   }
 
+  const discardMacroAt = index => {
+    const reverted = revertItemByIndex(baseMacroDefinitions, macroDefinitions, index)
+    setLocalErrors([])
+    onUpdate({
+      ...keymap,
+      behavior_definitions: reverted
+    })
+  }
+
   const applyRaw = () => {
     const parsed = parseRawMacroBindings(rawDraft)
     const success = commitDefinitions(definitions => {
@@ -418,18 +435,31 @@ function MacroEditor (props) {
         )}
         <div className={styles.list}>
           {macroDefinitions.map((node, index) => (
-            <button
-              type="button"
-              key={`macro-${index}`}
-              className={styles.listItem}
-              data-selected={selection === index ? 'true' : 'false'}
-              data-changed={macroChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
-              onClick={() => setSelection(index)}
-            >
-              {macroChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
-              {node.label ? `&${node.label}` : node.name}
-              {isAddedIndex(baseMacroDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
-            </button>
+            <div key={`macro-${index}`} className={styles.listRow}>
+              <button
+                type="button"
+                className={styles.listItem}
+                data-selected={selection === index ? 'true' : 'false'}
+                data-changed={macroChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection(index)}
+              >
+                {macroChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {node.label ? `&${node.label}` : node.name}
+                {isAddedIndex(baseMacroDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseMacroDefinitions, macroDefinitions, index) && (
+                <button
+                  type="button"
+                  className={styles.revertButton}
+                  aria-label={`Discard macro changes ${node.label || node.name || index + 1}`}
+                  title='Discard macro changes'
+                  onClick={() => discardMacroAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseMacroDefinitions.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 

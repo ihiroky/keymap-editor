@@ -87,7 +87,7 @@ function renderEditor (options = {}) {
   }
   const baseKeymap = options.baseKeymap || keymap
 
-  render(
+  const view = render(
     <MacroEditor
       keymap={keymap}
       baseKeymap={baseKeymap}
@@ -100,7 +100,7 @@ function renderEditor (options = {}) {
     />
   )
 
-  return { onUpdate }
+  return { onUpdate, ...view }
 }
 
 describe('MacroEditor', () => {
@@ -292,5 +292,89 @@ describe('MacroEditor', () => {
 
     expect(screen.getByText('Added')).toBeTruthy()
     expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
+  })
+
+  test('discards changed macro row back to base value', () => {
+    const { onUpdate } = renderEditor({
+      definitions: [createMacroDefinition({ label: 'macro_changed', name: 'macro_changed_node', bind: '&macro_changed' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].label).toBe('macro_test')
+  })
+
+  test('discards added macro row by removing it', () => {
+    const { onUpdate } = renderEditor({
+      definitions: [createMacroDefinition(), createMacroDefinition({ label: 'macro_2', name: 'macro_2_node', bind: '&macro_2' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes macro_2/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions).toHaveLength(1)
+  })
+
+  test('restores exact base macro definitions after editing one row then discarding it', () => {
+    const baseDefinitions = [
+      createMacroDefinition(),
+      createMacroDefinition({
+        label: 'macro_raw',
+        name: 'macro_raw_node',
+        bind: '&macro_raw',
+        property_types: {
+          compatible: 'string'
+        },
+        property_order: ['compatible']
+      })
+    ]
+    const baseKeymap = {
+      layers: [],
+      sensor_layers: [],
+      behavior_overrides: [],
+      behavior_definitions: baseDefinitions
+    }
+    const behaviorTypes = createBehaviorTypes()
+    const availableBehaviours = [
+      { code: '&none', name: 'None' },
+      { code: '&kp', name: 'Key Press' }
+    ]
+    const { onUpdate, rerender } = renderEditor({
+      definitions: baseDefinitions,
+      baseKeymap,
+      behaviorTypes,
+      availableBehaviours
+    })
+
+    fireEvent.change(screen.getByDisplayValue('macro_test'), { target: { value: 'macro_changed' } })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+
+    const updatedKeymap = onUpdate.mock.calls[0][0]
+    rerender(
+      <MacroEditor
+        keymap={updatedKeymap}
+        baseKeymap={baseKeymap}
+        behaviorTypes={behaviorTypes}
+        availableBehaviours={availableBehaviours}
+        onUpdate={onUpdate}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes/i))
+
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    const discardedPayload = onUpdate.mock.calls[1][0]
+    expect(discardedPayload.behavior_definitions).toEqual(baseKeymap.behavior_definitions)
   })
 })

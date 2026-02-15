@@ -247,6 +247,7 @@
 }
 
 .layer-selector .duplicate,
+.layer-selector .revert,
 .layer-selector .delete {
   margin-left: auto;
   display: inline-flex;
@@ -258,6 +259,14 @@
 }
 
 .layer-selector .delete {
+  margin-left: 0;
+}
+
+.layer-selector .revert {
+  margin-left: auto;
+}
+
+.layer-selector .duplicate {
   margin-left: 0;
 }
 

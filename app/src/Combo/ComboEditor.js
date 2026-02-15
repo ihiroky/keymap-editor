@@ -1,11 +1,19 @@
+import cloneDeep from 'lodash/cloneDeep'
 import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
 import { getBehaviourParams } from '../keymap'
 import ValuePicker from '../ValuePicker'
 import { getKeyBoundingBox, getKeyStyles } from '../key-units'
-import { getListChangeInfo, isAddedIndex } from '../shared/change-tracking'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
 import styles from './styles.module.css'
 
 const KNOWN_PROPERTY_KEYS = [
@@ -429,17 +437,23 @@ function ComboEditor (props) {
   const { keymap, baseKeymap, layout, availableBehaviours, keycodes, onUpdate } = props
   const layoutSize = Array.isArray(layout) ? layout.length : 0
   const layerNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
+  const baseComboNodesRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.combos) ? baseKeymap.combos : []
+  ), [baseKeymap])
+  const comboNodesRaw = useMemo(() => (
+    Array.isArray(keymap?.combos) ? keymap.combos : []
+  ), [keymap])
 
   const baseCombos = useMemo(() => (
-    Array.isArray(baseKeymap?.combos)
-      ? baseKeymap.combos.map(node => normalizeComboNode(node, layoutSize))
+    baseComboNodesRaw.length
+      ? baseComboNodesRaw.map(node => normalizeComboNode(node, layoutSize))
       : []
-  ), [baseKeymap, layoutSize])
+  ), [baseComboNodesRaw, layoutSize])
   const combos = useMemo(() => (
-    Array.isArray(keymap.combos)
-      ? keymap.combos.map(node => normalizeComboNode(node, layoutSize))
+    comboNodesRaw.length
+      ? comboNodesRaw.map(node => normalizeComboNode(node, layoutSize))
       : []
-  ), [keymap, layoutSize])
+  ), [comboNodesRaw, layoutSize])
   const comboChangeInfo = useMemo(() => (
     getListChangeInfo(baseCombos, combos)
   ), [baseCombos, combos])
@@ -559,8 +573,9 @@ function ComboEditor (props) {
   }, [selection, selectedBindingText])
 
   const commitCombos = updater => {
-    const nextCombos = updater(combos.map(cloneComboNode))
-    const errors = validateComboCollection(nextCombos, layoutSize)
+    const nextCombos = updater(cloneDeep(comboNodesRaw))
+    const normalizedForValidation = nextCombos.map(node => normalizeComboNode(node, layoutSize))
+    const errors = validateComboCollection(normalizedForValidation, layoutSize)
     if (errors.length > 0) {
       setLocalErrors(errors)
       return false
@@ -586,7 +601,8 @@ function ComboEditor (props) {
         return list
       }
 
-      next[selection] = updater(cloneComboNode(current))
+      const normalizedCurrent = normalizeComboNode(current, layoutSize)
+      next[selection] = updater(cloneComboNode(normalizedCurrent))
       return next
     })
   }
@@ -631,6 +647,15 @@ function ComboEditor (props) {
     }
 
     commitCombos(list => list.filter((_, index) => index !== selection))
+  }
+
+  const discardComboAt = index => {
+    const reverted = revertItemByIndex(baseComboNodesRaw, comboNodesRaw, index)
+    setLocalErrors([])
+    onUpdate({
+      ...keymap,
+      combos: reverted
+    })
   }
 
   const setBinding = value => {
@@ -753,18 +778,31 @@ function ComboEditor (props) {
         )}
         <div className={styles.list}>
           {combos.map((combo, index) => (
-            <button
-              type='button'
-              key={`combo-${index}`}
-              className={styles.listItem}
-              data-selected={selection === index ? 'true' : 'false'}
-              data-changed={comboChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
-              onClick={() => setSelection(index)}
-            >
-              {comboChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
-              {combo.name}
-              {isAddedIndex(baseCombos, index) && <span className={styles.addedBadge}>Added</span>}
-            </button>
+            <div key={`combo-${index}`} className={styles.listRow}>
+              <button
+                type='button'
+                className={styles.listItem}
+                data-selected={selection === index ? 'true' : 'false'}
+                data-changed={comboChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection(index)}
+              >
+                {comboChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {combo.name}
+                {isAddedIndex(baseCombos, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseCombos, combos, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard combo changes ${combo.name || index + 1}`}
+                  title='Discard combo changes'
+                  onClick={() => discardComboAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseCombos.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 

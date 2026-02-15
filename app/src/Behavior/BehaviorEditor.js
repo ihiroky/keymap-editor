@@ -3,10 +3,17 @@ import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
 import { getBehaviourParams } from '../keymap'
 import ValuePicker from '../ValuePicker'
 import styles from './styles.module.css'
-import { getListChangeInfo, isAddedIndex } from '../shared/change-tracking'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
 import { parseBehaviorChildrenSnippet } from '../shared/zmk/keymap-code'
 import { renderBehaviorChildrenSnippet } from '../shared/zmk/keymap'
 
@@ -670,6 +677,18 @@ function BehaviorEditor (props) {
   const definitions = useMemo(() => (
     (keymap.behavior_definitions || []).map(node => normalizeNode(node, 'definition'))
   ), [keymap])
+  const baseOverridesRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.behavior_overrides) ? baseKeymap.behavior_overrides : []
+  ), [baseKeymap])
+  const baseDefinitionsRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.behavior_definitions) ? baseKeymap.behavior_definitions : []
+  ), [baseKeymap])
+  const overridesRaw = useMemo(() => (
+    Array.isArray(keymap?.behavior_overrides) ? keymap.behavior_overrides : []
+  ), [keymap])
+  const definitionsRaw = useMemo(() => (
+    Array.isArray(keymap?.behavior_definitions) ? keymap.behavior_definitions : []
+  ), [keymap])
   const definitionChangeInfo = useMemo(() => (
     getListChangeInfo(baseDefinitions, definitions)
   ), [baseDefinitions, definitions])
@@ -871,8 +890,8 @@ function BehaviorEditor (props) {
   const updateCollection = (kind, nextCollection) => {
     const payload = {
       ...keymap,
-      behavior_definitions: kind === 'definition' ? nextCollection : definitions,
-      behavior_overrides: kind === 'override' ? nextCollection : overrides
+      behavior_definitions: kind === 'definition' ? nextCollection : definitionsRaw,
+      behavior_overrides: kind === 'override' ? nextCollection : overridesRaw
     }
 
     onUpdate(payload)
@@ -883,14 +902,15 @@ function BehaviorEditor (props) {
       return
     }
 
-    const list = selection.kind === 'definition' ? definitions : overrides
+    const list = selection.kind === 'definition' ? definitionsRaw : overridesRaw
     const nextList = [...list]
     const current = nextList[selection.index]
     if (!current) {
       return
     }
 
-    nextList[selection.index] = updater(cloneNode(current))
+    const normalizedCurrent = normalizeNode(current, selection.kind)
+    nextList[selection.index] = updater(cloneNode(normalizedCurrent))
     updateCollection(selection.kind, nextList)
   }
 
@@ -968,7 +988,7 @@ function BehaviorEditor (props) {
     }
 
     const node = ensureDefinitionTypeDefaults(base, type, behaviourChoices)
-    const next = [...definitions, node]
+    const next = [...definitionsRaw, node]
     updateCollection('definition', next)
     setSelection({ kind: 'definition', index: next.length - 1 })
   }
@@ -991,7 +1011,7 @@ function BehaviorEditor (props) {
     const node = type
       ? ensureOverrideDefaults(base, type, behaviourChoices)
       : base
-    const next = [...overrides, node]
+    const next = [...overridesRaw, node]
     updateCollection('override', next)
     setSelection({ kind: 'override', index: next.length - 1 })
   }
@@ -1001,9 +1021,19 @@ function BehaviorEditor (props) {
       return
     }
 
-    const list = selection.kind === 'definition' ? definitions : overrides
+    const list = selection.kind === 'definition' ? definitionsRaw : overridesRaw
     const next = list.filter((_, index) => index !== selection.index)
     updateCollection(selection.kind, next)
+  }
+
+  const discardDefinitionAt = index => {
+    const next = revertItemByIndex(baseDefinitionsRaw, definitionsRaw, index)
+    updateCollection('definition', next)
+  }
+
+  const discardOverrideAt = index => {
+    const next = revertItemByIndex(baseOverridesRaw, overridesRaw, index)
+    updateCollection('override', next)
   }
 
   const renderBehaviorBindingsInput = (node, key, spec) => {
@@ -1362,18 +1392,31 @@ function BehaviorEditor (props) {
         )}
         <div className={styles.list}>
           {definitions.map((node, index) => (
-            <button
-              type="button"
-              key={`definition-${index}`}
-              className={styles.listItem}
-              data-selected={selection?.kind === 'definition' && selection?.index === index ? 'true' : 'false'}
-              data-changed={definitionChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
-              onClick={() => setSelection({ kind: 'definition', index })}
-            >
-              {definitionChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
-              {node.label ? `&${node.label}` : node.name}
-              {isAddedIndex(baseDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
-            </button>
+            <div key={`definition-${index}`} className={styles.listRow}>
+              <button
+                type="button"
+                className={styles.listItem}
+                data-selected={selection?.kind === 'definition' && selection?.index === index ? 'true' : 'false'}
+                data-changed={definitionChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection({ kind: 'definition', index })}
+              >
+                {definitionChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {node.label ? `&${node.label}` : node.name}
+                {isAddedIndex(baseDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseDefinitions, definitions, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard definition changes ${node.label || node.name || index + 1}`}
+                  title='Discard definition changes'
+                  onClick={() => discardDefinitionAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseDefinitions.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -1383,18 +1426,31 @@ function BehaviorEditor (props) {
         )}
         <div className={styles.list}>
           {overrides.map((node, index) => (
-            <button
-              type="button"
-              key={`override-${index}`}
-              className={styles.listItem}
-              data-selected={selection?.kind === 'override' && selection?.index === index ? 'true' : 'false'}
-              data-changed={overrideChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
-              onClick={() => setSelection({ kind: 'override', index })}
-            >
-              {overrideChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
-              {node.name}
-              {isAddedIndex(baseOverrides, index) && <span className={styles.addedBadge}>Added</span>}
-            </button>
+            <div key={`override-${index}`} className={styles.listRow}>
+              <button
+                type="button"
+                className={styles.listItem}
+                data-selected={selection?.kind === 'override' && selection?.index === index ? 'true' : 'false'}
+                data-changed={overrideChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection({ kind: 'override', index })}
+              >
+                {overrideChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {node.name}
+                {isAddedIndex(baseOverrides, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseOverrides, overrides, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard override changes ${node.name || index + 1}`}
+                  title='Discard override changes'
+                  onClick={() => discardOverrideAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseOverrides.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 

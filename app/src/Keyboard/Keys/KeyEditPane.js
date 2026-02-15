@@ -73,7 +73,18 @@ function getNodeAtPath(binding, path) {
 }
 
 function KeyEditPane(props) {
-  const { selectedKey, baselineBinding, onApply, onClose, className, style } = props
+  const {
+    selectedKey,
+    baselineBinding,
+    onApply,
+    onClose,
+    onDiscardChange,
+    canDiscardChange,
+    discardLabel,
+    discardTitle,
+    className,
+    style
+  } = props
   const { getSearchTargets, sources } = useContext(SearchContext)
   const [draft, setDraft] = useState(null)
   const [picker, setPicker] = useState(null)
@@ -203,6 +214,14 @@ function KeyEditPane(props) {
   const handleCancel = useMemo(() => function() {
     onClose()
   }, [onClose])
+
+  const handleDiscard = useMemo(() => function() {
+    if (!canDiscardChange) {
+      return
+    }
+
+    onDiscardChange()
+  }, [canDiscardChange, onDiscardChange])
 
   const handleApply = useMemo(() => function() {
     if (!draft) {
@@ -389,6 +408,12 @@ function KeyEditPane(props) {
   const behaviourLabel = behaviour
     ? `${behaviour.code} | ${behaviour.name || 'Unnamed'}`
     : 'Select'
+  const discardButtonText = discardLabel || 'Discard'
+  const discardButtonTooltip = discardTitle || (
+    selectedKey?.label
+      ? `Discard changes for ${selectedKey.label}`
+      : 'Discard changes'
+  )
 
   return (
     <aside
@@ -463,6 +488,17 @@ function KeyEditPane(props) {
         >
           Apply
         </button>
+        {canDiscardChange && (
+          <button
+            type="button"
+            className={styles.discard}
+            onClick={handleDiscard}
+            title={discardButtonTooltip}
+            aria-label={discardButtonTooltip}
+          >
+            {discardButtonText}
+          </button>
+        )}
         <button type="button" onClick={handleCancel}>
           Cancel
         </button>
@@ -487,7 +523,18 @@ KeyEditPane.propTypes = {
     }).isRequired
   }),
   onApply: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  onDiscardChange: PropTypes.func,
+  canDiscardChange: PropTypes.bool,
+  discardLabel: PropTypes.string,
+  discardTitle: PropTypes.string
+}
+
+KeyEditPane.defaultProps = {
+  onDiscardChange: () => {},
+  canDiscardChange: false,
+  discardLabel: 'Discard',
+  discardTitle: ''
 }
 
 export default KeyEditPane

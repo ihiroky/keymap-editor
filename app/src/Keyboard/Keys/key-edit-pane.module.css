@@ -178,6 +178,11 @@
   color: white;
 }
 
+.discard {
+  background: var(--editor-diff-badge-bg);
+  color: var(--editor-diff-badge-text);
+}
+
 .empty {
   color: var(--theme-text-subtle);
   font-size: 12px;

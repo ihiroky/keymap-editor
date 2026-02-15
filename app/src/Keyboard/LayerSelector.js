@@ -21,8 +21,9 @@ function onKey(mapping) {
 
 function LayerSelector(props) {
   const ref = useRef(null)
-  const { activeLayer, layers, changedLayers } = props
+  const { activeLayer, layers, changedLayers, revertableLayers } = props
   const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer, onDuplicateLayer, onMoveLayer } = props
+  const { onRevertLayer } = props
   const [renaming, setRenaming] = useState(false)
   const [editing, setEditing] = useState('')
   const [draggingLayer, setDraggingLayer] = useState(null)
@@ -176,6 +177,15 @@ function LayerSelector(props) {
               <span className={styles.name}>
                 {changedLayers?.[i] && <span className={styles['changed-dot']} aria-hidden='true' />}
                 {name}
+                {revertableLayers?.[i] && (
+                  <Icon
+                    name="undo"
+                    className={styles.revert}
+                    onClick={stop(() => onRevertLayer(i))}
+                    title={`Discard layer changes: ${name}`}
+                    aria-label="Discard layer changes"
+                  />
+                )}
                 <Icon
                   name="copy"
                   className={styles.duplicate}
@@ -204,13 +214,15 @@ function LayerSelector(props) {
 LayerSelector.propTypes = {
   layers: PropTypes.array.isRequired,
   changedLayers: PropTypes.array,
+  revertableLayers: PropTypes.array,
   activeLayer: PropTypes.number.isRequired,
   onSelect: PropTypes.func.isRequired,
   onNewLayer: PropTypes.func.isRequired,
   onRenameLayer: PropTypes.func.isRequired,
   onDeleteLayer: PropTypes.func.isRequired,
   onDuplicateLayer: PropTypes.func.isRequired,
-  onMoveLayer: PropTypes.func.isRequired
+  onMoveLayer: PropTypes.func.isRequired,
+  onRevertLayer: PropTypes.func.isRequired
 }
 
 export default LayerSelector
