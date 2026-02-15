@@ -255,6 +255,10 @@ function Keyboard(props) {
       String(currentNames[index] || '') !== String(baseNames[index] || '')
     ))
   }, [keymap, baseKeymap])
+  const addedLayers = useMemo(() => {
+    const currentLayers = Array.isArray(keymap?.layers) ? keymap.layers : []
+    return currentLayers.map((_, index) => index >= baseLayers.length)
+  }, [keymap, baseLayers.length])
 
   const keyErrors = useMemo(() => {
     const availableBindings = buildAvailableBindingSet({
@@ -935,6 +939,7 @@ function Keyboard(props) {
               layers={keymap.layer_names}
               changedLayers={changedLayers}
               revertableLayers={changedLayers}
+              addedLayers={addedLayers}
               activeLayer={activeLayer}
               onSelect={setActiveLayer}
               onNewLayer={handleCreateLayer}

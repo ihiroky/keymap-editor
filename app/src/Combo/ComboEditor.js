@@ -14,6 +14,7 @@ import {
   isIndexChanged,
   revertItemByIndex
 } from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import styles from './styles.module.css'
 
 const KNOWN_PROPERTY_KEYS = [
@@ -646,10 +647,31 @@ function ComboEditor (props) {
       return
     }
 
+    const selectedCombo = combos[selection]
+    const shouldDelete = confirmItemDeletion({
+      kind: 'combo',
+      name: selectedCombo?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     commitCombos(list => list.filter((_, index) => index !== selection))
   }
 
   const discardComboAt = index => {
+    if (isIndexAdded(index, baseCombos.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'combo',
+        name: combos[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
     const reverted = revertItemByIndex(baseComboNodesRaw, comboNodesRaw, index)
     setLocalErrors([])
     onUpdate({

@@ -104,6 +104,16 @@ function renderEditor (options = {}) {
 }
 
 describe('MacroEditor', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('adds and deletes macro definitions', () => {
     const { onUpdate } = renderEditor()
 
@@ -114,6 +124,19 @@ describe('MacroEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
     expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete macro "macro_test"? This cannot be undone.')
+  })
+
+  test('cancels deleting selected macro when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Macro' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    onUpdate.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('applies raw bindings and blocks invalid updates', () => {
@@ -324,6 +347,23 @@ describe('MacroEditor', () => {
     fireEvent.click(screen.getByLabelText(/Discard macro changes macro_2/i))
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].behavior_definitions).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added macro "macro_2"? This cannot be undone.')
+  })
+
+  test('cancels removing added macro row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      definitions: [createMacroDefinition(), createMacroDefinition({ label: 'macro_2', name: 'macro_2_node', bind: '&macro_2' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes macro_2/i))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('restores exact base macro definitions after editing one row then discarding it', () => {

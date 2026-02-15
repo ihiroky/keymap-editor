@@ -11,6 +11,7 @@ import {
   isIndexChanged,
   revertItemByIndex
 } from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import styles from './styles.module.css'
 
 const KNOWN_PROPERTY_KEYS = [
@@ -421,10 +422,31 @@ function ConditionalLayerEditor (props) {
       return
     }
 
+    const selectedRule = rules[selection]
+    const shouldDelete = confirmItemDeletion({
+      kind: 'conditional layer rule',
+      name: selectedRule?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     commitRules(list => list.filter((_, index) => index !== selection))
   }
 
   const discardRuleAt = index => {
+    if (isIndexAdded(index, baseRules.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'conditional layer rule',
+        name: rules[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
     const reverted = revertItemByIndex(baseRuleNodesRaw, ruleNodesRaw, index)
     setLocalErrors([])
     onUpdate({

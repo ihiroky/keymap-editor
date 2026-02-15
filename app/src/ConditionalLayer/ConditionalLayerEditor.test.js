@@ -47,6 +47,16 @@ function renderEditor (options = {}) {
 }
 
 describe('ConditionalLayerEditor', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('adds and deletes conditional layer rules', () => {
     const { onUpdate } = renderEditor()
 
@@ -58,6 +68,19 @@ describe('ConditionalLayerEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
 
     expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete conditional layer rule "nav_num"? This cannot be undone.')
+  })
+
+  test('cancels deleting selected rule when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Rule' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    onUpdate.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('updates if-layers and then-layer', () => {
@@ -243,6 +266,26 @@ describe('ConditionalLayerEditor', () => {
     fireEvent.click(screen.getByLabelText(/Discard conditional rule changes nav_num_2/i))
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].conditional_layers).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added conditional layer rule "nav_num_2"? This cannot be undone.')
+  })
+
+  test('cancels removing added rule row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      conditionalLayers: [createRule(), createRule({ name: 'nav_num_2', bind: '&nav_num_2' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard conditional rule changes nav_num_2/i))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('restores exact base rules after editing one row then discarding it', () => {

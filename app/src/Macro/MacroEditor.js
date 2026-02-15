@@ -12,6 +12,7 @@ import {
   isIndexChanged,
   revertItemByIndex
 } from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 
 import {
   MACRO_BINDING_CELLS,
@@ -363,10 +364,31 @@ function MacroEditor (props) {
       return
     }
 
+    const selectedMacro = macroDefinitions[selection]
+    const shouldDelete = confirmItemDeletion({
+      kind: 'macro',
+      name: selectedMacro?.label || selectedMacro?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     commitDefinitions(definitions => definitions.filter((_, index) => index !== selection))
   }
 
   const discardMacroAt = index => {
+    if (isIndexAdded(index, baseMacroDefinitions.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'macro',
+        name: macroDefinitions[index]?.label || macroDefinitions[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
     const reverted = revertItemByIndex(baseMacroDefinitions, macroDefinitions, index)
     setLocalErrors([])
     onUpdate({

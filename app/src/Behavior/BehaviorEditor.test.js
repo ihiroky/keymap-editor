@@ -186,6 +186,16 @@ function renderEditor (options = {}) {
 }
 
 describe('BehaviorEditor children DSL', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('shows section headings for required and optional known properties', () => {
     renderEditor()
 
@@ -460,6 +470,39 @@ describe('BehaviorEditor children DSL', () => {
     expect(onUpdate.mock.calls[0][0].behavior_overrides[0].name).toBe('&mt')
   })
 
+  test('deletes selected definition only when confirmation is accepted', () => {
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [createDefinitionNode()]
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions).toHaveLength(0)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete behavior definition "macro_test"? This cannot be undone.')
+  })
+
+  test('does not delete selected definition when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [createDefinitionNode()]
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('deletes selected override only when confirmation is accepted', () => {
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [],
+      behaviorOverrides: [createOverrideNode({ name: '&mt', bind: '&mt' })]
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_overrides).toHaveLength(0)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete behavior override "&mt"? This cannot be undone.')
+  })
+
   test('discards added definition row by removing it', () => {
     const { onUpdate } = renderEditor({
       behaviorDefinitions: [
@@ -483,6 +526,75 @@ describe('BehaviorEditor children DSL', () => {
     fireEvent.click(screen.getByLabelText(/Discard definition changes macro_2/i))
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].behavior_definitions).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added behavior definition "macro_2"? This cannot be undone.')
+  })
+
+  test('does not remove added definition row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [
+        createDefinitionNode(),
+        {
+          ...createDefinitionNode(),
+          label: 'macro_2',
+          name: 'macro_2_node',
+          bind: '&macro_2'
+        }
+      ],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: []
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard definition changes macro_2/i))
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('removes added override row only when confirmation is accepted', () => {
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [createDefinitionNode()],
+      behaviorOverrides: [
+        createOverrideNode(),
+        createOverrideNode({ name: '&lt', bind: '&lt' })
+      ],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: [createOverrideNode()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard override changes &lt/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_overrides).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added behavior override "&lt"? This cannot be undone.')
+  })
+
+  test('does not remove added override row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      behaviorDefinitions: [createDefinitionNode()],
+      behaviorOverrides: [
+        createOverrideNode(),
+        createOverrideNode({ name: '&lt', bind: '&lt' })
+      ],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_definitions: [createDefinitionNode()],
+        behavior_overrides: [createOverrideNode()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard override changes &lt/i))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('restores exact base overrides after editing &mt tapping-term-ms then discarding', () => {

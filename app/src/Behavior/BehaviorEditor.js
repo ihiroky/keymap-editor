@@ -14,6 +14,7 @@ import {
   isIndexChanged,
   revertItemByIndex
 } from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import { parseBehaviorChildrenSnippet } from '../shared/zmk/keymap-code'
 import { renderBehaviorChildrenSnippet } from '../shared/zmk/keymap'
 
@@ -1021,17 +1022,52 @@ function BehaviorEditor (props) {
       return
     }
 
+    const isDefinition = selection.kind === 'definition'
+    const selectedNode = isDefinition
+      ? definitions[selection.index]
+      : overrides[selection.index]
+    const shouldDelete = confirmItemDeletion({
+      kind: isDefinition ? 'behavior definition' : 'behavior override',
+      name: selectedNode?.label || selectedNode?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     const list = selection.kind === 'definition' ? definitionsRaw : overridesRaw
     const next = list.filter((_, index) => index !== selection.index)
     updateCollection(selection.kind, next)
   }
 
   const discardDefinitionAt = index => {
+    if (isIndexAdded(index, baseDefinitions.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'behavior definition',
+        name: definitions[index]?.label || definitions[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
     const next = revertItemByIndex(baseDefinitionsRaw, definitionsRaw, index)
     updateCollection('definition', next)
   }
 
   const discardOverrideAt = index => {
+    if (isIndexAdded(index, baseOverrides.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'behavior override',
+        name: overrides[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
     const next = revertItemByIndex(baseOverridesRaw, overridesRaw, index)
     updateCollection('override', next)
   }

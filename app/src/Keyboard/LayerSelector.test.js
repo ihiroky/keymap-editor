@@ -22,6 +22,16 @@ function renderSelector(overrides = {}) {
 }
 
 describe('LayerSelector', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('duplicates the clicked layer', () => {
     const props = renderSelector()
 
@@ -36,6 +46,25 @@ describe('LayerSelector', () => {
     renderSelector()
 
     expect(screen.getByTitle('Delete layer Base')).toBeTruthy()
+  })
+
+  test('deletes layer only when confirmation is accepted', () => {
+    const props = renderSelector()
+
+    fireEvent.click(screen.getByTitle('Delete layer Base'))
+
+    expect(props.onDeleteLayer).toHaveBeenCalledTimes(1)
+    expect(props.onDeleteLayer).toHaveBeenCalledWith(0)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete layer "Base"? This cannot be undone.')
+  })
+
+  test('does not delete layer when confirmation is cancelled', () => {
+    confirmSpy.mockReturnValue(false)
+    const props = renderSelector()
+
+    fireEvent.click(screen.getByTitle('Delete layer Base'))
+
+    expect(props.onDeleteLayer).not.toHaveBeenCalled()
   })
 
   test('moves layer by drag and drop', () => {
@@ -72,5 +101,31 @@ describe('LayerSelector', () => {
     fireEvent.click(screen.getByLabelText('Discard layer changes'))
     expect(props.onRevertLayer).toHaveBeenCalledTimes(1)
     expect(props.onRevertLayer).toHaveBeenCalledWith(0)
+    expect(confirmSpy).not.toHaveBeenCalled()
+  })
+
+  test('confirms before discarding an added layer', () => {
+    const props = renderSelector({
+      changedLayers: [true, false],
+      revertableLayers: [true, false],
+      addedLayers: [true, false]
+    })
+
+    fireEvent.click(screen.getByLabelText('Discard layer changes'))
+    expect(props.onRevertLayer).toHaveBeenCalledTimes(1)
+    expect(props.onRevertLayer).toHaveBeenCalledWith(0)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added layer "Base"? This cannot be undone.')
+  })
+
+  test('does not discard an added layer when confirmation is cancelled', () => {
+    confirmSpy.mockReturnValue(false)
+    const props = renderSelector({
+      changedLayers: [true, false],
+      revertableLayers: [true, false],
+      addedLayers: [true, false]
+    })
+
+    fireEvent.click(screen.getByLabelText('Discard layer changes'))
+    expect(props.onRevertLayer).not.toHaveBeenCalled()
   })
 })

@@ -74,6 +74,16 @@ function renderEditor (options = {}) {
 }
 
 describe('ComboEditor', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('adds and deletes combos', () => {
     const { onUpdate } = renderEditor()
 
@@ -85,6 +95,19 @@ describe('ComboEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
 
     expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/^Delete combo ".*"\? This cannot be undone\.$/))
+  })
+
+  test('cancels deleting selected combo when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Combo' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    onUpdate.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('updates key-positions from keyboard selection', () => {
@@ -283,6 +306,25 @@ describe('ComboEditor', () => {
     fireEvent.click(screen.getByLabelText(/Discard combo changes combo_b/i))
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].combos).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added combo "combo_b"? This cannot be undone.')
+  })
+
+  test('cancels removing added combo row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      combos: [createCombo(), createCombo({ name: 'combo_b', bind: '&combo_b' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard combo changes combo_b/i))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('restores exact base combos after editing one row then discarding it', () => {
