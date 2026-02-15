@@ -122,72 +122,104 @@ let mockLastConditionalLayerProps = null
 jest.mock('./Behavior/BehaviorEditor', () => function MockBehaviorEditor (props) {
   mockLastBehaviorProps = props
   return (
-    <button
-      type='button'
-      onClick={() => {
-        const definition = props.keymap.behavior_definitions[0]
-        props.onUpdate({
-          ...props.keymap,
-          behavior_definitions: [{ ...definition, label: 'td_updated' }]
-        })
-      }}
-    >
-      Behavior Update
-    </button>
+    <div>
+      <button
+        type='button'
+        onClick={() => {
+          const definition = props.keymap.behavior_definitions[0]
+          props.onUpdate({
+            ...props.keymap,
+            behavior_definitions: [{ ...definition, label: 'td_updated' }]
+          })
+        }}
+      >
+        Behavior Update
+      </button>
+      <button
+        type='button'
+        onClick={() => props.onUpdate(props.baseKeymap)}
+      >
+        Behavior Discard
+      </button>
+    </div>
   )
 })
 
 jest.mock('./Macro/MacroEditor', () => function MockMacroEditor (props) {
   mockLastMacroProps = props
   return (
-    <button
-      type='button'
-      onClick={() => {
-        const definition = props.keymap.behavior_definitions[0]
-        props.onUpdate({
-          ...props.keymap,
-          behavior_definitions: [{ ...definition, label: 'macro_updated' }]
-        })
-      }}
-    >
-      Macro Update
-    </button>
+    <div>
+      <button
+        type='button'
+        onClick={() => {
+          const definition = props.keymap.behavior_definitions[0]
+          props.onUpdate({
+            ...props.keymap,
+            behavior_definitions: [{ ...definition, label: 'macro_updated' }]
+          })
+        }}
+      >
+        Macro Update
+      </button>
+      <button
+        type='button'
+        onClick={() => props.onUpdate(props.baseKeymap)}
+      >
+        Macro Discard
+      </button>
+    </div>
   )
 })
 
 jest.mock('./Combo/ComboEditor', () => function MockComboEditor (props) {
   mockLastComboProps = props
   return (
-    <button
-      type='button'
-      onClick={() => {
-        const combo = props.keymap.combos[0]
-        props.onUpdate({
-          ...props.keymap,
-          combos: [{ ...combo, name: 'combo_updated' }]
-        })
-      }}
-    >
-      Combo Update
-    </button>
+    <div>
+      <button
+        type='button'
+        onClick={() => {
+          const combo = props.keymap.combos[0]
+          props.onUpdate({
+            ...props.keymap,
+            combos: [{ ...combo, name: 'combo_updated' }]
+          })
+        }}
+      >
+        Combo Update
+      </button>
+      <button
+        type='button'
+        onClick={() => props.onUpdate(props.baseKeymap)}
+      >
+        Combo Discard
+      </button>
+    </div>
   )
 })
 
 jest.mock('./ConditionalLayer/ConditionalLayerEditor', () => function MockConditionalLayerEditor (props) {
   mockLastConditionalLayerProps = props
   return (
-    <button
-      type='button'
-      onClick={() => {
-        const rule = props.keymap.conditional_layers[0]
-        props.onUpdate({
-          ...props.keymap,
-          conditional_layers: [{ ...rule, name: 'conditional_layer_updated' }]
-        })
-      }}
-    >
-      Conditional Layer Update
-    </button>
+    <div>
+      <button
+        type='button'
+        onClick={() => {
+          const rule = props.keymap.conditional_layers[0]
+          props.onUpdate({
+            ...props.keymap,
+            conditional_layers: [{ ...rule, name: 'conditional_layer_updated' }]
+          })
+        }}
+      >
+        Conditional Layer Update
+      </button>
+      <button
+        type='button'
+        onClick={() => props.onUpdate(props.baseKeymap)}
+      >
+        Conditional Layer Discard
+      </button>
+    </div>
   )
 })
 
@@ -316,5 +348,47 @@ describe('App macro/behavior split integration', () => {
     expect(window.print).toHaveBeenCalledTimes(1)
 
     window.print = originalPrint
+  })
+
+  test('disables Save Local again when each editor discards all changes', async () => {
+    render(<App />)
+    await screen.findByText('Keymap')
+
+    const saveButton = screen.getByRole('button', { name: 'Save Local' })
+    expect(saveButton.disabled).toBe(true)
+
+    const scenarios = [
+      { tab: 'Behavior', update: 'Behavior Update', discard: 'Behavior Discard' },
+      { tab: 'Macro', update: 'Macro Update', discard: 'Macro Discard' },
+      { tab: 'Combo', update: 'Combo Update', discard: 'Combo Discard' },
+      { tab: 'Conditional Layers', update: 'Conditional Layer Update', discard: 'Conditional Layer Discard' }
+    ]
+
+    for (const scenario of scenarios) {
+      fireEvent.click(screen.getByRole('button', { name: scenario.tab }))
+      fireEvent.click(screen.getByRole('button', { name: scenario.update }))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save Local' }).disabled).toBe(false)
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: scenario.discard }))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save Local' }).disabled).toBe(true)
+      })
+    }
+  })
+
+  test('shows tab change marker when section is modified', async () => {
+    render(<App />)
+
+    await screen.findByText('Keymap')
+    fireEvent.click(screen.getByRole('button', { name: 'Macro' }))
+    await waitFor(() => {
+      expect(mockLastMacroProps).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Macro Update' }))
+
+    const macroTab = screen.getByRole('button', { name: 'Macro' })
+    expect(macroTab.querySelector('.tab-diff-dot')).toBeTruthy()
   })
 })

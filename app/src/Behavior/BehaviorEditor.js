@@ -3,9 +3,18 @@ import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
 import { getBehaviourParams } from '../keymap'
 import ValuePicker from '../ValuePicker'
 import styles from './styles.module.css'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import { parseBehaviorChildrenSnippet } from '../shared/zmk/keymap-code'
 import { renderBehaviorChildrenSnippet } from '../shared/zmk/keymap'
 
@@ -598,7 +607,7 @@ function validateNodes (definitions, overrides, typeByCompatible, overrideTypeBy
 }
 
 function BehaviorEditor (props) {
-  const { keymap, behaviorTypes, availableBehaviours, keycodes, onUpdate } = props
+  const { keymap, baseKeymap, behaviorTypes, availableBehaviours, keycodes, onUpdate } = props
 
   const layerNames = useMemo(() => {
     if (Array.isArray(keymap?.layer_names) && keymap.layer_names.length > 0) {
@@ -657,12 +666,36 @@ function BehaviorEditor (props) {
     Object.keys(overrideTypeByBind).sort((a, b) => a.localeCompare(b))
   ), [overrideTypeByBind])
 
+  const baseOverrides = useMemo(() => (
+    (baseKeymap?.behavior_overrides || []).map(node => normalizeNode(node, 'override'))
+  ), [baseKeymap])
+  const baseDefinitions = useMemo(() => (
+    (baseKeymap?.behavior_definitions || []).map(node => normalizeNode(node, 'definition'))
+  ), [baseKeymap])
   const overrides = useMemo(() => (
     (keymap.behavior_overrides || []).map(node => normalizeNode(node, 'override'))
   ), [keymap])
   const definitions = useMemo(() => (
     (keymap.behavior_definitions || []).map(node => normalizeNode(node, 'definition'))
   ), [keymap])
+  const baseOverridesRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.behavior_overrides) ? baseKeymap.behavior_overrides : []
+  ), [baseKeymap])
+  const baseDefinitionsRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.behavior_definitions) ? baseKeymap.behavior_definitions : []
+  ), [baseKeymap])
+  const overridesRaw = useMemo(() => (
+    Array.isArray(keymap?.behavior_overrides) ? keymap.behavior_overrides : []
+  ), [keymap])
+  const definitionsRaw = useMemo(() => (
+    Array.isArray(keymap?.behavior_definitions) ? keymap.behavior_definitions : []
+  ), [keymap])
+  const definitionChangeInfo = useMemo(() => (
+    getListChangeInfo(baseDefinitions, definitions)
+  ), [baseDefinitions, definitions])
+  const overrideChangeInfo = useMemo(() => (
+    getListChangeInfo(baseOverrides, overrides)
+  ), [baseOverrides, overrides])
 
   const [selection, setSelection] = useState(() => {
     if (definitions.length) {
@@ -707,6 +740,14 @@ function BehaviorEditor (props) {
     const list = selection.kind === 'definition' ? definitions : overrides
     return list[selection.index] || null
   }, [selection, definitions, overrides])
+  const selectedBaseNode = useMemo(() => {
+    if (!selection) {
+      return null
+    }
+
+    const list = selection.kind === 'definition' ? baseDefinitions : baseOverrides
+    return list[selection.index] || null
+  }, [selection, baseDefinitions, baseOverrides])
 
   useEffect(() => {
     if (!selectedNode) {
@@ -850,8 +891,8 @@ function BehaviorEditor (props) {
   const updateCollection = (kind, nextCollection) => {
     const payload = {
       ...keymap,
-      behavior_definitions: kind === 'definition' ? nextCollection : definitions,
-      behavior_overrides: kind === 'override' ? nextCollection : overrides
+      behavior_definitions: kind === 'definition' ? nextCollection : definitionsRaw,
+      behavior_overrides: kind === 'override' ? nextCollection : overridesRaw
     }
 
     onUpdate(payload)
@@ -862,14 +903,15 @@ function BehaviorEditor (props) {
       return
     }
 
-    const list = selection.kind === 'definition' ? definitions : overrides
+    const list = selection.kind === 'definition' ? definitionsRaw : overridesRaw
     const nextList = [...list]
     const current = nextList[selection.index]
     if (!current) {
       return
     }
 
-    nextList[selection.index] = updater(cloneNode(current))
+    const normalizedCurrent = normalizeNode(current, selection.kind)
+    nextList[selection.index] = updater(cloneNode(normalizedCurrent))
     updateCollection(selection.kind, nextList)
   }
 
@@ -947,7 +989,7 @@ function BehaviorEditor (props) {
     }
 
     const node = ensureDefinitionTypeDefaults(base, type, behaviourChoices)
-    const next = [...definitions, node]
+    const next = [...definitionsRaw, node]
     updateCollection('definition', next)
     setSelection({ kind: 'definition', index: next.length - 1 })
   }
@@ -970,7 +1012,7 @@ function BehaviorEditor (props) {
     const node = type
       ? ensureOverrideDefaults(base, type, behaviourChoices)
       : base
-    const next = [...overrides, node]
+    const next = [...overridesRaw, node]
     updateCollection('override', next)
     setSelection({ kind: 'override', index: next.length - 1 })
   }
@@ -980,9 +1022,54 @@ function BehaviorEditor (props) {
       return
     }
 
-    const list = selection.kind === 'definition' ? definitions : overrides
+    const isDefinition = selection.kind === 'definition'
+    const selectedNode = isDefinition
+      ? definitions[selection.index]
+      : overrides[selection.index]
+    const shouldDelete = confirmItemDeletion({
+      kind: isDefinition ? 'behavior definition' : 'behavior override',
+      name: selectedNode?.label || selectedNode?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
+    const list = selection.kind === 'definition' ? definitionsRaw : overridesRaw
     const next = list.filter((_, index) => index !== selection.index)
     updateCollection(selection.kind, next)
+  }
+
+  const discardDefinitionAt = index => {
+    if (isIndexAdded(index, baseDefinitions.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'behavior definition',
+        name: definitions[index]?.label || definitions[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
+    const next = revertItemByIndex(baseDefinitionsRaw, definitionsRaw, index)
+    updateCollection('definition', next)
+  }
+
+  const discardOverrideAt = index => {
+    if (isIndexAdded(index, baseOverrides.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'behavior override',
+        name: overrides[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
+    const next = revertItemByIndex(baseOverridesRaw, overridesRaw, index)
+    updateCollection('override', next)
   }
 
   const renderBehaviorBindingsInput = (node, key, spec) => {
@@ -1336,32 +1423,70 @@ function BehaviorEditor (props) {
     <div className={styles.editor}>
       <div className={styles.sidebar}>
         <div className={styles.sectionHeader}>Definitions</div>
+        {(definitionChangeInfo.addedCount > 0 || definitionChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{definitionChangeInfo.addedCount} / Deleted {definitionChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {definitions.map((node, index) => (
-            <button
-              type="button"
-              key={`definition-${index}`}
-              className={styles.listItem}
-              data-selected={selection?.kind === 'definition' && selection?.index === index ? 'true' : 'false'}
-              onClick={() => setSelection({ kind: 'definition', index })}
-            >
-              {node.label ? `&${node.label}` : node.name}
-            </button>
+            <div key={`definition-${index}`} className={styles.listRow}>
+              <button
+                type="button"
+                className={styles.listItem}
+                data-selected={selection?.kind === 'definition' && selection?.index === index ? 'true' : 'false'}
+                data-changed={definitionChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection({ kind: 'definition', index })}
+              >
+                {definitionChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {node.label ? `&${node.label}` : node.name}
+                {isAddedIndex(baseDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseDefinitions, definitions, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard definition changes ${node.label || node.name || index + 1}`}
+                  title='Discard definition changes'
+                  onClick={() => discardDefinitionAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseDefinitions.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
         <div className={styles.sectionHeader}>Overrides</div>
+        {(overrideChangeInfo.addedCount > 0 || overrideChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{overrideChangeInfo.addedCount} / Deleted {overrideChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {overrides.map((node, index) => (
-            <button
-              type="button"
-              key={`override-${index}`}
-              className={styles.listItem}
-              data-selected={selection?.kind === 'override' && selection?.index === index ? 'true' : 'false'}
-              onClick={() => setSelection({ kind: 'override', index })}
-            >
-              {node.name}
-            </button>
+            <div key={`override-${index}`} className={styles.listRow}>
+              <button
+                type="button"
+                className={styles.listItem}
+                data-selected={selection?.kind === 'override' && selection?.index === index ? 'true' : 'false'}
+                data-changed={overrideChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection({ kind: 'override', index })}
+              >
+                {overrideChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {node.name}
+                {isAddedIndex(baseOverrides, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseOverrides, overrides, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard override changes ${node.name || index + 1}`}
+                  title='Discard override changes'
+                  onClick={() => discardOverrideAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseOverrides.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -1400,10 +1525,16 @@ function BehaviorEditor (props) {
               <div>{selection.kind === 'definition' ? 'Definition' : 'Override'}</div>
             </div>
 
-            <div className={styles.group}>
+            <div
+              className={styles.group}
+              data-changed={requiredKnownPresentKeys.some(key => !isEqual(selectedNode.properties?.[key], selectedBaseNode?.properties?.[key])) ? 'true' : 'false'}
+            >
               <div className={styles.groupTitle}>Required Properties</div>
               {selection.kind === 'definition' && (
-                <div className={styles.formRow}>
+                <div
+                  className={styles.formRow}
+                  data-changed={!isEqual(selectedNode.label, selectedBaseNode?.label) ? 'true' : 'false'}
+                >
                   <label>Label</label>
                   <input
                     type="text"
@@ -1424,7 +1555,10 @@ function BehaviorEditor (props) {
                 </div>
               )}
 
-              <div className={styles.formRow}>
+              <div
+                className={styles.formRow}
+                data-changed={!isEqual(selectedNode.name, selectedBaseNode?.name) ? 'true' : 'false'}
+              >
                 <label>{selection.kind === 'definition' ? 'Node Name' : 'Override Name'}</label>
                 <input
                   type="text"
@@ -1444,7 +1578,10 @@ function BehaviorEditor (props) {
               </div>
 
               {selection.kind === 'override' && overrideBindChoices.length > 0 && (
-                <div className={styles.formRow}>
+                <div
+                  className={styles.formRow}
+                  data-changed={!isEqual(selectedNode.name, selectedBaseNode?.name) ? 'true' : 'false'}
+                >
                   <label>Known Override</label>
                   <select
                     value={overrideBindChoices.includes(selectedNode.name) ? selectedNode.name : ''}
@@ -1470,7 +1607,13 @@ function BehaviorEditor (props) {
               )}
 
               {selection.kind === 'definition' && (
-                <div className={styles.formRow}>
+                <div
+                  className={styles.formRow}
+                  data-changed={!isEqual(
+                    selectedNode.properties?.compatible || selectedNode.compatible || '',
+                    selectedBaseNode?.properties?.compatible || selectedBaseNode?.compatible || ''
+                  ) ? 'true' : 'false'}
+                >
                   <label>Compatible</label>
                   <select
                     value={selectedNode.properties?.compatible || selectedNode.compatible || ''}
@@ -1512,7 +1655,11 @@ function BehaviorEditor (props) {
                 const fixed = spec && Object.prototype.hasOwnProperty.call(spec, 'fixed')
 
                 return (
-                  <div className={styles.knownRow} key={`required-known-${key}`}>
+                  <div
+                    className={styles.knownRow}
+                    data-changed={!isEqual(selectedNode.properties?.[key], selectedBaseNode?.properties?.[key]) ? 'true' : 'false'}
+                    key={`required-known-${key}`}
+                  >
                     <div className={styles.knownLabel}>
                       <span>{key}</span>
                       {required && <small>required</small>}
@@ -1531,7 +1678,10 @@ function BehaviorEditor (props) {
               })}
             </div>
 
-            <div className={styles.group}>
+            <div
+              className={styles.group}
+              data-changed={optionalKnownPresentKeys.some(key => !isEqual(selectedNode.properties?.[key], selectedBaseNode?.properties?.[key])) ? 'true' : 'false'}
+            >
               <div className={styles.groupTitle}>Optional Properties</div>
               {optionalKnownPresentKeys.length === 0 && (
                 <p className={styles.emptyHint}>No optional properties added.</p>
@@ -1543,7 +1693,11 @@ function BehaviorEditor (props) {
                 const fixed = spec && Object.prototype.hasOwnProperty.call(spec, 'fixed')
 
                 return (
-                  <div className={styles.knownRow} key={`optional-known-${key}`}>
+                  <div
+                    className={styles.knownRow}
+                    data-changed={!isEqual(selectedNode.properties?.[key], selectedBaseNode?.properties?.[key]) ? 'true' : 'false'}
+                    key={`optional-known-${key}`}
+                  >
                     <div className={styles.knownLabel}>
                       <span>{key}</span>
                       {required && <small>required</small>}
@@ -1587,7 +1741,16 @@ function BehaviorEditor (props) {
               {rawKeys.map(key => {
                 const valueType = selectedNode.property_types?.[key] || 'raw'
                 return (
-                  <div className={styles.rawRow} key={`raw-${key}`}>
+                  <div
+                    className={styles.rawRow}
+                    data-changed={
+                      !isEqual(selectedNode.properties?.[key], selectedBaseNode?.properties?.[key]) ||
+                      !isEqual(selectedNode.property_types?.[key], selectedBaseNode?.property_types?.[key])
+                        ? 'true'
+                        : 'false'
+                    }
+                    key={`raw-${key}`}
+                  >
                     <input
                       type="text"
                       value={key}
@@ -1687,7 +1850,10 @@ function BehaviorEditor (props) {
               </div>
             )}
 
-            <div className={styles.group}>
+            <div
+              className={styles.group}
+              data-changed={!isEqual(selectedNode.children || [], selectedBaseNode?.children || []) ? 'true' : 'false'}
+            >
               <div className={styles.groupTitle}>Children (.keymap)</div>
               <div className={styles.childrenHelp}>
                 Enter only child nodes that belong inside the parent block, for example <code>{'foo: bar { ... };'}</code>.
@@ -1729,6 +1895,7 @@ function BehaviorEditor (props) {
 }
 
 BehaviorEditor.propTypes = {
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   behaviorTypes: PropTypes.array.isRequired,
   availableBehaviours: PropTypes.array,

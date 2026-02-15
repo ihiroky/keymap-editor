@@ -85,10 +85,12 @@ function renderEditor (options = {}) {
     behavior_overrides: [],
     behavior_definitions: options.definitions || [createMacroDefinition()]
   }
+  const baseKeymap = options.baseKeymap || keymap
 
-  render(
+  const view = render(
     <MacroEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       behaviorTypes={options.behaviorTypes || createBehaviorTypes()}
       availableBehaviours={options.availableBehaviours || [
         { code: '&none', name: 'None' },
@@ -98,10 +100,20 @@ function renderEditor (options = {}) {
     />
   )
 
-  return { onUpdate }
+  return { onUpdate, ...view }
 }
 
 describe('MacroEditor', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('adds and deletes macro definitions', () => {
     const { onUpdate } = renderEditor()
 
@@ -112,6 +124,19 @@ describe('MacroEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
     expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete macro "macro_test"? This cannot be undone.')
+  })
+
+  test('cancels deleting selected macro when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Macro' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    onUpdate.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('applies raw bindings and blocks invalid updates', () => {
@@ -254,5 +279,142 @@ describe('MacroEditor', () => {
     expect(screen.getByText('Required Properties')).toBeTruthy()
     expect(screen.getByText('Optional Properties')).toBeTruthy()
     expect(screen.getByText('Add Known Properties')).toBeTruthy()
+  })
+
+  test('marks changed step rows against base definitions', () => {
+    renderEditor({
+      definitions: [createMacroDefinition({
+        properties: {
+          compatible: 'zmk,behavior-macro-two-param',
+          '#binding-cells': 2,
+          bindings: ['&kp C', '&kp B']
+        }
+      })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    const changedStep = document.querySelector('[data-changed="true"][draggable="true"]')
+    expect(changedStep).toBeTruthy()
+  })
+
+  test('shows Added badge when macro is newly added in current state', () => {
+    renderEditor({
+      definitions: [createMacroDefinition(), createMacroDefinition({ label: 'macro_2', name: 'macro_2_node', bind: '&macro_2' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
+  })
+
+  test('discards changed macro row back to base value', () => {
+    const { onUpdate } = renderEditor({
+      definitions: [createMacroDefinition({ label: 'macro_changed', name: 'macro_changed_node', bind: '&macro_changed' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions[0].label).toBe('macro_test')
+  })
+
+  test('discards added macro row by removing it', () => {
+    const { onUpdate } = renderEditor({
+      definitions: [createMacroDefinition(), createMacroDefinition({ label: 'macro_2', name: 'macro_2_node', bind: '&macro_2' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes macro_2/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].behavior_definitions).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added macro "macro_2"? This cannot be undone.')
+  })
+
+  test('cancels removing added macro row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      definitions: [createMacroDefinition(), createMacroDefinition({ label: 'macro_2', name: 'macro_2_node', bind: '&macro_2' })],
+      baseKeymap: {
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [createMacroDefinition()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes macro_2/i))
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('restores exact base macro definitions after editing one row then discarding it', () => {
+    const baseDefinitions = [
+      createMacroDefinition(),
+      createMacroDefinition({
+        label: 'macro_raw',
+        name: 'macro_raw_node',
+        bind: '&macro_raw',
+        property_types: {
+          compatible: 'string'
+        },
+        property_order: ['compatible']
+      })
+    ]
+    const baseKeymap = {
+      layers: [],
+      sensor_layers: [],
+      behavior_overrides: [],
+      behavior_definitions: baseDefinitions
+    }
+    const behaviorTypes = createBehaviorTypes()
+    const availableBehaviours = [
+      { code: '&none', name: 'None' },
+      { code: '&kp', name: 'Key Press' }
+    ]
+    const { onUpdate, rerender } = renderEditor({
+      definitions: baseDefinitions,
+      baseKeymap,
+      behaviorTypes,
+      availableBehaviours
+    })
+
+    fireEvent.change(screen.getByDisplayValue('macro_test'), { target: { value: 'macro_changed' } })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+
+    const updatedKeymap = onUpdate.mock.calls[0][0]
+    rerender(
+      <MacroEditor
+        keymap={updatedKeymap}
+        baseKeymap={baseKeymap}
+        behaviorTypes={behaviorTypes}
+        availableBehaviours={availableBehaviours}
+        onUpdate={onUpdate}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/Discard macro changes/i))
+
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    const discardedPayload = onUpdate.mock.calls[1][0]
+    expect(discardedPayload.behavior_definitions).toEqual(baseKeymap.behavior_definitions)
   })
 })

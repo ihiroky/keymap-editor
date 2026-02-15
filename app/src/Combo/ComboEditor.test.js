@@ -47,6 +47,7 @@ function renderEditor (options = {}) {
     behavior_definitions: [],
     combos: options.combos || [createCombo()]
   }
+  const baseKeymap = options.baseKeymap || keymap
 
   const layout = options.layout || [
     { x: 0, y: 0, w: 1, h: 1, label: 'A' },
@@ -54,9 +55,10 @@ function renderEditor (options = {}) {
     { x: 2, y: 0, w: 1, h: 1, label: 'C' }
   ]
 
-  render(
+  const view = render(
     <ComboEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       layout={layout}
       availableBehaviours={options.availableBehaviours || [
         { code: '&none', name: 'None' },
@@ -68,10 +70,20 @@ function renderEditor (options = {}) {
     />
   )
 
-  return { onUpdate }
+  return { onUpdate, ...view }
 }
 
 describe('ComboEditor', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('adds and deletes combos', () => {
     const { onUpdate } = renderEditor()
 
@@ -83,6 +95,19 @@ describe('ComboEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
 
     expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/^Delete combo ".*"\? This cannot be undone\.$/))
+  })
+
+  test('cancels deleting selected combo when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Combo' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    onUpdate.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('updates key-positions from keyboard selection', () => {
@@ -205,5 +230,167 @@ describe('ComboEditor', () => {
     const result = document.querySelector('li[data-result-index="15"]')
     expect(result).toBeTruthy()
     expect(result.className).toMatch(/highlighted/)
+  })
+
+  test('shows changed marker for modified field against base keymap', () => {
+    renderEditor({
+      combos: [createCombo({
+        properties: {
+          ...createCombo().properties,
+          'timeout-ms': 45
+        }
+      })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    const row = screen.getByLabelText('timeout-ms').closest('[data-changed]')
+    expect(row).toBeTruthy()
+    expect(row.getAttribute('data-changed')).toBe('true')
+  })
+
+  test('shows Added badge for new combo rows', () => {
+    renderEditor({
+      combos: [createCombo(), createCombo({ name: 'combo_b', bind: '&combo_b' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
+  })
+
+  test('discards changed combo row back to base value', () => {
+    const { onUpdate } = renderEditor({
+      combos: [createCombo({ name: 'combo_changed', bind: '&combo_changed' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard combo changes/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].combos[0].name).toBe('combo_a')
+  })
+
+  test('discards added combo row by removing it', () => {
+    const { onUpdate } = renderEditor({
+      combos: [createCombo(), createCombo({ name: 'combo_b', bind: '&combo_b' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard combo changes combo_b/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].combos).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added combo "combo_b"? This cannot be undone.')
+  })
+
+  test('cancels removing added combo row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      combos: [createCombo(), createCombo({ name: 'combo_b', bind: '&combo_b' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn'],
+        layers: [],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [createCombo()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard combo changes combo_b/i))
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('restores exact base combos after editing one row then discarding it', () => {
+    const baseCombos = [
+      createCombo(),
+      {
+        name: 'combo_raw',
+        bind: '&combo_raw',
+        properties: {
+          bindings: ['&kp ESC'],
+          'key-positions': [1, 2]
+        },
+        property_types: {
+          bindings: 'bindings'
+        },
+        property_order: ['bindings', 'key-positions'],
+        children: []
+      }
+    ]
+    const baseKeymap = {
+      layer_names: ['Base', 'Nav', 'Fn'],
+      layers: [],
+      sensor_layers: [],
+      behavior_overrides: [],
+      behavior_definitions: [],
+      combos: baseCombos
+    }
+    const layout = [
+      { x: 0, y: 0, w: 1, h: 1, label: 'A' },
+      { x: 1, y: 0, w: 1, h: 1, label: 'B' },
+      { x: 2, y: 0, w: 1, h: 1, label: 'C' }
+    ]
+    const availableBehaviours = [
+      { code: '&none', name: 'None' },
+      { code: '&kp', name: 'Key Press' },
+      { code: '&bt', name: 'Bluetooth' }
+    ]
+    const keycodes = []
+
+    const { onUpdate, rerender } = renderEditor({
+      combos: baseCombos,
+      baseKeymap,
+      layout,
+      availableBehaviours,
+      keycodes
+    })
+
+    fireEvent.change(screen.getByLabelText('timeout-ms'), { target: { value: '31' } })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+
+    const updatedKeymap = onUpdate.mock.calls[0][0]
+    rerender(
+      <ComboEditor
+        keymap={updatedKeymap}
+        baseKeymap={baseKeymap}
+        layout={layout}
+        availableBehaviours={availableBehaviours}
+        keycodes={keycodes}
+        onUpdate={onUpdate}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/Discard combo changes/i))
+
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    const discardedPayload = onUpdate.mock.calls[1][0]
+    expect(discardedPayload.combos).toEqual(baseKeymap.combos)
   })
 })

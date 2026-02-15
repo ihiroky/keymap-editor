@@ -27,6 +27,12 @@
   margin-bottom: 14px;
 }
 
+.listRow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
 .listItem {
   position: relative;
   overflow: hidden;
@@ -37,6 +43,10 @@
   color: var(--theme-text);
   padding: 8px 10px;
   transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
 }
 
 .listItem::before {
@@ -60,6 +70,35 @@
   background: var(--selection);
 }
 
+.listItem[data-changed='true']:not([data-selected='true']) {
+  box-shadow: inset 0 0 0 1px var(--editor-diff-border);
+}
+
+.diffDot {
+  width: var(--editor-diff-dot-size);
+  height: var(--editor-diff-dot-size);
+  border-radius: 999px;
+  background: var(--editor-diff-badge-bg);
+  flex: 0 0 auto;
+}
+
+.addedBadge {
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--editor-diff-badge-bg);
+  color: var(--editor-diff-badge-text);
+}
+
+.changeSummary {
+  font-size: 12px;
+  color: var(--editor-diff-text);
+  margin: -2px 0 8px;
+}
+
 .actions {
   display: flex;
   flex-direction: column;
@@ -73,7 +112,7 @@
   padding: 14px;
 }
 
-.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton) {
+.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):not(.revertButton) {
   border: none;
   border-radius: 6px;
   padding: 6px 12px;
@@ -83,13 +122,30 @@
   transition: filter 120ms ease, opacity 120ms ease;
 }
 
-.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):hover:not(:disabled) {
+.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):not(.revertButton):hover:not(:disabled) {
   filter: brightness(0.94);
 }
 
-.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):disabled {
+.editor button:not(.listItem):not(.paramPickerButton):not(.keyButton):not(.revertButton):disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.revertButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--editor-diff-border);
+  border-radius: 7px;
+  padding: 0 8px;
+  background: var(--editor-diff-bg);
+  color: var(--editor-diff-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.revertButton:hover {
+  background: var(--theme-surface-1);
 }
 
 .formRow {
@@ -98,6 +154,14 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.formRow[data-changed='true'] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
+  border-radius: 6px;
 }
 
 .slowReleaseCheckbox {
@@ -250,6 +314,14 @@
 
 .group {
   margin-top: 14px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.group[data-changed='true'] {
+  border-left-color: var(--editor-diff-border);
+  background: var(--editor-diff-bg);
+  border-radius: 8px;
 }
 
 .groupTitle {
@@ -314,5 +386,10 @@
 
   .paramRow {
     grid-template-columns: 1fr;
+  }
+
+  .revertButton {
+    font-size: 0;
+    padding: 0 10px;
   }
 }

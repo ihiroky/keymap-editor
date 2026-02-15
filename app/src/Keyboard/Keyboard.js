@@ -1,5 +1,6 @@
 import filter from 'lodash/filter'
 import get from 'lodash/get'
+import isEqual from 'lodash/isEqual'
 import isEmpty from 'lodash/isEmpty'
 import keyBy from 'lodash/keyBy'
 import times from 'lodash/times'
@@ -107,8 +108,18 @@ function moveIndex(index, from, to) {
   return index
 }
 
+function normalizeBinding(binding) {
+  if (!binding) {
+    return { value: '&none', params: [] }
+  }
+  if (typeof binding === 'string' || typeof binding === 'number') {
+    return { value: binding, params: [] }
+  }
+  return binding
+}
+
 function Keyboard(props) {
-  const { layout, keymap, sensors, onUpdate } = props
+  const { layout, baseKeymap, keymap, sensors, onUpdate } = props
   const [activeLayer, setActiveLayer] = useState(0)
   const [selectedKeyIndex, setSelectedKeyIndex] = useState(null)
   const [selectedSensorIndex, setSelectedSensorIndex] = useState(null)
@@ -203,8 +214,51 @@ function Keyboard(props) {
   }), [layoutBounds, wrapperPadding])
 
   const activeBindings = useMemo(() => layout.map((_, i) => (
-    get(keymap, ['layers', activeLayer, i], { value: '&none', params: [] })
+    normalizeBinding(get(keymap, ['layers', activeLayer, i], null))
   )), [layout, keymap, activeLayer])
+  const baseLayerNames = useMemo(() => (
+    Array.isArray(baseKeymap?.layer_names) ? baseKeymap.layer_names : []
+  ), [baseKeymap])
+  const baseLayers = useMemo(() => (
+    Array.isArray(baseKeymap?.layers) ? baseKeymap.layers : []
+  ), [baseKeymap])
+  const baseSensorLayers = useMemo(() => (
+    Array.isArray(baseKeymap?.sensor_layers) ? baseKeymap.sensor_layers : []
+  ), [baseKeymap])
+  const isActiveLayerAdded = useMemo(() => (
+    activeLayer >= baseLayers.length
+  ), [activeLayer, baseLayers.length])
+  const baselineBindings = useMemo(() => layout.map((_, i) => (
+    normalizeBinding(get(baseKeymap, ['layers', activeLayer, i], null))
+  )), [layout, baseKeymap, activeLayer])
+  const changedKeyIndices = useMemo(() => {
+    const changed = new Set()
+    activeBindings.forEach((binding, index) => {
+      if (!isEqual(binding, baselineBindings[index])) {
+        changed.add(index)
+      }
+    })
+    return changed
+  }, [activeBindings, baselineBindings])
+
+  const changedLayers = useMemo(() => {
+    const currentNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
+    const currentLayers = Array.isArray(keymap?.layers) ? keymap.layers : []
+    const currentSensorLayers = Array.isArray(keymap?.sensor_layers) ? keymap.sensor_layers : []
+    const baseNames = Array.isArray(baseKeymap?.layer_names) ? baseKeymap.layer_names : []
+    const baseLayers = Array.isArray(baseKeymap?.layers) ? baseKeymap.layers : []
+    const baseSensorLayers = Array.isArray(baseKeymap?.sensor_layers) ? baseKeymap.sensor_layers : []
+
+    return currentLayers.map((layer, index) => (
+      !isEqual(layer, baseLayers[index]) ||
+      !isEqual(currentSensorLayers[index] || [], baseSensorLayers[index] || []) ||
+      String(currentNames[index] || '') !== String(baseNames[index] || '')
+    ))
+  }, [keymap, baseKeymap])
+  const addedLayers = useMemo(() => {
+    const currentLayers = Array.isArray(keymap?.layers) ? keymap.layers : []
+    return currentLayers.map((_, index) => index >= baseLayers.length)
+  }, [keymap, baseLayers.length])
 
   const keyErrors = useMemo(() => {
     const availableBindings = buildAvailableBindingSet({
@@ -262,16 +316,18 @@ function Keyboard(props) {
     const layer = get(keymap, ['sensor_layers', activeLayer], null)
 
     return Array.from({ length: sensorCount }, (_, sensorIndex) => {
-      const binding = Array.isArray(layer) ? layer[sensorIndex] : undefined
-      if (!binding) {
-        return { value: '&none', params: [] }
-      }
-      if (typeof binding === 'string' || typeof binding === 'number') {
-        return { value: binding, params: [] }
-      }
-      return binding
+      const binding = Array.isArray(layer) ? layer[sensorIndex] : null
+      return normalizeBinding(binding)
     })
   }, [keymap, activeLayer, sensorCount])
+  const baselineSensorBindings = useMemo(() => {
+    const layer = get(baseKeymap, ['sensor_layers', activeLayer], null)
+
+    return Array.from({ length: sensorCount }, (_, sensorIndex) => {
+      const binding = Array.isArray(layer) ? layer[sensorIndex] : null
+      return normalizeBinding(binding)
+    })
+  }, [baseKeymap, activeLayer, sensorCount])
 
   const sensorEditPaneStyle = useMemo(() => {
     if (selectedSensorIndex === null || !sensorAnchor) {
@@ -336,6 +392,7 @@ function Keyboard(props) {
       const sensor = sensors?.[sensorIndex]
       const sensorLabel = sensor?.name || sensor?.identifier || `Sensor ${sensorIndex + 1}`
       const editable = editableSensors ? editableSensors[sensorIndex] === true : true
+      const isChanged = !isEqual(binding, baselineSensorBindings[sensorIndex])
       const behaviour = get(sources.behaviours, binding.value)
       if (!behaviour) {
         return (
@@ -347,8 +404,12 @@ function Keyboard(props) {
             disabled={!editable}
             data-selected={selectedSensorIndex === sensorIndex ? 'true' : 'false'}
             data-editable={editable ? 'true' : 'false'}
+            data-changed={isChanged ? 'true' : 'false'}
           >
-            <div className={styles['sensor-label']}>{sensorLabel}</div>
+            <div className={styles['sensor-label']}>
+              {sensorLabel}
+              {isChanged && <span className={styles['sensor-changed-dot']} aria-hidden='true' />}
+            </div>
             <div className={styles['sensor-binding']}>{binding.value}</div>
           </button>
         )
@@ -367,8 +428,12 @@ function Keyboard(props) {
           disabled={!editable}
           data-selected={selectedSensorIndex === sensorIndex ? 'true' : 'false'}
           data-editable={editable ? 'true' : 'false'}
+          data-changed={isChanged ? 'true' : 'false'}
         >
-          <div className={styles['sensor-label']}>{sensorLabel}</div>
+          <div className={styles['sensor-label']}>
+            {sensorLabel}
+            {isChanged && <span className={styles['sensor-changed-dot']} aria-hidden='true' />}
+          </div>
           <div className={styles['sensor-binding']}>
             <span className={styles['sensor-behaviour']}>{behaviour.code}</span>
             <KeyParamlist
@@ -382,7 +447,15 @@ function Keyboard(props) {
         </button>
       )
     })
-  }, [activeSensorBindings, sensors, editableSensors, sources, handleSelectSensor, selectedSensorIndex])
+  }, [
+    activeSensorBindings,
+    baselineSensorBindings,
+    sensors,
+    editableSensors,
+    sources,
+    handleSelectSensor,
+    selectedSensorIndex
+  ])
 
   useEffect(() => {
     if (selectedKeyIndex === null) {
@@ -425,6 +498,13 @@ function Keyboard(props) {
       binding: activeBindings[selectedKeyIndex]
     }
   }, [selectedKeyIndex, activeBindings, layout])
+  const selectedKeyBaseline = useMemo(() => {
+    if (selectedKeyIndex === null) {
+      return null
+    }
+
+    return baselineBindings[selectedKeyIndex] || null
+  }, [selectedKeyIndex, baselineBindings])
 
   const selectedSensor = useMemo(() => {
     if (selectedSensorIndex === null) {
@@ -442,6 +522,13 @@ function Keyboard(props) {
       binding: activeSensorBindings[selectedSensorIndex]
     }
   }, [selectedSensorIndex, sensors, editableSensors, activeSensorBindings])
+  const selectedSensorBaseline = useMemo(() => {
+    if (selectedSensorIndex === null) {
+      return null
+    }
+
+    return baselineSensorBindings[selectedSensorIndex] || null
+  }, [selectedSensorIndex, baselineSensorBindings])
 
   const selectedKeyBounds = useMemo(() => {
     if (selectedKeyIndex === null) {
@@ -638,6 +725,67 @@ function Keyboard(props) {
     onUpdate(nextKeymap)
   }, [keymap, activeLayer, setActiveLayer, onUpdate])
 
+  const handleRevertLayer = useMemo(() => function (layerIndex) {
+    const currentNames = Array.isArray(keymap.layer_names) ? [...keymap.layer_names] : []
+    const currentLayers = Array.isArray(keymap.layers) ? [...keymap.layers] : []
+    const hasSensorLayers = Array.isArray(keymap.sensor_layers) || baseSensorLayers.length > 0
+    const currentSensorLayers = Array.isArray(keymap.sensor_layers)
+      ? [...keymap.sensor_layers]
+      : hasSensorLayers
+        ? Array.from({ length: currentLayers.length }, () => [])
+        : null
+
+    if (!currentLayers[layerIndex]) {
+      return
+    }
+
+    if (layerIndex >= baseLayers.length) {
+      currentLayers.splice(layerIndex, 1)
+      currentNames.splice(layerIndex, 1)
+      if (currentSensorLayers) {
+        currentSensorLayers.splice(layerIndex, 1)
+      }
+
+      const nextLayerCount = currentLayers.length
+      setActiveLayer(current => {
+        if (nextLayerCount <= 0) {
+          return 0
+        }
+        if (current === layerIndex) {
+          return Math.min(layerIndex, nextLayerCount - 1)
+        }
+        if (current > layerIndex) {
+          return current - 1
+        }
+        return current
+      })
+    } else {
+      currentLayers[layerIndex] = cloneValue(baseLayers[layerIndex] || [])
+      currentNames[layerIndex] = cloneValue(baseLayerNames[layerIndex])
+      if (currentSensorLayers) {
+        currentSensorLayers[layerIndex] = cloneValue(baseSensorLayers[layerIndex] || [])
+      }
+    }
+
+    const nextKeymap = {
+      ...keymap,
+      layer_names: currentNames,
+      layers: currentLayers
+    }
+    if (currentSensorLayers) {
+      nextKeymap.sensor_layers = currentSensorLayers
+    }
+
+    onUpdate(nextKeymap)
+  }, [
+    keymap,
+    baseLayerNames,
+    baseLayers,
+    baseSensorLayers,
+    onUpdate,
+    setActiveLayer
+  ])
+
   const handleDuplicateLayer = useMemo(() => function (layerIndex) {
     if (!Array.isArray(keymap.layers) || !keymap.layers[layerIndex]) {
       return
@@ -692,6 +840,96 @@ function Keyboard(props) {
     onUpdate(nextKeymap)
   }, [keymap, onUpdate, setActiveLayer])
 
+  const handleDiscardSelectedKeyBinding = useMemo(() => function() {
+    if (selectedKeyIndex === null || isActiveLayerAdded) {
+      return
+    }
+
+    const baseline = baselineBindings[selectedKeyIndex]
+    if (!baseline) {
+      return
+    }
+
+    const updatedLayer = [
+      ...activeBindings.slice(0, selectedKeyIndex),
+      cloneValue(baseline),
+      ...activeBindings.slice(selectedKeyIndex + 1)
+    ]
+
+    handleUpdateLayer(activeLayer, updatedLayer)
+  }, [
+    selectedKeyIndex,
+    isActiveLayerAdded,
+    baselineBindings,
+    activeBindings,
+    handleUpdateLayer,
+    activeLayer
+  ])
+
+  const handleDiscardSelectedSensorBinding = useMemo(() => function() {
+    if (selectedSensorIndex === null || isActiveLayerAdded) {
+      return
+    }
+    if (sensorCount === 0) {
+      return
+    }
+    if (editableSensors && editableSensors[selectedSensorIndex] !== true) {
+      return
+    }
+
+    const baseline = baselineSensorBindings[selectedSensorIndex]
+    if (!baseline) {
+      return
+    }
+
+    const makeSensorBinding = () => ({ value: '&none', params: [] })
+    const baseSensorLayersForUpdate = Array.isArray(keymap.sensor_layers)
+      ? keymap.sensor_layers
+      : Array.from({ length: keymap.layers.length }, () => times(sensorCount, makeSensorBinding))
+
+    const layer = baseSensorLayersForUpdate[activeLayer] || times(sensorCount, makeSensorBinding)
+    const updatedLayer = [
+      ...layer.slice(0, selectedSensorIndex),
+      cloneValue(baseline),
+      ...layer.slice(selectedSensorIndex + 1)
+    ]
+
+    const sensor_layers = [
+      ...baseSensorLayersForUpdate.slice(0, activeLayer),
+      updatedLayer,
+      ...baseSensorLayersForUpdate.slice(activeLayer + 1)
+    ]
+
+    onUpdate({ ...keymap, sensor_layers })
+  }, [
+    selectedSensorIndex,
+    isActiveLayerAdded,
+    sensorCount,
+    editableSensors,
+    baselineSensorBindings,
+    keymap,
+    activeLayer,
+    onUpdate
+  ])
+
+  const canDiscardSelectedKeyChange = useMemo(() => (
+    Boolean(
+      selectedKey &&
+      selectedKeyBaseline &&
+      !isEqual(selectedKey.binding, selectedKeyBaseline) &&
+      !isActiveLayerAdded
+    )
+  ), [selectedKey, selectedKeyBaseline, isActiveLayerAdded])
+
+  const canDiscardSelectedSensorChange = useMemo(() => (
+    Boolean(
+      selectedSensor &&
+      selectedSensorBaseline &&
+      !isEqual(selectedSensor.binding, selectedSensorBaseline) &&
+      !isActiveLayerAdded
+    )
+  ), [selectedSensor, selectedSensorBaseline, isActiveLayerAdded])
+
   return (
     <>
       <SearchContext.Provider value={{ getSearchTargets, sources }}>
@@ -699,6 +937,9 @@ function Keyboard(props) {
           <div className={styles['keyboard-pane']} ref={keyboardPaneRef}>
             <LayerSelector
               layers={keymap.layer_names}
+              changedLayers={changedLayers}
+              revertableLayers={changedLayers}
+              addedLayers={addedLayers}
               activeLayer={activeLayer}
               onSelect={setActiveLayer}
               onNewLayer={handleCreateLayer}
@@ -706,6 +947,7 @@ function Keyboard(props) {
               onDeleteLayer={handleDeleteLayer}
               onDuplicateLayer={handleDuplicateLayer}
               onMoveLayer={handleMoveLayer}
+              onRevertLayer={handleRevertLayer}
             />
             <div className={styles['keyboard-wrapper']} style={wrapperStyle}>
               {isReady() && (
@@ -713,6 +955,7 @@ function Keyboard(props) {
                   data-layer={activeLayer}
                   layout={layout}
                   bindings={activeBindings}
+                  changedKeyIndices={changedKeyIndices}
                   keyErrors={keyErrors}
                   selectedKeyIndex={selectedKeyIndex}
                   onSelectKey={handleSelectKey}
@@ -724,7 +967,12 @@ function Keyboard(props) {
                   className={styles['floating-pane']}
                   style={editPaneStyle}
                   selectedKey={selectedKey}
+                  baselineBinding={selectedKeyBaseline}
                   onApply={handleApplyBinding}
+                  onDiscardChange={handleDiscardSelectedKeyBinding}
+                  canDiscardChange={canDiscardSelectedKeyChange}
+                  discardLabel='Discard'
+                  discardTitle={selectedKey ? `Discard changes for ${selectedKey.label}` : 'Discard changes'}
                   onClose={() => setSelectedKeyIndex(null)}
                 />
               )}
@@ -740,7 +988,12 @@ function Keyboard(props) {
                 className={styles['floating-pane']}
                 style={sensorEditPaneStyle}
                 selectedKey={selectedSensor}
+                baselineBinding={selectedSensorBaseline}
                 onApply={handleApplySensorBinding}
+                onDiscardChange={handleDiscardSelectedSensorBinding}
+                canDiscardChange={canDiscardSelectedSensorChange}
+                discardLabel='Discard'
+                discardTitle={selectedSensor ? `Discard changes for ${selectedSensor.label}` : 'Discard changes'}
                 onClose={() => setSelectedSensorIndex(null)}
               />
             )}
@@ -754,6 +1007,7 @@ function Keyboard(props) {
 Keyboard.propTypes = {
   layout: PropTypes.array.isRequired,
   sensors: PropTypes.array,
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired
 }

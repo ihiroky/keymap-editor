@@ -33,18 +33,30 @@ function renderEditor (options = {}) {
     combos: [],
     conditional_layers: options.conditionalLayers || [createRule()]
   }
+  const baseKeymap = options.baseKeymap || keymap
 
-  render(
+  const view = render(
     <ConditionalLayerEditor
       keymap={keymap}
+      baseKeymap={baseKeymap}
       onUpdate={onUpdate}
     />
   )
 
-  return { onUpdate }
+  return { onUpdate, ...view }
 }
 
 describe('ConditionalLayerEditor', () => {
+  let confirmSpy
+
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    confirmSpy.mockRestore()
+  })
+
   test('adds and deletes conditional layer rules', () => {
     const { onUpdate } = renderEditor()
 
@@ -56,6 +68,19 @@ describe('ConditionalLayerEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
 
     expect(onUpdate).toHaveBeenCalledTimes(2)
+    expect(confirmSpy).toHaveBeenCalledWith('Delete conditional layer rule "nav_num"? This cannot be undone.')
+  })
+
+  test('cancels deleting selected rule when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Rule' }))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    onUpdate.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Selected' }))
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 
   test('updates if-layers and then-layer', () => {
@@ -161,5 +186,154 @@ describe('ConditionalLayerEditor', () => {
 
     expect(onUpdate).toHaveBeenCalledTimes(1)
     expect(onUpdate.mock.calls[0][0].conditional_layers[0].properties.extra).toBe('keep')
+  })
+
+  test('shows changed marker and summary against base keymap', () => {
+    renderEditor({
+      conditionalLayers: [createRule({
+        properties: {
+          'if-layers': [0, 1],
+          'then-layer': 2
+        }
+      })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    const row = screen.getByLabelText('then-layer').closest('[data-changed]')
+    expect(row).toBeTruthy()
+    expect(row.getAttribute('data-changed')).toBe('true')
+  })
+
+  test('shows Added badge when rule is newly added', () => {
+    renderEditor({
+      conditionalLayers: [createRule(), createRule({ name: 'nav_num_2', bind: '&nav_num_2' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    expect(screen.getByText('Added')).toBeTruthy()
+    expect(screen.getByText(/\+1 \/ Deleted 0/i)).toBeTruthy()
+  })
+
+  test('discards changed rule row back to base value', () => {
+    const { onUpdate } = renderEditor({
+      conditionalLayers: [createRule({ name: 'changed_rule', bind: '&changed_rule' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard conditional rule changes/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].conditional_layers[0].name).toBe('nav_num')
+  })
+
+  test('discards added rule row by removing it', () => {
+    const { onUpdate } = renderEditor({
+      conditionalLayers: [createRule(), createRule({ name: 'nav_num_2', bind: '&nav_num_2' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard conditional rule changes nav_num_2/i))
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+    expect(onUpdate.mock.calls[0][0].conditional_layers).toHaveLength(1)
+    expect(confirmSpy).toHaveBeenCalledWith('Remove added conditional layer rule "nav_num_2"? This cannot be undone.')
+  })
+
+  test('cancels removing added rule row when confirmation is declined', () => {
+    confirmSpy.mockReturnValue(false)
+    const { onUpdate } = renderEditor({
+      conditionalLayers: [createRule(), createRule({ name: 'nav_num_2', bind: '&nav_num_2' })],
+      baseKeymap: {
+        layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+        layers: [[], [], [], []],
+        sensor_layers: [],
+        behavior_overrides: [],
+        behavior_definitions: [],
+        combos: [],
+        conditional_layers: [createRule()]
+      }
+    })
+
+    fireEvent.click(screen.getByLabelText(/Discard conditional rule changes nav_num_2/i))
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
+
+  test('restores exact base rules after editing one row then discarding it', () => {
+    const baseRules = [
+      createRule(),
+      {
+        name: 'raw_rule',
+        bind: '&raw_rule',
+        properties: {
+          'if-layers': [0, 1],
+          'then-layer': 2
+        },
+        property_types: {
+          'if-layers': 'token-array'
+        },
+        children: []
+      }
+    ]
+    const baseKeymap = {
+      layer_names: ['Base', 'Nav', 'Fn', 'Num'],
+      layers: [[], [], [], []],
+      sensor_layers: [],
+      behavior_overrides: [],
+      behavior_definitions: [],
+      combos: [],
+      conditional_layers: baseRules
+    }
+    const { onUpdate, rerender } = renderEditor({
+      conditionalLayers: baseRules,
+      baseKeymap
+    })
+
+    fireEvent.change(screen.getByLabelText('then-layer'), { target: { value: '0' } })
+    expect(onUpdate).toHaveBeenCalledTimes(1)
+
+    const updatedKeymap = onUpdate.mock.calls[0][0]
+    rerender(
+      <ConditionalLayerEditor
+        keymap={updatedKeymap}
+        baseKeymap={baseKeymap}
+        onUpdate={onUpdate}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/Discard conditional rule changes/i))
+
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    const discardedPayload = onUpdate.mock.calls[1][0]
+    expect(discardedPayload.conditional_layers).toEqual(baseKeymap.conditional_layers)
   })
 })

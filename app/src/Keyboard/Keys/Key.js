@@ -14,7 +14,7 @@ import styles from './styles.module.css'
 function Key(props) {
   const { sources } = useContext(SearchContext)
   const { position, rotation, size } = props
-  const { label, value, params, selected, onSelect, hasError, errorMessage } = props
+  const { label, value, params, selected, onSelect, hasError, errorMessage, isChanged } = props
 
   const bind = value
   const behaviour = get(sources.behaviours, bind)
@@ -44,6 +44,7 @@ function Key(props) {
       data-long={isComplex(normalized, behaviourParams)}
       data-selected={selected ? 'true' : 'false'}
       data-error={hasError ? 'true' : 'false'}
+      data-changed={isChanged ? 'true' : 'false'}
       style={positioningStyle}
       title={errorMessage || undefined}
       onMouseOver={onMouseOver}
@@ -52,6 +53,9 @@ function Key(props) {
     >
     {hasError && (
       <span className={styles['error-marker']} aria-hidden='true'>!</span>
+    )}
+    {isChanged && (
+      <span className={styles['changed-marker']} aria-hidden='true' />
     )}
     {behaviour ? (
       <span
@@ -90,6 +94,7 @@ Key.propTypes = {
   params: PropTypes.arrayOf(keyPropTypes.node),
   hasError: PropTypes.bool,
   errorMessage: PropTypes.string,
+  isChanged: PropTypes.bool,
   selected: PropTypes.bool,
   onSelect: PropTypes.func
 }

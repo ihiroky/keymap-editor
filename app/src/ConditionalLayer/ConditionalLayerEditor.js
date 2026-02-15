@@ -1,6 +1,17 @@
+import cloneDeep from 'lodash/cloneDeep'
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import styles from './styles.module.css'
 
 const KNOWN_PROPERTY_KEYS = [
@@ -250,16 +261,30 @@ function validateConditionalLayerCollection (rules, layerCount) {
 }
 
 function ConditionalLayerEditor (props) {
-  const { keymap, onUpdate } = props
+  const { keymap, baseKeymap, onUpdate } = props
   const layerNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
   const layerCount = Array.isArray(keymap?.layers) ? keymap.layers.length : 0
   const layerChoices = useMemo(() => buildLayerChoices(layerNames, layerCount), [layerNames, layerCount])
+  const baseRuleNodesRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.conditional_layers) ? baseKeymap.conditional_layers : []
+  ), [baseKeymap])
+  const ruleNodesRaw = useMemo(() => (
+    Array.isArray(keymap?.conditional_layers) ? keymap.conditional_layers : []
+  ), [keymap])
 
-  const rules = useMemo(() => (
-    Array.isArray(keymap?.conditional_layers)
-      ? keymap.conditional_layers.map(node => normalizeRuleNode(node, layerCount))
+  const baseRules = useMemo(() => (
+    baseRuleNodesRaw.length
+      ? baseRuleNodesRaw.map(node => normalizeRuleNode(node, layerCount))
       : []
-  ), [keymap, layerCount])
+  ), [baseRuleNodesRaw, layerCount])
+  const rules = useMemo(() => (
+    ruleNodesRaw.length
+      ? ruleNodesRaw.map(node => normalizeRuleNode(node, layerCount))
+      : []
+  ), [ruleNodesRaw, layerCount])
+  const ruleChangeInfo = useMemo(() => (
+    getListChangeInfo(baseRules, rules)
+  ), [baseRules, rules])
 
   const [selection, setSelection] = useState(() => (rules.length > 0 ? 0 : null))
   const [localErrors, setLocalErrors] = useState([])
@@ -302,10 +327,35 @@ function ConditionalLayerEditor (props) {
 
     return rules[selection] || null
   }, [selection, rules])
+  const selectedBaseRule = useMemo(() => {
+    if (selection === null) {
+      return null
+    }
+
+    return baseRules[selection] || null
+  }, [selection, baseRules])
 
   const commitRules = updater => {
-    const nextRules = updater(rules.map(cloneRuleNode))
-    const errors = validateConditionalLayerCollection(nextRules, layerCount)
+    const nextRules = updater(cloneDeep(ruleNodesRaw))
+    const normalizedForValidation = nextRules.map(node => normalizeRuleNode(node, layerCount))
+    const duplicateErrors = []
+    nextRules.forEach((node, index) => {
+      const layers = Array.isArray(node?.properties?.['if-layers'])
+        ? node.properties['if-layers']
+        : []
+      const seen = new Set()
+      for (const layer of layers) {
+        if (seen.has(layer)) {
+          duplicateErrors.push(`Conditional layer ${index + 1}: if-layers must not contain duplicates`)
+          break
+        }
+        seen.add(layer)
+      }
+    })
+    const errors = [
+      ...duplicateErrors,
+      ...validateConditionalLayerCollection(normalizedForValidation, layerCount)
+    ]
     if (errors.length > 0) {
       setLocalErrors(errors)
       return false
@@ -331,7 +381,8 @@ function ConditionalLayerEditor (props) {
         return list
       }
 
-      next[selection] = updater(cloneRuleNode(current))
+      const normalizedCurrent = normalizeRuleNode(current, layerCount)
+      next[selection] = updater(cloneRuleNode(normalizedCurrent))
       return next
     })
   }
@@ -371,7 +422,37 @@ function ConditionalLayerEditor (props) {
       return
     }
 
+    const selectedRule = rules[selection]
+    const shouldDelete = confirmItemDeletion({
+      kind: 'conditional layer rule',
+      name: selectedRule?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     commitRules(list => list.filter((_, index) => index !== selection))
+  }
+
+  const discardRuleAt = index => {
+    if (isIndexAdded(index, baseRules.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'conditional layer rule',
+        name: rules[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
+    const reverted = revertItemByIndex(baseRuleNodesRaw, ruleNodesRaw, index)
+    setLocalErrors([])
+    onUpdate({
+      ...keymap,
+      conditional_layers: reverted
+    })
   }
 
   const setIfLayerAt = (ifLayerIndex, rawValue) => {
@@ -480,17 +561,36 @@ function ConditionalLayerEditor (props) {
     <div className={styles.editor}>
       <div className={styles.sidebar}>
         <div className={styles.sectionHeader}>Conditional Layers</div>
+        {(ruleChangeInfo.addedCount > 0 || ruleChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{ruleChangeInfo.addedCount} / Deleted {ruleChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {rules.map((rule, index) => (
-            <button
-              type='button'
-              key={`conditional-layer-${index}`}
-              className={styles.listItem}
-              data-selected={selection === index ? 'true' : 'false'}
-              onClick={() => setSelection(index)}
-            >
-              {rule.name}
-            </button>
+            <div key={`conditional-layer-${index}`} className={styles.listRow}>
+              <button
+                type='button'
+                className={styles.listItem}
+                data-selected={selection === index ? 'true' : 'false'}
+                data-changed={ruleChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection(index)}
+              >
+                {ruleChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {rule.name}
+                {isAddedIndex(baseRules, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseRules, rules, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard conditional rule changes ${rule.name || index + 1}`}
+                  title='Discard conditional rule changes'
+                  onClick={() => discardRuleAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseRules.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -515,7 +615,10 @@ function ConditionalLayerEditor (props) {
 
         {selectedRule && (
           <>
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={selectedRule.name !== selectedBaseRule?.name ? 'true' : 'false'}
+            >
               <label>Name</label>
               <input
                 type='text'
@@ -532,7 +635,10 @@ function ConditionalLayerEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={!isEqual(selectedIfLayers, selectedBaseRule?.properties?.['if-layers'] || []) ? 'true' : 'false'}
+            >
               <label>if-layers</label>
               <div className={styles.ifLayersEditor}>
                 {selectedIfLayers.map((ifLayer, ifLayerIndex) => {
@@ -579,7 +685,10 @@ function ConditionalLayerEditor (props) {
               </div>
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={!isEqual(selectedThenLayer, toNonNegativeInteger(selectedBaseRule?.properties?.['then-layer'])) ? 'true' : 'false'}
+            >
               <label>then-layer</label>
               <select
                 aria-label='then-layer'
@@ -602,6 +711,7 @@ function ConditionalLayerEditor (props) {
 }
 
 ConditionalLayerEditor.propTypes = {
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired
 }

@@ -2,6 +2,7 @@ import PropTypes from 'prop-types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import Icon from '../Common/Icon'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import styles from './styles.module.css'
 
 function stop(fn) {
@@ -21,8 +22,9 @@ function onKey(mapping) {
 
 function LayerSelector(props) {
   const ref = useRef(null)
-  const { activeLayer, layers } = props
+  const { activeLayer, layers, changedLayers, revertableLayers, addedLayers } = props
   const { onSelect, onNewLayer, onRenameLayer, onDeleteLayer, onDuplicateLayer, onMoveLayer } = props
+  const { onRevertLayer } = props
   const [renaming, setRenaming] = useState(false)
   const [editing, setEditing] = useState('')
   const [draggingLayer, setDraggingLayer] = useState(null)
@@ -44,9 +46,35 @@ function LayerSelector(props) {
   }, [onNewLayer])
 
   const handleDelete = useMemo(() => function(layerIndex, layerName) {
-    const confirmation = `Really delete layer: ${layerName}?`
-    window.confirm(confirmation) && onDeleteLayer(layerIndex)
+    const shouldDelete = confirmItemDeletion({
+      kind: 'layer',
+      name: layerName,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
+    onDeleteLayer(layerIndex)
   }, [onDeleteLayer])
+
+  const handleRevert = useMemo(() => function(layerIndex, layerName, isAddedLayer) {
+    if (!isAddedLayer) {
+      onRevertLayer(layerIndex)
+      return
+    }
+
+    const shouldRemove = confirmItemDeletion({
+      kind: 'layer',
+      name: layerName,
+      mode: 'remove-added'
+    })
+    if (!shouldRemove) {
+      return
+    }
+
+    onRevertLayer(layerIndex)
+  }, [onRevertLayer])
 
   const handleDuplicate = useMemo(() => function(layerIndex) {
     onDuplicateLayer(layerIndex)
@@ -148,6 +176,7 @@ function LayerSelector(props) {
               dropLayer === i && draggingLayer !== null && draggingLayer !== i ? styles['drag-over'] : ''
             ].join(' ')}
             data-layer={i}
+            data-changed={changedLayers?.[i] ? 'true' : 'false'}
             draggable={!renaming}
             onClick={stop(() => handleSelect(i))}
             onDragStart={event => handleDragStart(i, event)}
@@ -173,7 +202,17 @@ function LayerSelector(props) {
               />
             ) : (
               <span className={styles.name}>
+                {changedLayers?.[i] && <span className={styles['changed-dot']} aria-hidden='true' />}
                 {name}
+                {revertableLayers?.[i] && (
+                  <Icon
+                    name="undo"
+                    className={styles.revert}
+                    onClick={stop(() => handleRevert(i, name, addedLayers?.[i] === true))}
+                    title={`Discard layer changes: ${name}`}
+                    aria-label="Discard layer changes"
+                  />
+                )}
                 <Icon
                   name="copy"
                   className={styles.duplicate}
@@ -201,13 +240,17 @@ function LayerSelector(props) {
 
 LayerSelector.propTypes = {
   layers: PropTypes.array.isRequired,
+  changedLayers: PropTypes.array,
+  revertableLayers: PropTypes.array,
+  addedLayers: PropTypes.array,
   activeLayer: PropTypes.number.isRequired,
   onSelect: PropTypes.func.isRequired,
   onNewLayer: PropTypes.func.isRequired,
   onRenameLayer: PropTypes.func.isRequired,
   onDeleteLayer: PropTypes.func.isRequired,
   onDuplicateLayer: PropTypes.func.isRequired,
-  onMoveLayer: PropTypes.func.isRequired
+  onMoveLayer: PropTypes.func.isRequired,
+  onRevertLayer: PropTypes.func.isRequired
 }
 
 export default LayerSelector

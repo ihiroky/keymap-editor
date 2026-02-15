@@ -17,4 +17,10 @@
   --editor-field-transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
   --editor-field-textarea-min-height: 72px;
   --editor-field-textarea-line-height: 1.4;
+  --editor-diff-border: var(--selection);
+  --editor-diff-bg: var(--selection-soft);
+  --editor-diff-text: var(--theme-text);
+  --editor-diff-badge-bg: var(--selection);
+  --editor-diff-badge-text: #fff;
+  --editor-diff-dot-size: 8px;
 }

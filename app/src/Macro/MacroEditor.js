@@ -1,7 +1,18 @@
+import cloneDeep from 'lodash/cloneDeep'
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
 import styles from './styles.module.css'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 
 import {
   MACRO_BINDING_CELLS,
@@ -102,11 +113,17 @@ function buildMacroNode (label, compatible) {
 }
 
 function MacroEditor (props) {
-  const { keymap, behaviorTypes, availableBehaviours, onUpdate } = props
+  const { keymap, baseKeymap, behaviorTypes, availableBehaviours, onUpdate } = props
 
+  const baseMacroDefinitions = useMemo(() => (
+    Array.isArray(baseKeymap?.behavior_definitions) ? baseKeymap.behavior_definitions : []
+  ), [baseKeymap])
   const macroDefinitions = useMemo(() => (
     Array.isArray(keymap.behavior_definitions) ? keymap.behavior_definitions : []
   ), [keymap])
+  const macroChangeInfo = useMemo(() => (
+    getListChangeInfo(baseMacroDefinitions, macroDefinitions)
+  ), [baseMacroDefinitions, macroDefinitions])
 
   const macroTypeMap = useMemo(() => getMacroTypeMap(behaviorTypes), [behaviorTypes])
   const missingMacroTypes = useMemo(() => getMissingMacroTypes(behaviorTypes), [behaviorTypes])
@@ -170,8 +187,16 @@ function MacroEditor (props) {
 
     return macroDefinitions[selection] || null
   }, [macroDefinitions, selection])
+  const selectedBaseNode = useMemo(() => {
+    if (selection === null) {
+      return null
+    }
+
+    return baseMacroDefinitions[selection] || null
+  }, [baseMacroDefinitions, selection])
 
   const selectedBindings = useMemo(() => ensureBindingArray(selectedNode?.properties?.bindings), [selectedNode])
+  const selectedBaseBindings = useMemo(() => ensureBindingArray(selectedBaseNode?.properties?.bindings), [selectedBaseNode])
   const selectedSteps = useMemo(() => selectedBindings.map(parseMacroBinding), [selectedBindings])
   const selectedCompatible = selectedNode?.properties?.compatible || selectedNode?.compatible || ''
   const selectedBindingCells = Number(selectedNode?.properties?.['#binding-cells'])
@@ -225,7 +250,7 @@ function MacroEditor (props) {
   }, [localErrors, persistedErrors])
 
   const commitDefinitions = updater => {
-    const nextDefinitions = updater(macroDefinitions.map(cloneDefinition))
+    const nextDefinitions = updater(cloneDeep(macroDefinitions))
     const errors = validateMacroCollection(nextDefinitions)
     if (errors.length > 0) {
       setLocalErrors(errors)
@@ -339,7 +364,37 @@ function MacroEditor (props) {
       return
     }
 
+    const selectedMacro = macroDefinitions[selection]
+    const shouldDelete = confirmItemDeletion({
+      kind: 'macro',
+      name: selectedMacro?.label || selectedMacro?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     commitDefinitions(definitions => definitions.filter((_, index) => index !== selection))
+  }
+
+  const discardMacroAt = index => {
+    if (isIndexAdded(index, baseMacroDefinitions.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'macro',
+        name: macroDefinitions[index]?.label || macroDefinitions[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
+    const reverted = revertItemByIndex(baseMacroDefinitions, macroDefinitions, index)
+    setLocalErrors([])
+    onUpdate({
+      ...keymap,
+      behavior_definitions: reverted
+    })
   }
 
   const applyRaw = () => {
@@ -397,17 +452,36 @@ function MacroEditor (props) {
     <div className={styles.editor}>
       <div className={styles.sidebar}>
         <div className={styles.sectionHeader}>Macro Definitions</div>
+        {(macroChangeInfo.addedCount > 0 || macroChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{macroChangeInfo.addedCount} / Deleted {macroChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {macroDefinitions.map((node, index) => (
-            <button
-              type="button"
-              key={`macro-${index}`}
-              className={styles.listItem}
-              data-selected={selection === index ? 'true' : 'false'}
-              onClick={() => setSelection(index)}
-            >
-              {node.label ? `&${node.label}` : node.name}
-            </button>
+            <div key={`macro-${index}`} className={styles.listRow}>
+              <button
+                type="button"
+                className={styles.listItem}
+                data-selected={selection === index ? 'true' : 'false'}
+                data-changed={macroChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection(index)}
+              >
+                {macroChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {node.label ? `&${node.label}` : node.name}
+                {isAddedIndex(baseMacroDefinitions, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseMacroDefinitions, macroDefinitions, index) && (
+                <button
+                  type="button"
+                  className={styles.revertButton}
+                  aria-label={`Discard macro changes ${node.label || node.name || index + 1}`}
+                  title='Discard macro changes'
+                  onClick={() => discardMacroAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseMacroDefinitions.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -435,7 +509,7 @@ function MacroEditor (props) {
             <div className={styles.group}>
               <div className={styles.groupTitle}>Required Properties</div>
 
-              <div className={styles.formRow}>
+              <div className={styles.formRow} data-changed={!isEqual(selectedNode.label, selectedBaseNode?.label) ? 'true' : 'false'}>
                 <label>Label</label>
                 <input
                   type="text"
@@ -455,7 +529,7 @@ function MacroEditor (props) {
                 />
               </div>
 
-              <div className={styles.formRow}>
+              <div className={styles.formRow} data-changed={!isEqual(selectedNode.name, selectedBaseNode?.name) ? 'true' : 'false'}>
                 <label>Node Name</label>
                 <input
                   type="text"
@@ -471,7 +545,10 @@ function MacroEditor (props) {
                 />
               </div>
 
-              <div className={styles.formRow}>
+              <div
+                className={styles.formRow}
+                data-changed={!isEqual(selectedCompatible, selectedBaseNode?.properties?.compatible || selectedBaseNode?.compatible || '') ? 'true' : 'false'}
+              >
                 <label>Compatible</label>
                 <select
                   aria-label='Compatible'
@@ -499,7 +576,10 @@ function MacroEditor (props) {
                 </select>
               </div>
 
-              <div className={styles.formRow}>
+              <div
+                className={styles.formRow}
+                data-changed={!isEqual(selectedBindingCells, Number(selectedBaseNode?.properties?.['#binding-cells'])) ? 'true' : 'false'}
+              >
                 <label>#binding-cells</label>
                 <input type="number" disabled value={Number.isInteger(selectedBindingCells) ? selectedBindingCells : ''} />
               </div>
@@ -533,6 +613,7 @@ function MacroEditor (props) {
                       <div
                         key={`step-${index}`}
                         className={styles.stepRow}
+                        data-changed={!isEqual(selectedBindings[index], selectedBaseBindings[index]) ? 'true' : 'false'}
                         draggable
                         onDragStart={event => {
                           if (event.dataTransfer) {
@@ -756,7 +837,10 @@ function MacroEditor (props) {
               )}
             </div>
 
-            <div className={styles.group}>
+            <div
+              className={styles.group}
+              data-changed={optionalKnownPresentKeys.some(key => !isEqual(selectedNode?.properties?.[key], selectedBaseNode?.properties?.[key])) ? 'true' : 'false'}
+            >
               <div className={styles.groupTitle}>Optional Properties</div>
               {optionalKnownPresentKeys.length === 0 && (
                 <p className={styles.emptyHint}>No optional properties added.</p>
@@ -768,7 +852,11 @@ function MacroEditor (props) {
                 const value = selectedNode.properties?.[key]
 
                 return (
-                  <div className={styles.knownRow} key={`optional-known-${key}`}>
+                  <div
+                    className={styles.knownRow}
+                    data-changed={!isEqual(value, selectedBaseNode?.properties?.[key]) ? 'true' : 'false'}
+                    key={`optional-known-${key}`}
+                  >
                     <label>{key === 'label' ? 'Property Label' : key}</label>
                     {specType === 'int' ? (
                       <input
@@ -832,6 +920,7 @@ function MacroEditor (props) {
 }
 
 MacroEditor.propTypes = {
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   behaviorTypes: PropTypes.array.isRequired,
   availableBehaviours: PropTypes.array,

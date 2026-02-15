@@ -1,4 +1,5 @@
 import '@fortawesome/fontawesome-free/css/all.css'
+import isEqual from 'lodash/isEqual'
 import keyBy from 'lodash/keyBy'
 import { useCallback, useMemo, useState } from 'react'
 
@@ -175,10 +176,36 @@ function App() {
   const [saveError, setSaveError] = useState(null)
   const [activeTab, setActiveTab] = useState('keymap')
 
+  const baseKeymap = keymap
   const currentKeymap = editingKeymap || keymap
+  const { macroDefinitions: baseMacroDefinitions, behaviorDefinitions: baseBehaviorDefinitions } = useMemo(() => (
+    splitBehaviorDefinitions(baseKeymap?.behavior_definitions || [])
+  ), [baseKeymap])
   const { macroDefinitions, behaviorDefinitions } = useMemo(() => (
     splitBehaviorDefinitions(currentKeymap?.behavior_definitions || [])
   ), [currentKeymap])
+
+  const baseBehaviorEditorKeymap = useMemo(() => {
+    if (!baseKeymap) {
+      return null
+    }
+
+    return {
+      ...baseKeymap,
+      behavior_definitions: baseBehaviorDefinitions
+    }
+  }, [baseKeymap, baseBehaviorDefinitions])
+
+  const baseMacroEditorKeymap = useMemo(() => {
+    if (!baseKeymap) {
+      return null
+    }
+
+    return {
+      ...baseKeymap,
+      behavior_definitions: baseMacroDefinitions
+    }
+  }, [baseKeymap, baseMacroDefinitions])
 
   const behaviorEditorKeymap = useMemo(() => {
     if (!currentKeymap) {
@@ -230,6 +257,59 @@ function App() {
   }, [definitions, mergedBehaviours])
 
   const hasUnsavedChanges = Boolean(editingKeymap)
+  const keymapTabChanged = useMemo(() => {
+    if (!baseKeymap || !currentKeymap) {
+      return false
+    }
+
+    return !isEqual(
+      {
+        layer_names: baseKeymap.layer_names || [],
+        layers: baseKeymap.layers || [],
+        sensor_layers: baseKeymap.sensor_layers || []
+      },
+      {
+        layer_names: currentKeymap.layer_names || [],
+        layers: currentKeymap.layers || [],
+        sensor_layers: currentKeymap.sensor_layers || []
+      }
+    )
+  }, [baseKeymap, currentKeymap])
+  const comboTabChanged = useMemo(() => {
+    if (!baseKeymap || !currentKeymap) {
+      return false
+    }
+    return !isEqual(baseKeymap.combos || [], currentKeymap.combos || [])
+  }, [baseKeymap, currentKeymap])
+  const conditionalLayerTabChanged = useMemo(() => {
+    if (!baseKeymap || !currentKeymap) {
+      return false
+    }
+    return !isEqual(
+      baseKeymap.conditional_layers || [],
+      currentKeymap.conditional_layers || []
+    )
+  }, [baseKeymap, currentKeymap])
+  const macroTabChanged = useMemo(() => {
+    if (!baseKeymap || !currentKeymap) {
+      return false
+    }
+    return !isEqual(baseMacroDefinitions, macroDefinitions)
+  }, [baseKeymap, currentKeymap, baseMacroDefinitions, macroDefinitions])
+  const behaviorTabChanged = useMemo(() => {
+    if (!baseKeymap || !currentKeymap) {
+      return false
+    }
+    return (
+      !isEqual(baseBehaviorDefinitions, behaviorDefinitions) ||
+      !isEqual(baseKeymap.behavior_overrides || [], currentKeymap.behavior_overrides || [])
+    )
+  }, [
+    baseKeymap,
+    currentKeymap,
+    baseBehaviorDefinitions,
+    behaviorDefinitions
+  ])
 
   const handleCompile = useCallback(() => {
     fetch(`${config.apiBaseUrl}/keymap`, {
@@ -513,6 +593,7 @@ function App() {
                 onClick={() => setActiveTab('keymap')}
               >
                 Keymap
+                {keymapTabChanged && <span className="tab-diff-dot" aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -520,6 +601,7 @@ function App() {
                 onClick={() => setActiveTab('combo')}
               >
                 Combo
+                {comboTabChanged && <span className="tab-diff-dot" aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -527,6 +609,7 @@ function App() {
                 onClick={() => setActiveTab('conditional-layer')}
               >
                 Conditional Layers
+                {conditionalLayerTabChanged && <span className="tab-diff-dot" aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -534,6 +617,7 @@ function App() {
                 onClick={() => setActiveTab('macro')}
               >
                 Macro
+                {macroTabChanged && <span className="tab-diff-dot" aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -541,6 +625,7 @@ function App() {
                 onClick={() => setActiveTab('behavior')}
               >
                 Behavior
+                {behaviorTabChanged && <span className="tab-diff-dot" aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -587,13 +672,15 @@ function App() {
             <Keyboard
               layout={layout}
               sensors={sensors}
+              baseKeymap={baseKeymap}
               keymap={currentKeymap}
               onUpdate={handleUpdateKeymap}
             />
           )}
 
-          {layout && behaviorEditorKeymap && activeTab === 'behavior' && (
+          {layout && behaviorEditorKeymap && baseBehaviorEditorKeymap && activeTab === 'behavior' && (
             <BehaviorEditor
+              baseKeymap={baseBehaviorEditorKeymap}
               keymap={behaviorEditorKeymap}
               behaviorTypes={definitions?.behaviourTypes || []}
               availableBehaviours={mergedBehaviours}
@@ -602,8 +689,9 @@ function App() {
             />
           )}
 
-          {layout && macroEditorKeymap && activeTab === 'macro' && (
+          {layout && macroEditorKeymap && baseMacroEditorKeymap && activeTab === 'macro' && (
             <MacroEditor
+              baseKeymap={baseMacroEditorKeymap}
               keymap={macroEditorKeymap}
               behaviorTypes={definitions?.behaviourTypes || []}
               availableBehaviours={mergedBehaviours}
@@ -613,6 +701,7 @@ function App() {
 
           {layout && currentKeymap && activeTab === 'combo' && (
             <ComboEditor
+              baseKeymap={baseKeymap}
               keymap={currentKeymap}
               layout={layout}
               availableBehaviours={mergedBehaviours}
@@ -623,6 +712,7 @@ function App() {
 
           {layout && currentKeymap && activeTab === 'conditional-layer' && (
             <ConditionalLayerEditor
+              baseKeymap={baseKeymap}
               keymap={currentKeymap}
               onUpdate={handleUpdateKeymap}
             />

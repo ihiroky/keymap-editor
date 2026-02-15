@@ -1,9 +1,20 @@
+import cloneDeep from 'lodash/cloneDeep'
+import isEqual from 'lodash/isEqual'
 import PropTypes from 'prop-types'
 import { useEffect, useMemo, useState } from 'react'
 
+import Icon from '../Common/Icon'
 import { getBehaviourParams } from '../keymap'
 import ValuePicker from '../ValuePicker'
 import { getKeyBoundingBox, getKeyStyles } from '../key-units'
+import {
+  getListChangeInfo,
+  isAddedIndex,
+  isIndexAdded,
+  isIndexChanged,
+  revertItemByIndex
+} from '../shared/change-tracking'
+import { confirmItemDeletion } from '../shared/confirm-destructive'
 import styles from './styles.module.css'
 
 const KNOWN_PROPERTY_KEYS = [
@@ -424,15 +435,29 @@ function validateComboCollection (combos, layoutSize) {
 }
 
 function ComboEditor (props) {
-  const { keymap, layout, availableBehaviours, keycodes, onUpdate } = props
+  const { keymap, baseKeymap, layout, availableBehaviours, keycodes, onUpdate } = props
   const layoutSize = Array.isArray(layout) ? layout.length : 0
   const layerNames = Array.isArray(keymap?.layer_names) ? keymap.layer_names : []
+  const baseComboNodesRaw = useMemo(() => (
+    Array.isArray(baseKeymap?.combos) ? baseKeymap.combos : []
+  ), [baseKeymap])
+  const comboNodesRaw = useMemo(() => (
+    Array.isArray(keymap?.combos) ? keymap.combos : []
+  ), [keymap])
 
-  const combos = useMemo(() => (
-    Array.isArray(keymap.combos)
-      ? keymap.combos.map(node => normalizeComboNode(node, layoutSize))
+  const baseCombos = useMemo(() => (
+    baseComboNodesRaw.length
+      ? baseComboNodesRaw.map(node => normalizeComboNode(node, layoutSize))
       : []
-  ), [keymap, layoutSize])
+  ), [baseComboNodesRaw, layoutSize])
+  const combos = useMemo(() => (
+    comboNodesRaw.length
+      ? comboNodesRaw.map(node => normalizeComboNode(node, layoutSize))
+      : []
+  ), [comboNodesRaw, layoutSize])
+  const comboChangeInfo = useMemo(() => (
+    getListChangeInfo(baseCombos, combos)
+  ), [baseCombos, combos])
 
   const behaviourChoices = useMemo(() => {
     const map = new Map()
@@ -510,6 +535,16 @@ function ComboEditor (props) {
 
     return combos[selection] || null
   }, [selection, combos])
+  const selectedBaseCombo = useMemo(() => {
+    if (selection === null) {
+      return null
+    }
+
+    return baseCombos[selection] || null
+  }, [selection, baseCombos])
+  const isFieldChanged = useMemo(() => function(currentValue, baseValue) {
+    return !isEqual(currentValue, baseValue)
+  }, [])
 
   const selectedBindingText = String(selectedCombo?.properties?.bindings?.[0] || '&none').trim() || '&none'
   const selectedBinding = parseBinding(selectedBindingText)
@@ -539,8 +574,9 @@ function ComboEditor (props) {
   }, [selection, selectedBindingText])
 
   const commitCombos = updater => {
-    const nextCombos = updater(combos.map(cloneComboNode))
-    const errors = validateComboCollection(nextCombos, layoutSize)
+    const nextCombos = updater(cloneDeep(comboNodesRaw))
+    const normalizedForValidation = nextCombos.map(node => normalizeComboNode(node, layoutSize))
+    const errors = validateComboCollection(normalizedForValidation, layoutSize)
     if (errors.length > 0) {
       setLocalErrors(errors)
       return false
@@ -566,7 +602,8 @@ function ComboEditor (props) {
         return list
       }
 
-      next[selection] = updater(cloneComboNode(current))
+      const normalizedCurrent = normalizeComboNode(current, layoutSize)
+      next[selection] = updater(cloneComboNode(normalizedCurrent))
       return next
     })
   }
@@ -610,7 +647,37 @@ function ComboEditor (props) {
       return
     }
 
+    const selectedCombo = combos[selection]
+    const shouldDelete = confirmItemDeletion({
+      kind: 'combo',
+      name: selectedCombo?.name,
+      mode: 'delete'
+    })
+    if (!shouldDelete) {
+      return
+    }
+
     commitCombos(list => list.filter((_, index) => index !== selection))
+  }
+
+  const discardComboAt = index => {
+    if (isIndexAdded(index, baseCombos.length)) {
+      const shouldRemove = confirmItemDeletion({
+        kind: 'combo',
+        name: combos[index]?.name,
+        mode: 'remove-added'
+      })
+      if (!shouldRemove) {
+        return
+      }
+    }
+
+    const reverted = revertItemByIndex(baseComboNodesRaw, comboNodesRaw, index)
+    setLocalErrors([])
+    onUpdate({
+      ...keymap,
+      combos: reverted
+    })
   }
 
   const setBinding = value => {
@@ -728,17 +795,36 @@ function ComboEditor (props) {
     <div className={styles.editor}>
       <div className={styles.sidebar}>
         <div className={styles.sectionHeader}>Combos</div>
+        {(comboChangeInfo.addedCount > 0 || comboChangeInfo.deletedCount > 0) && (
+          <div className={styles.changeSummary}>+{comboChangeInfo.addedCount} / Deleted {comboChangeInfo.deletedCount}</div>
+        )}
         <div className={styles.list}>
           {combos.map((combo, index) => (
-            <button
-              type='button'
-              key={`combo-${index}`}
-              className={styles.listItem}
-              data-selected={selection === index ? 'true' : 'false'}
-              onClick={() => setSelection(index)}
-            >
-              {combo.name}
-            </button>
+            <div key={`combo-${index}`} className={styles.listRow}>
+              <button
+                type='button'
+                className={styles.listItem}
+                data-selected={selection === index ? 'true' : 'false'}
+                data-changed={comboChangeInfo.changedIndices.has(index) ? 'true' : 'false'}
+                onClick={() => setSelection(index)}
+              >
+                {comboChangeInfo.changedIndices.has(index) && <span className={styles.diffDot} aria-hidden='true' />}
+                {combo.name}
+                {isAddedIndex(baseCombos, index) && <span className={styles.addedBadge}>Added</span>}
+              </button>
+              {isIndexChanged(baseCombos, combos, index) && (
+                <button
+                  type='button'
+                  className={styles.revertButton}
+                  aria-label={`Discard combo changes ${combo.name || index + 1}`}
+                  title='Discard combo changes'
+                  onClick={() => discardComboAt(index)}
+                >
+                  <Icon name='undo' />
+                  {isIndexAdded(index, baseCombos.length) ? 'Remove' : 'Discard'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -763,7 +849,10 @@ function ComboEditor (props) {
 
         {selectedCombo && (
           <>
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(selectedCombo.name, selectedBaseCombo?.name) ? 'true' : 'false'}
+            >
               <label>Name</label>
               <input
                 type='text'
@@ -780,7 +869,10 @@ function ComboEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(selectedCombo.label, selectedBaseCombo?.label) ? 'true' : 'false'}
+            >
               <label>Label (optional)</label>
               <input
                 type='text'
@@ -796,7 +888,10 @@ function ComboEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(selectedCombo.properties.bindings, selectedBaseCombo?.properties?.bindings) ? 'true' : 'false'}
+            >
               <label>Binding</label>
               <div className={styles.bindingField}>
                 <div className={styles.bindingRow}>
@@ -930,7 +1025,10 @@ function ComboEditor (props) {
               </div>
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(selectedCombo.properties['timeout-ms'], selectedBaseCombo?.properties?.['timeout-ms']) ? 'true' : 'false'}
+            >
               <label>timeout-ms</label>
               <input
                 type='number'
@@ -942,7 +1040,13 @@ function ComboEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(
+                selectedCombo.properties['require-prior-idle-ms'],
+                selectedBaseCombo?.properties?.['require-prior-idle-ms']
+              ) ? 'true' : 'false'}
+            >
               <label>require-prior-idle-ms</label>
               <input
                 type='number'
@@ -954,7 +1058,13 @@ function ComboEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(
+                selectedCombo.properties['slow-release'],
+                selectedBaseCombo?.properties?.['slow-release']
+              ) ? 'true' : 'false'}
+            >
               <label>slow-release</label>
               <input
                 type='checkbox'
@@ -974,7 +1084,10 @@ function ComboEditor (props) {
               />
             </div>
 
-            <div className={styles.formRow}>
+            <div
+              className={styles.formRow}
+              data-changed={isFieldChanged(selectedCombo.properties.layers, selectedBaseCombo?.properties?.layers) ? 'true' : 'false'}
+            >
               <label>layers</label>
               <input
                 type='text'
@@ -985,7 +1098,13 @@ function ComboEditor (props) {
               />
             </div>
 
-            <div className={styles.group}>
+            <div
+              className={styles.group}
+              data-changed={isFieldChanged(
+                selectedCombo.properties['key-positions'],
+                selectedBaseCombo?.properties?.['key-positions']
+              ) ? 'true' : 'false'}
+            >
               <div className={styles.groupTitle}>key-positions</div>
               <input
                 type='text'
@@ -1038,6 +1157,7 @@ function ComboEditor (props) {
 }
 
 ComboEditor.propTypes = {
+  baseKeymap: PropTypes.object,
   keymap: PropTypes.object.isRequired,
   layout: PropTypes.array,
   availableBehaviours: PropTypes.array,
