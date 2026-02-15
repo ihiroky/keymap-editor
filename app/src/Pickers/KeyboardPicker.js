@@ -60,16 +60,18 @@ function KeyboardPicker(props) {
 
   return (
     <div className={styles.picker}>
-      <Selector
-        id="source"
-        label="Source"
-        value={source}
-        choices={sourceChoices}
-        onUpdate={value => {
-          setSource(value)
-          onSelect({ source: value, sourceContext: {} })
-        }}
-      />
+      {sourceChoices.length > 1 && (
+        <Selector
+          id="source"
+          label="Source"
+          value={source}
+          choices={sourceChoices}
+          onUpdate={value => {
+            setSource(value)
+            onSelect({ source: value, sourceContext: {} })
+          }}
+        />
+      )}
 
       {source === 'github' && (
         <GithubPicker onSelect={handleKeyboardSelected} />

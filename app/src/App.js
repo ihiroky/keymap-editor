@@ -557,7 +557,7 @@ function App() {
         onClick: handleSaveBrowserFile,
         content: (
           <>
-            {saving ? 'Saving' : 'Save Browser File'}
+            {saving ? 'Saving' : 'Save Keymap'}
             {saving && <Spinner />}
           </>
         )
