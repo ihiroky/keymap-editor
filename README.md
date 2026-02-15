@@ -23,6 +23,3 @@ behavior や keycode などの定義をサーバーから取得しますが `<�
 
 This project is available under the MIT license.
 The bundled ZMK keycode definitions are also based on MIT-licensed sources.
-
-[Keymap Editor (Browser File edition)]: https://ihiroky.github.io/keymap-editor/
-[Wiki:Features]: https://github.com/nickcoutsos/keymap-editor/wiki/Features
