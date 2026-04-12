@@ -10,6 +10,8 @@ import GithubPicker from './Github/Picker'
 import BrowserFilePicker from './BrowserFile/Picker'
 import styles from './styles.module.css'
 
+const keysJpUrl = 'https://github.com/ihiroky/zmk-config-roBa/blob/main/config/keys_jp.h'
+
 const sourceChoices = compact([
   config.enableLocal ? { id: 'local', name: 'Local' } : null,
   config.enableGitHub ? { id: 'github', name: 'GitHub' } : null,
@@ -60,6 +62,32 @@ function KeyboardPicker(props) {
 
   return (
     <div className={styles.picker}>
+      <div className={styles.notice} role="note" aria-label="keys_jp.h notice">
+        <p className={styles.noticeTitle}>keys_jp.h について</p>
+        <p className={styles.noticeBody}>
+          このサービスでは、生成される keymap に
+          {' '}
+          <code>#include "keys_jp.h"</code>
+          {' '}
+          が追加されます。JIS系キーコードを使う場合は、
+          <code>keys_jp.h</code>
+          は利用者自身の
+          {' '}
+          <code>zmk-config</code>
+          {' '}
+          内の
+          {' '}
+          <code>config</code>
+          {' '}
+          ディレクトリに格納してください。
+          公開先:
+          {' '}
+          <a href={keysJpUrl} target="_blank" rel="noreferrer noopener">
+            {keysJpUrl}
+          </a>
+        </p>
+      </div>
+
       {sourceChoices.length > 1 && (
         <Selector
           id="source"
