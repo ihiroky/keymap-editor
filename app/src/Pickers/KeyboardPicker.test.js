@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 jest.mock('../config', () => ({
   enableLocal: false,
@@ -29,8 +29,8 @@ describe('KeyboardPicker', () => {
     expect(screen.getByText('keys_jp.h について')).toBeTruthy()
     expect(screen.getByText(/#include "keys_jp\.h"/)).toBeTruthy()
     expect(screen.getByText(/このサービスでは、生成される keymap に/)).toBeTruthy()
-    expect(screen.getByText(/zmk-config/)).toBeTruthy()
-    expect(screen.getByText(/config/)).toBeTruthy()
+    expect(screen.getByText('zmk-config')).toBeTruthy()
+    expect(screen.getByText('config')).toBeTruthy()
 
     const link = screen.getByRole('link', {
       name: 'https://github.com/ihiroky/zmk-config-roBa/blob/main/config/keys_jp.h'
@@ -41,11 +41,19 @@ describe('KeyboardPicker', () => {
   })
 
   test('keeps the notice visible for browser-file initial source as well', () => {
-    window.localStorage.setItem('selectedSource', 'browser-file')
-
     render(<KeyboardPicker onSelect={jest.fn()} />)
+
+    fireEvent.change(screen.getByLabelText('Source'), {
+      target: { value: '1' }
+    })
 
     expect(screen.getByRole('note', { name: 'keys_jp.h notice' })).toBeTruthy()
     expect(screen.getByText('Browser File Picker Mock')).toBeTruthy()
+  })
+
+  test('hides the notice after a keymap has been loaded', () => {
+    render(<KeyboardPicker onSelect={jest.fn()} hideKeysJpNotice />)
+
+    expect(screen.queryByRole('note', { name: 'keys_jp.h notice' })).toBeNull()
   })
 })
