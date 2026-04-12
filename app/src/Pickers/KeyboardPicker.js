@@ -27,7 +27,7 @@ const defaultSource = onlySource || (
 )
 
 function KeyboardPicker(props) {
-  const { onSelect } = props
+  const { onSelect, hideKeysJpNotice = false } = props
   const [source, setSource] = useState(defaultSource)
 
   const handleKeyboardSelected = useMemo(() => function (event) {
@@ -62,31 +62,33 @@ function KeyboardPicker(props) {
 
   return (
     <div className={styles.picker}>
-      <div className={styles.notice} role="note" aria-label="keys_jp.h notice">
-        <p className={styles.noticeTitle}>keys_jp.h について</p>
-        <p className={styles.noticeBody}>
-          このサービスでは、生成される keymap に
-          {' '}
-          <code>#include "keys_jp.h"</code>
-          {' '}
-          が追加されます。JIS系キーコードを使う場合は、
-          <code>keys_jp.h</code>
-          は利用者自身の
-          {' '}
-          <code>zmk-config</code>
-          {' '}
-          内の
-          {' '}
-          <code>config</code>
-          {' '}
-          ディレクトリに格納してください。
-          公開先:
-          {' '}
-          <a href={keysJpUrl} target="_blank" rel="noreferrer noopener">
-            {keysJpUrl}
-          </a>
-        </p>
-      </div>
+      {!hideKeysJpNotice && (
+        <div className={styles.notice} role="note" aria-label="keys_jp.h notice">
+          <p className={styles.noticeTitle}>keys_jp.h について</p>
+          <p className={styles.noticeBody}>
+            このサービスでは、生成される keymap に
+            {' '}
+            <code>#include "keys_jp.h"</code>
+            {' '}
+            が追加されます。JIS系キーコードを使う場合は、
+            <code>keys_jp.h</code>
+            は利用者自身の
+            {' '}
+            <code>zmk-config</code>
+            {' '}
+            内の
+            {' '}
+            <code>config</code>
+            {' '}
+            ディレクトリに格納してください。
+            公開先:
+            {' '}
+            <a href={keysJpUrl} target="_blank" rel="noreferrer noopener">
+              {keysJpUrl}
+            </a>
+          </p>
+        </div>
+      )}
 
       {sourceChoices.length > 1 && (
         <Selector
@@ -113,7 +115,8 @@ function KeyboardPicker(props) {
 }
 
 KeyboardPicker.propTypes = {
-  onSelect: PropTypes.func.isRequired
+  onSelect: PropTypes.func.isRequired,
+  hideKeysJpNotice: PropTypes.bool
 }
 
 export default KeyboardPicker

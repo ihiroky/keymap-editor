@@ -579,7 +579,10 @@ function App() {
   return (
     <>
       <Loader load={initialize}>
-        <KeyboardPicker onSelect={handleKeyboardSelected} />
+        <KeyboardPicker
+          onSelect={handleKeyboardSelected}
+          hideKeysJpNotice={Boolean(currentKeymap)}
+        />
         {source === 'browser-file' && sourceOther?.browserFile?.writeCapable === false && (
           <p>Direct file write is unavailable in this browser. Save will download the .keymap file.</p>
         )}
