@@ -277,6 +277,24 @@
     }]
   },
   {
+    "code": "&ind_bat",
+    "name": "Battery Indicator",
+    "params": [],
+    "includes": ["#include <behaviors/rgbled_widget.dtsi>"]
+  },
+  {
+    "code": "&ind_con",
+    "name": "Connection Indicator",
+    "params": [],
+    "includes": ["#include <behaviors/rgbled_widget.dtsi>"]
+  },
+  {
+    "code": "&ind_lyr",
+    "name": "Layer Indicator",
+    "params": [],
+    "includes": ["#include <behaviors/rgbled_widget.dtsi>"]
+  },
+  {
     "code": "&ext_power",
     "name": "External Power Control",
     "params": ["command"],

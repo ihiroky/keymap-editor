@@ -38,6 +38,49 @@ function generateCode (keymap) {
   }).code
 }
 
+test('recognizes rgbled widget indicator behaviors and emits its include', () => {
+  const battery = behaviours.find(behaviour => behaviour.code === '&ind_bat')
+  const connectivity = behaviours.find(behaviour => behaviour.code === '&ind_con')
+  const layer = behaviours.find(behaviour => behaviour.code === '&ind_lyr')
+
+  expect(battery).toEqual(expect.objectContaining({
+    params: [],
+    includes: ['#include <behaviors/rgbled_widget.dtsi>']
+  }))
+  expect(connectivity).toEqual(expect.objectContaining({
+    params: [],
+    includes: ['#include <behaviors/rgbled_widget.dtsi>']
+  }))
+  expect(layer).toEqual(expect.objectContaining({
+    params: [],
+    includes: ['#include <behaviors/rgbled_widget.dtsi>']
+  }))
+
+  const source = `
+#include <behaviors.dtsi>
+
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <&none &none>;
+        };
+    };
+};
+`
+  const keymap = parseKeymap(parseKeymapCode(source))
+  keymap.layers[0][0] = parseKeyBinding('&ind_bat')
+  keymap.layers[0][1] = parseKeyBinding('&ind_con')
+  const generated = generateKeymap([
+    { row: 0, col: 0 },
+    { row: 0, col: 1 }
+  ], keymap, undefined, { behaviours, behaviourTypes }).code
+
+  expect(generated).toContain('#include <behaviors/rgbled_widget.dtsi>')
+  expect(generated).toContain('&ind_bat')
+  expect(generated).toContain('&ind_con')
+})
+
 function findNodeIndex (nodes, name) {
   return (Array.isArray(nodes) ? nodes : []).findIndex(node => node?.name === name)
 }
