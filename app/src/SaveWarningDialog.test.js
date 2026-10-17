@@ -8,11 +8,11 @@ jest.mock('./Common/Modal', () => function MockModal ({ children }) {
 })
 
 describe('SaveWarningDialog', () => {
-  test('shows the regeneration caution', () => {
+  test('shows the save caution', () => {
     render(<SaveWarningDialog onConfirm={jest.fn()} onCancel={jest.fn()} />)
 
     expect(screen.getByRole('dialog', { name: 'save warning' })).toBeTruthy()
-    expect(screen.getByText(/全体を再生成します/)).toBeTruthy()
+    expect(screen.getByText(/構造を変えた場合/)).toBeTruthy()
   })
 
   test('reports dontShowAgain when confirmed with the checkbox checked', () => {

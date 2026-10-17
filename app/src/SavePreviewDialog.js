@@ -41,8 +41,9 @@ export default function SavePreviewDialog({
           )}
 
           <p className={styles.caution}>
-            保存すると keymap 全体を再生成します。コメントや独自マクロなど、
-            解析できない記述は失われることがあります。
+            保存すると、編集した範囲を元ファイルに書き戻します。レイヤーや Combo などの
+            構造を変えた場合は、そのセクション内のコメントなどが失われることがあります。
+            上の差分で確認してください。
           </p>
 
           <div className={styles.code} data-diff={hasOriginal ? 'true' : 'false'}>

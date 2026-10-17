@@ -1,5 +1,5 @@
-// 保存時に「全体を再生成する」旨の警告を表示するかどうかを localStorage に記憶する。
-// 一度「今後表示しない」を選んだら、以降は警告なしで保存できる。
+// 保存時の注意（編集範囲の書き戻しと、構造変更時の注意）を表示するかどうかを
+// localStorage に記憶する。一度「今後表示しない」を選んだら、以降は警告なしで保存できる。
 export const SAVE_WARNING_STORAGE_KEY = 'keymap-editor.save-warning-dismissed'
 
 function resolveStorage(storage) {

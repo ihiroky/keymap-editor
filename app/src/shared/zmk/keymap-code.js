@@ -179,7 +179,67 @@ function findBlocks (content) {
   return blocks
 }
 
-function parseBindings (bindingsBlock) {
+// `#define` マクロのうち、展開後に behavior（`&...`）になるものを集める。
+// 返り値は「別名 -> 展開先の behavior コード」の Map。
+// これを binding の先頭トークンとして認識しないと、`<HOME_MOD A>` のような
+// エイリアス binding を param と誤認して取りこぼす（＝キーが消える/ズレる）。
+// また include 収集では展開先を見ることで必要なヘッダを取りこぼさない。
+function collectBehaviourAliases (content) {
+  if (typeof content !== 'string' || !content.trim()) {
+    return new Map()
+  }
+
+  const cleaned = stripComments(content).replace(/\\\r?\n/g, ' ')
+  const defines = []
+  const definePattern = /^[ \t]*#define[ \t]+([A-Za-z_]\w*)(\([^)]*\))?[ \t]*(.*)$/gm
+  let match
+  while ((match = definePattern.exec(cleaned)) !== null) {
+    const replacement = String(match[3] || '').trim()
+    if (replacement) {
+      defines.push({ name: match[1], replacement })
+    }
+  }
+
+  const aliases = new Map()
+  for (const define of defines) {
+    const firstToken = define.replacement.split(/\s+/).find(Boolean) || ''
+    if (firstToken.startsWith('&')) {
+      aliases.set(define.name, firstToken)
+    }
+  }
+
+  // 別名の別名（`#define A B` / `#define B &kp`）も解決する。
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const define of defines) {
+      if (aliases.has(define.name)) {
+        continue
+      }
+      const firstToken = (define.replacement.split(/\s+/).find(Boolean) || '').replace(/\(.*$/, '')
+      if (firstToken && aliases.has(firstToken)) {
+        aliases.set(define.name, aliases.get(firstToken))
+        changed = true
+      }
+    }
+  }
+
+  return aliases
+}
+
+function isBehaviourStartToken (token, behaviourAliases) {
+  if (token.startsWith('&')) {
+    return true
+  }
+
+  if (!behaviourAliases || behaviourAliases.size === 0) {
+    return false
+  }
+
+  return behaviourAliases.has(token.replace(/\(.*$/, ''))
+}
+
+function parseBindings (bindingsBlock, behaviourAliases) {
   const tokens = bindingsBlock
     .replace(/\s+/g, ' ')
     .trim()
@@ -190,12 +250,12 @@ function parseBindings (bindingsBlock) {
   let current = []
 
   for (const token of tokens) {
-    if (token.startsWith('&')) {
-      if (current.length) {
-        bindings.push(current.join(' '))
-      }
+    if (isBehaviourStartToken(token, behaviourAliases) && current.length) {
+      bindings.push(current.join(' '))
       current = [token]
-    } else if (current.length) {
+    } else {
+      // 先頭トークンが `&` でもマクロ別名でもない場合も捨てずに保持する。
+      // 解析できない記述を取りこぼすとキー数がズレて元の keymap を壊すため。
       current.push(token)
     }
   }
@@ -224,7 +284,7 @@ function parseTokenArrayValue (source) {
     .map(token => normalizeAngleValue(token))
 }
 
-function parsePropertyValue (rawValue, propertyName = '') {
+function parsePropertyValue (rawValue, propertyName = '', options = {}) {
   const trimmed = rawValue.trim()
   const normalizedPropertyName = String(propertyName || '').trim()
   const isBindingsProperty = normalizedPropertyName === 'bindings' || normalizedPropertyName === 'sensor-bindings'
@@ -256,7 +316,7 @@ function parsePropertyValue (rawValue, propertyName = '') {
       ? angleMatches.map(match => normalizeAngleValue(match[1])).join(' ')
       : trimmed
     return {
-      value: parseBindings(bindingSource),
+      value: parseBindings(bindingSource, options.behaviourAliases),
       type: 'bindings'
     }
   }
@@ -275,7 +335,7 @@ function parsePropertyValue (rawValue, propertyName = '') {
   }
 }
 
-function parseProperties (content) {
+function parseProperties (content, options = {}) {
   const properties = {}
   const propertyTypes = {}
   const ordered = []
@@ -309,7 +369,7 @@ function parseProperties (content) {
   for (const property of [...assignments, ...booleans].sort((a, b) => a.index - b.index)) {
     ordered.push(property.name)
     if (property.assignment) {
-      const parsed = parsePropertyValue(property.rawValue, property.name)
+      const parsed = parsePropertyValue(property.rawValue, property.name, options)
       properties[property.name] = parsed.value
       propertyTypes[property.name] = parsed.type
     } else {
@@ -355,14 +415,14 @@ function stripBlocks (content, blocks) {
   return result
 }
 
-function parseNode (content) {
+function parseNode (content, options = {}) {
   const blocks = findBlocks(content)
   const childNodes = []
   const children = {}
   const order = []
 
   for (const block of blocks) {
-    const node = parseNode(block.content)
+    const node = parseNode(block.content, options)
     childNodes.push({
       label: block.label,
       name: block.name,
@@ -373,7 +433,7 @@ function parseNode (content) {
   }
 
   const stripped = stripBlocks(content, blocks)
-  const { properties, propertyTypes, propertyOrder } = parseProperties(stripped)
+  const { properties, propertyTypes, propertyOrder } = parseProperties(stripped, options)
 
   return {
     properties,
@@ -385,7 +445,7 @@ function parseNode (content) {
   }
 }
 
-function parseDts (content) {
+function parseDts (content, options = {}) {
   const cleaned = stripComments(content)
   const includes = Array.from(
     cleaned.matchAll(/^\s*#include\s+([<"][^>"]+[>"])\s*$/gm)
@@ -398,7 +458,7 @@ function parseDts (content) {
   const entries = []
 
   for (const block of blocks) {
-    const node = parseNode(block.content)
+    const node = parseNode(block.content, options)
     nodes[block.name] = node
     order.push(block.name)
     entries.push({
@@ -737,7 +797,8 @@ function extractKeymapTemplate (content) {
 }
 
 function parseKeymapCode (content, options = {}) {
-  const dts = parseDts(content)
+  const behaviourAliases = collectBehaviourAliases(content)
+  const dts = parseDts(content, { ...options, behaviourAliases })
   const keymapNode = dts.nodes['/']?.children?.keymap
   const extracted = extractKeymapLayers(keymapNode, options)
   if (!extracted) {
@@ -825,6 +886,7 @@ function parseBehaviorChildrenSnippet (snippet) {
 }
 
 export {
+  collectBehaviourAliases,
   collectEditableRanges,
   parseBehaviorChildrenSnippet,
   parseKeymapCode
