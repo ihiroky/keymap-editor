@@ -19,8 +19,12 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "prestart": "npm run sync:zmk-data",
     "build": "react-scripts build",
+    "prebuild": "npm run sync:zmk-data",
     "build:production": "env-cmd -f .env.production.local npm run build",
+    "build:static": "env-cmd -f .env.static npm run build",
+    "sync:zmk-data": "node scripts/sync-zmk-data.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

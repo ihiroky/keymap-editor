@@ -21,6 +21,7 @@ All configuration is provided via environment variables.
 Variable                    | Description
 ----------------------------|-------------
 `REACT_APP_API_BASE_URL`    | Fully qualified publicly accessible URL of the backend API.
+`REACT_APP_DEFINITIONS_BASE_URL` | Base URL to load the definition JSON from (`behaviors.json`, `behavior-types.json`, `keycodes.json`). Defaults to `<PUBLIC_URL>/zmk-data`, i.e. static JSON hosted alongside the app. Point it at the API to serve them from there instead.
 `REACT_APP_APP_BASE_URL`    | Fully qualified publicly accessible URL of _this_ app.
 `REACT_APP_GITHUB_APP_NAME` | The app name (slug?) of the GitHub app integration (only required if using with GitHub).
 `REACT_APP_ENABLE_GITHUB`   | Whether to enable fetching keyboard data from GitHub. Default is false, values `"1"`, `"on"`, `"yes"`, `"true"` are interpreted as `true`.
@@ -47,6 +48,20 @@ _(make sure you're in this directory, not the repository root!)_
 
 This will have webpack produce bundles in the `build/` directory which you can
 deploy however you like.
+
+### Definition data (`zmk-data`)
+
+The editor loads behavior / behavior-type / keycode definitions from static JSON
+at `<PUBLIC_URL>/zmk-data/*.json` (served from `public/zmk-data`, i.e. alongside
+`index.html`). The files are generated from `api/services/zmk/data/` by
+`scripts/sync-zmk-data.js`, which runs automatically before `npm start` and
+`npm run build` (or manually via `npm run sync:zmk-data`). No API server is
+required. Override `REACT_APP_DEFINITIONS_BASE_URL` to load them from elsewhere
+(e.g. the API, which serves the same data at `/behaviors.json` etc.).
+
+For an API-free static build, `npm run build:static` uses `.env.static`
+(`PUBLIC_URL=/keymap-editor`, Browser File source enabled). Serve the result with
+`npm run serve` from the repository root.
 
 ### Deploying to GitHub Pages
 

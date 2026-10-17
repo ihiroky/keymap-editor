@@ -34,4 +34,21 @@ Click the _Save Local_ button to save the modified keymap back to your local
 zmk-config repo. From here you can commit and push those changes to your remote
 on GitHub to trigger the build.
 
+## Serving a static build (no API server)
+
+If you don't need the Local / GitHub sources and just want to open the editor
+with the bundled behavior/keycode definitions, build the app with the static
+profile and serve it:
+
+```bash
+cd app && npm run build:static && cd ..
+npm run serve   # -> http://localhost:8080/keymap-editor/
+```
+
+`build:static` uses `app/.env.static`, which sets `PUBLIC_URL=/keymap-editor` and
+enables the Browser File source. The definition data is emitted to
+`app/build/zmk-data/*.json`, so the browser fetches it over HTTP GET from the
+same directory as the app. The static server detects the mount path from the
+built `index.html`, matching the `PUBLIC_URL` baked into the build.
+
 [zmk-config-corne-demo]: https://github.com/nickcoutsos/zmk-config-corne-demo

@@ -4,9 +4,12 @@ const zmk = require('../services/zmk')
 const router = Router()
 const debug = false
 
-router.get('/behaviors', (req, res) => res.json(zmk.loadBehaviors()))
-router.get('/behavior-types', (req, res) => res.json(zmk.loadBehaviorTypes()))
-router.get('/keycodes', (req, res) => res.json(zmk.loadKeycodes()))
+// アプリの定義データ取得は `<base>/behaviors.json` 等の静的ファイル名を使うため、
+// API を REACT_APP_DEFINITIONS_BASE_URL の向き先にした場合でも動くよう
+// 拡張子なし / あり の両方を受け付ける。
+router.get(['/behaviors', '/behaviors.json'], (req, res) => res.json(zmk.loadBehaviors()))
+router.get(['/behavior-types', '/behavior-types.json'], (req, res) => res.json(zmk.loadBehaviorTypes()))
+router.get(['/keycodes', '/keycodes.json'], (req, res) => res.json(zmk.loadKeycodes()))
 router.get('/layout', (req, res) => res.json({
   layout: zmk.loadLayout(),
   sensors: zmk.loadSensors()
