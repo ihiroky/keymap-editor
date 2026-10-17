@@ -227,6 +227,11 @@ jest.mock('./Drawer/KeymapDrawer', () => function MockKeymapDrawer () {
   return <div>Drawer Mock</div>
 })
 
+jest.mock('./Common/Modal', () => function MockModal ({ children }) {
+  const React = require('react')
+  return React.createElement('div', null, children)
+})
+
 describe('App macro/behavior split integration', () => {
   beforeEach(() => {
     mockLastBehaviorProps = null
@@ -390,5 +395,56 @@ describe('App macro/behavior split integration', () => {
 
     const macroTab = screen.getByRole('button', { name: 'Macro' })
     expect(macroTab.querySelector('.tab-diff-dot')).toBeTruthy()
+  })
+
+  test('shows and applies "全変更を破棄" only when there are unsaved changes', async () => {
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      render(<App />)
+      await screen.findByText('Keymap')
+
+      expect(screen.queryByRole('button', { name: '全変更を破棄' })).toBeNull()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Behavior' }))
+      await waitFor(() => {
+        expect(mockLastBehaviorProps).toBeTruthy()
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Behavior Update' }))
+
+      fireEvent.click(await screen.findByRole('button', { name: '全変更を破棄' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: '全変更を破棄' })).toBeNull()
+      })
+      expect(screen.getByRole('button', { name: 'Save Local' }).disabled).toBe(true)
+    } finally {
+      confirmSpy.mockRestore()
+    }
+  })
+
+  test('shows the save warning before saving and cancels without saving', async () => {
+    render(<App />)
+    await screen.findByText('Keymap')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Behavior' }))
+    await waitFor(() => {
+      expect(mockLastBehaviorProps).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Behavior Update' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save Local' }).disabled).toBe(false)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Local' }))
+
+    expect(await screen.findByRole('dialog', { name: 'save warning' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'save warning' })).toBeNull()
+    })
+    expect(screen.getByRole('button', { name: 'Save Local' }).disabled).toBe(false)
   })
 })

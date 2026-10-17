@@ -1,0 +1,46 @@
+.dialog {
+  min-width: 280px;
+  max-width: 480px;
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  color: var(--theme-text);
+}
+
+.body {
+  margin: 0 0 16px;
+  line-height: 1.6;
+  color: var(--theme-text-muted);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.actions button {
+  cursor: pointer;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  padding: 7px 14px;
+  background: var(--theme-surface-2);
+  color: var(--theme-text);
+}
+
+.confirm {
+  background: var(--hover-selection);
+  color: #fff;
+  border-color: transparent;
+}

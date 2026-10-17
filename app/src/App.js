@@ -1,7 +1,7 @@
 import '@fortawesome/fontawesome-free/css/all.css'
 import isEqual from 'lodash/isEqual'
 import keyBy from 'lodash/keyBy'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import * as config from './config'
 import './App.css'
@@ -20,7 +20,10 @@ import KeymapDrawer from './Drawer/KeymapDrawer'
 import GitHubLink from './GitHubLink'
 import Icon from './Common/Icon'
 import Loader from './Common/Loader'
+import SaveWarningDialog from './SaveWarningDialog'
 import { readmeUrl } from './links'
+import { confirmDiscardAllChanges } from './shared/confirm-destructive'
+import { dismissSaveWarning, isSaveWarningDismissed } from './shared/save-warning'
 import github from './Pickers/Github/api'
 import { generateKeymap } from './shared/zmk/keymap'
 import { mergeBehaviorDefinitions, splitBehaviorDefinitions } from './shared/zmk/macro-helpers'
@@ -177,6 +180,7 @@ function App() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
   const [activeTab, setActiveTab] = useState('keymap')
+  const [pendingSave, setPendingSave] = useState(null)
 
   const baseKeymap = keymap
   const currentKeymap = editingKeymap || keymap
@@ -312,6 +316,64 @@ function App() {
     baseBehaviorDefinitions,
     behaviorDefinitions
   ])
+
+  // 未保存の変更がある間は、タブを閉じる / 再読み込み時にブラウザ標準の警告を出す。
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return undefined
+    }
+
+    const handleBeforeUnload = event => {
+      event.preventDefault()
+      event.returnValue = ''
+      return ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  // 保存は keymap 全体の再生成を伴うため、初回は注意を表示する（「今後表示しない」で記憶）。
+  const runSaveWithWarning = useMemo(() => function (action) {
+    if (typeof action !== 'function') {
+      return
+    }
+
+    if (isSaveWarningDismissed()) {
+      action()
+      return
+    }
+
+    setPendingSave(() => action)
+  }, [])
+
+  const handleConfirmSaveWarning = useCallback(({ dontShowAgain } = {}) => {
+    if (dontShowAgain) {
+      dismissSaveWarning()
+    }
+
+    const action = pendingSave
+    setPendingSave(null)
+    if (typeof action === 'function') {
+      action()
+    }
+  }, [pendingSave])
+
+  const handleCancelSaveWarning = useCallback(() => {
+    setPendingSave(null)
+  }, [])
+
+  const handleDiscardAllChanges = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      return
+    }
+
+    if (!confirmDiscardAllChanges()) {
+      return
+    }
+
+    setEditingKeymap(null)
+  }, [hasUnsavedChanges])
 
   const handleCompile = useCallback(() => {
     fetch(`${config.apiBaseUrl}/keymap`, {
@@ -526,7 +588,7 @@ function App() {
       return {
         title: 'Save keymap/behavior/macro/combo/conditional-layer changes locally',
         disabled: !hasUnsavedChanges || saving,
-        onClick: handleCompile,
+        onClick: () => runSaveWithWarning(handleCompile),
         content: (
           <>
             {saving ? 'Saving' : 'Save Local'}
@@ -540,7 +602,7 @@ function App() {
       return {
         title: 'Commit keymap/behavior/macro/combo/conditional-layer changes to GitHub repository',
         disabled: !hasUnsavedChanges || saving,
-        onClick: handleCommitChanges,
+        onClick: () => runSaveWithWarning(handleCommitChanges),
         content: (
           <>
             {saving ? 'Saving' : 'Commit Changes'}
@@ -556,7 +618,7 @@ function App() {
           ? 'Save keymap/behavior/macro/combo/conditional-layer to selected local file (falls back to download if write fails)'
           : 'Save keymap/behavior/macro/combo/conditional-layer as download',
         disabled: !hasUnsavedChanges || saving,
-        onClick: handleSaveBrowserFile,
+        onClick: () => runSaveWithWarning(handleSaveBrowserFile),
         content: (
           <>
             {saving ? 'Saving' : 'Save Keymap'}
@@ -575,7 +637,8 @@ function App() {
     saving,
     handleCompile,
     handleCommitChanges,
-    handleSaveBrowserFile
+    handleSaveBrowserFile,
+    runSaveWithWarning
   ])
 
   return (
@@ -652,6 +715,17 @@ function App() {
                 <Icon name="circle-question" />
                 使い方
               </a>
+              {hasUnsavedChanges && (
+                <button
+                  type="button"
+                  className="app-discard-button"
+                  title="未保存の変更をすべて破棄する"
+                  disabled={saving}
+                  onClick={handleDiscardAllChanges}
+                >
+                  全変更を破棄
+                </button>
+              )}
               {saveControl && (
                 <button
                   type="button"
@@ -744,6 +818,12 @@ function App() {
           )}
         </DefinitionsContext.Provider>
       </Loader>
+      {pendingSave && (
+        <SaveWarningDialog
+          onConfirm={handleConfirmSaveWarning}
+          onCancel={handleCancelSaveWarning}
+        />
+      )}
       <GitHubLink className="github-link" />
     </>
   )
