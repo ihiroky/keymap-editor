@@ -18,7 +18,9 @@ import ComboEditor from './Combo/ComboEditor'
 import ConditionalLayerEditor from './ConditionalLayer/ConditionalLayerEditor'
 import KeymapDrawer from './Drawer/KeymapDrawer'
 import GitHubLink from './GitHubLink'
+import Icon from './Common/Icon'
 import Loader from './Common/Loader'
+import { readmeUrl } from './links'
 import github from './Pickers/Github/api'
 import { generateKeymap } from './shared/zmk/keymap'
 import { mergeBehaviorDefinitions, splitBehaviorDefinitions } from './shared/zmk/macro-helpers'
@@ -581,7 +583,7 @@ function App() {
       <Loader load={initialize}>
         <KeyboardPicker
           onSelect={handleKeyboardSelected}
-          hideKeysJpNotice={Boolean(currentKeymap)}
+          hideStartGuide={Boolean(currentKeymap)}
         />
         {source === 'browser-file' && sourceOther?.browserFile?.writeCapable === false && (
           <p>Direct file write is unavailable in this browser. Save will download the .keymap file.</p>
@@ -640,6 +642,16 @@ function App() {
               </button>
             </div>
             <div className="toolbar-actions">
+              <a
+                className="app-help-link"
+                href={readmeUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                title="使い方・制約・FAQ (README)"
+              >
+                <Icon name="circle-question" />
+                使い方
+              </a>
               {saveControl && (
                 <button
                   type="button"
