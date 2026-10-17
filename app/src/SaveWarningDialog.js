@@ -14,8 +14,9 @@ export default function SaveWarningDialog({ onConfirm, onCancel }) {
         <div className={styles.dialog} role="dialog" aria-modal="true" aria-label="save warning">
           <h2 className={styles.title}>保存前の確認</h2>
           <p className={styles.body}>
-            保存すると keymap 全体を再生成します。コメントや独自マクロなど、
-            解析できない記述は失われることがあります。
+            保存すると、元のファイルを基に編集した範囲だけを書き戻します。ただし、レイヤーや
+            Combo などの構造を変えた場合や、テンプレートから再生成する設定（.keymap.template
+            など）の場合は、コメントや独自マクロの一部が失われることがあります。
           </p>
           <label className={styles.checkbox}>
             <input

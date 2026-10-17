@@ -8,7 +8,7 @@ import uniq from 'lodash/uniq'
 
 import { renderTable } from './layout'
 import { isMacroCompatible } from './macro-helpers'
-import { collectEditableRanges, parseKeymapCode } from './keymap-code'
+import { collectBehaviourAliases, collectEditableRanges, parseKeymapCode } from './keymap-code'
 import { keymapTemplate } from './defaults'
 
 const EDITOR_METADATA_KEY = '__keymap_editor'
@@ -55,25 +55,48 @@ function stripEditorMetadata (keymap) {
   return rest
 }
 
-function getBehavioursUsed (keymap) {
+function resolveBehaviourAlias (value, behaviourAliases) {
+  if (value === undefined || value === null) {
+    return value
+  }
+
+  const text = String(value)
+  if (!behaviourAliases || behaviourAliases.size === 0) {
+    return text
+  }
+
+  const base = text.replace(/\(.*$/, '')
+  return behaviourAliases.has(base) ? behaviourAliases.get(base) : text
+}
+
+function getBehavioursUsed (keymap, behaviourAliases) {
   const keybinds = flatten([
     ...(keymap.layers || []),
     ...(keymap.sensor_layers || [])
   ])
-  return uniq(map(keybinds, 'value'))
+  return uniq(map(keybinds, 'value')
+    .map(value => resolveBehaviourAlias(value, behaviourAliases)))
 }
 
-function getBehaviourBindCode (binding) {
+function getBehaviourBindCode (binding, behaviourAliases) {
   const text = String(binding || '').trim()
-  if (!text.startsWith('&')) {
+  if (!text) {
     return ''
   }
 
   const [code] = text.split(/\s+/)
-  return code || ''
+  if (!code) {
+    return ''
+  }
+
+  if (code.startsWith('&')) {
+    return code
+  }
+
+  return resolveBehaviourAlias(code, behaviourAliases)
 }
 
-function getComboBehavioursUsed (keymap) {
+function getComboBehavioursUsed (keymap, behaviourAliases) {
   const combos = normalizeBehaviorList(keymap?.combos)
   const binds = []
 
@@ -82,7 +105,7 @@ function getComboBehavioursUsed (keymap) {
       ? combo.properties.bindings
       : []
     for (const binding of bindings) {
-      const code = getBehaviourBindCode(binding)
+      const code = getBehaviourBindCode(binding, behaviourAliases)
       if (code) {
         binds.push(code)
       }
@@ -105,8 +128,17 @@ function parseKeyBinding (binding) {
     return { value, params }
   }
 
-  const value = binding.match(/^(&.+?)\b/)[1]
-  const params = filter(binding.replace(/^&.+?\b\s*/, '')
+  const text = String(binding ?? '').trim()
+  if (!text) {
+    return { value: '', params: [] }
+  }
+
+  // behavior コードは通常 `&kp` のように `&` 始まりだが、
+  // `#define HOME_MOD &kp` のようなマクロ別名が使われることもあるため、
+  // `&` 前提で切り出すと例外になる。先頭トークンをそのまま behavior 値として扱う。
+  const valueMatch = text.match(/^[^\s]+/)
+  const value = valueMatch ? valueMatch[0] : ''
+  const params = filter(text.slice(value.length).trim()
     .split(' '))
     .map(parse)
 
@@ -903,18 +935,25 @@ function generateKeymap (layout, keymap, template, options = {}) {
   const sanitized = stripEditorMetadata(keymap)
   const encoded = encodeKeymap(sanitized)
   const templateToUse = template || editorTemplate || keymapTemplate
-  const fullCode = generateKeymapCode(layout, sanitized, encoded, templateToUse, options)
+  // `#define HOME_MOD &kp` のような別名を include 収集でも behavior 本体として扱う。
+  // これにより、別名だけを使っている keymap でも必要 include を正しく判定でき、
+  // 不要なフォールバック（セクション再生成）を避けられる。
+  const behaviourAliases = collectBehaviourAliases(keymap?.[EDITOR_METADATA_KEY]?.source_code)
+  const generationOptions = behaviourAliases.size > 0
+    ? Object.assign({}, options, { behaviourAliases })
+    : options
+  const fullCode = generateKeymapCode(layout, sanitized, encoded, templateToUse, generationOptions)
   const shouldUseRangePatch = !template
   const patchedCode = shouldUseRangePatch
-    ? tryGenerateKeymapCodeWithRangePatch(layout, keymap, sanitized, encoded, options)
+    ? tryGenerateKeymapCodeWithRangePatch(layout, keymap, sanitized, encoded, generationOptions)
     : null
-  const sourceKeymap = patchedCode ? parseSourceKeymapFromMetadata(keymap, options) : null
+  const sourceKeymap = patchedCode ? parseSourceKeymapFromMetadata(keymap, generationOptions) : null
   const includeSafe = patchedCode && sourceKeymap
     ? !hasMissingNewRequiredIncludes(
       keymap?.[EDITOR_METADATA_KEY]?.source_code,
       sourceKeymap,
       sanitized,
-      options
+      generationOptions
     )
     : false
 
@@ -954,10 +993,10 @@ function collectDynamicIncludeLinesForKeymap (keymap, options = {}) {
       ))
     })
     : keymap
-  const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes).map(
+  const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes, options.behaviourAliases).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
-  const comboHeaders = flatten(getComboBehavioursUsed(keymapForIncludes).map(
+  const comboHeaders = flatten(getComboBehavioursUsed(keymapForIncludes, options.behaviourAliases).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
   const customBehaviorHeaders = collectBehaviorTypeIncludes(
@@ -1514,10 +1553,10 @@ function generateKeymapCode (layout, keymap, encoded, template, options = {}) {
     })
     : keymap
 
-  const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes).map(
+  const behaviourHeaders = flatten(getBehavioursUsed(keymapForIncludes, options.behaviourAliases).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
-  const comboHeaders = flatten(getComboBehavioursUsed(keymapForIncludes).map(
+  const comboHeaders = flatten(getComboBehavioursUsed(keymapForIncludes, options.behaviourAliases).map(
     bind => get(behavioursByBind, [bind, 'includes'], [])
   ))
 
