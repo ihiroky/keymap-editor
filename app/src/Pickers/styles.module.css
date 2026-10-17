@@ -4,6 +4,78 @@
   padding: 6px 12px 0;
 }
 
+.guide {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface-2);
+  border-radius: 12px;
+  box-shadow: var(--theme-shadow-soft);
+}
+
+.guideTitle {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.guideLead {
+  margin: 0 0 12px;
+  line-height: 1.6;
+  color: var(--theme-text-muted);
+}
+
+.guideBlock {
+  margin: 0 0 12px;
+}
+
+.guideHeading {
+  margin: 0 0 6px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+.guideList,
+.guideSteps {
+  margin: 0;
+  padding-left: 1.4em;
+  line-height: 1.7;
+  color: var(--theme-text-muted);
+}
+
+.guideSteps {
+  list-style: decimal;
+}
+
+.guideCaution {
+  margin: 8px 0 0;
+  line-height: 1.6;
+  color: var(--theme-warning-text, var(--theme-text));
+}
+
+.guideFooter {
+  margin: 0 0 16px;
+  line-height: 1.6;
+  color: var(--theme-text-muted);
+}
+
+.guide a,
+.guideFooter a {
+  color: var(--theme-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.guide code {
+  font-size: 0.95em;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--theme-text);
+}
+
 .notice {
   margin: 0 0 16px;
   padding: 14px 16px;
@@ -11,6 +83,10 @@
   background: linear-gradient(135deg, var(--theme-warning-bg), var(--theme-note-bg));
   border-radius: 12px;
   box-shadow: var(--theme-shadow-soft);
+}
+
+.guide .notice {
+  margin-bottom: 0;
 }
 
 .noticeTitle {

@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 jest.mock('../config', () => ({
   enableLocal: false,
@@ -22,15 +22,22 @@ describe('KeyboardPicker', () => {
     window.localStorage.clear()
   })
 
-  test('shows keys_jp.h guidance with source and destination details on the top page', () => {
+  test('shows getting-started guide and keys_jp.h notice on the top page', () => {
     render(<KeyboardPicker onSelect={jest.fn()} />)
+
+    expect(screen.getByRole('region', { name: 'getting started' })).toBeTruthy()
+    expect(screen.getByText('はじめに（ZMK を使っている人へ）')).toBeTruthy()
+    expect(screen.getByText(/ビルドや commit \/ push は行いません/)).toBeTruthy()
+    expect(screen.getByText(/Open Config Folder/)).toBeTruthy()
 
     expect(screen.getByRole('note', { name: 'keys_jp.h notice' })).toBeTruthy()
     expect(screen.getByText('keys_jp.h について')).toBeTruthy()
-    expect(screen.getByText(/#include "keys_jp\.h"/)).toBeTruthy()
-    expect(screen.getByText(/このサービスでは、生成される keymap に/)).toBeTruthy()
-    expect(screen.getByText('zmk-config')).toBeTruthy()
-    expect(screen.getByText('config')).toBeTruthy()
+    expect(screen.getByText(/選択したキーコードに関わらず/)).toBeTruthy()
+
+    const note = within(screen.getByRole('note', { name: 'keys_jp.h notice' }))
+    expect(note.getByText(/#include "keys_jp\.h"/)).toBeTruthy()
+    expect(note.getByText('zmk-config')).toBeTruthy()
+    expect(note.getByText('config')).toBeTruthy()
 
     const link = screen.getByRole('link', {
       name: 'https://github.com/ihiroky/zmk-config-roBa/blob/main/config/keys_jp.h'
@@ -40,20 +47,22 @@ describe('KeyboardPicker', () => {
     expect(link.getAttribute('rel')).toContain('noreferrer')
   })
 
-  test('keeps the notice visible for browser-file initial source as well', () => {
+  test('keeps the guide visible for browser-file initial source as well', () => {
     render(<KeyboardPicker onSelect={jest.fn()} />)
 
     fireEvent.change(screen.getByLabelText('Source'), {
       target: { value: '1' }
     })
 
+    expect(screen.getByRole('region', { name: 'getting started' })).toBeTruthy()
     expect(screen.getByRole('note', { name: 'keys_jp.h notice' })).toBeTruthy()
     expect(screen.getByText('Browser File Picker Mock')).toBeTruthy()
   })
 
-  test('hides the notice after a keymap has been loaded', () => {
-    render(<KeyboardPicker onSelect={jest.fn()} hideKeysJpNotice />)
+  test('hides the guide after a keymap has been loaded', () => {
+    render(<KeyboardPicker onSelect={jest.fn()} hideStartGuide />)
 
+    expect(screen.queryByRole('region', { name: 'getting started' })).toBeNull()
     expect(screen.queryByRole('note', { name: 'keys_jp.h notice' })).toBeNull()
   })
 })
