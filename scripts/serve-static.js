@@ -3,18 +3,18 @@
  * ビルド済みアプリ (app/build) を、定義データごと静的ホストする簡易サーバー。
  *
  * - GitHub Pages (`https://<user>.github.io/<repo>/`) と同じ構造で公開する。
- *   マウント先はビルド済み index.html から自動判定し、BASE_PATH で上書きできる。
+ *   マウント先はビルド済み index.html が参照するアセットのパスから自動判定する。
+ *   ビルド時の PUBLIC_URL と必ず一致するため、静的配信のパスも整合する。
  * - 定義データ (`zmk-data/*.json`) もアプリと同じディレクトリに置かれるため、
  *   ブラウザは HTTP GET でそのまま取得できる。
  *
  * 使い方:
- *   cd app && PUBLIC_URL=/keymap-editor npm run build
+ *   cd app && npm run build:static
  *   npm run serve
  *   # -> http://localhost:8080/keymap-editor/
  *
  * 環境変数:
  *   PORT      待ち受けポート (既定: 8080)
- *   BASE_PATH マウント先。未指定なら index.html から自動判定
  */
 const fs = require('fs')
 const http = require('http')
@@ -45,16 +45,14 @@ const MIME_TYPES = {
 }
 
 function detectBasePath () {
-  if (typeof process.env.BASE_PATH === 'string') {
-    return process.env.BASE_PATH.replace(/\/+$/, '')
-  }
-
   if (!fs.existsSync(INDEX_FILE)) {
     return ''
   }
 
   // ビルド済み index.html のアセット参照 (例: src="/keymap-editor/static/...") から
-  // PUBLIC_URL 相当のプレフィックスを取り出す。
+  // PUBLIC_URL 相当のプレフィックスを取り出す。これがビルドに埋め込まれた
+  // アセット / 定義データの URL と一致するため、サーバーはこのパス配下でのみ
+  // 公開する必要がある。
   const html = fs.readFileSync(INDEX_FILE, 'utf8')
   const match = html.match(/(?:src|href)="([^"]*?)\/static\//)
   if (match) {
@@ -140,7 +138,7 @@ const server = http.createServer((req, res) => {
 
 if (!fs.existsSync(INDEX_FILE)) {
   console.error(`[serve-static] ビルド済みアプリが見つかりません: ${INDEX_FILE}`)
-  console.error('[serve-static] 先に `cd app && PUBLIC_URL=/keymap-editor npm run build` を実行してください。')
+  console.error('[serve-static] 先に `cd app && npm run build:static` を実行してください。')
   process.exit(1)
 }
 
