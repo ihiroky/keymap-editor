@@ -202,6 +202,20 @@ button:disabled {
   border-color: var(--selection);
 }
 
+.app-discard-button {
+  cursor: pointer;
+  background-color: transparent;
+  color: var(--theme-warning-text, var(--theme-text));
+  font-size: 15px;
+  border: 1px solid var(--theme-warning-border, var(--theme-border));
+  border-radius: 6px;
+  padding: 7px 12px;
+}
+
+.app-discard-button:hover {
+  background-color: var(--theme-warning-bg, rgba(0, 0, 0, 0.08));
+}
+
 .app-save-button[disabled] {
   background-color: var(--theme-border-strong);
   cursor: not-allowed;

@@ -28,3 +28,15 @@ export function confirmItemDeletion(options = {}) {
 
   return window.confirm(buildItemDeletionMessage(options))
 }
+
+export function buildDiscardAllMessage() {
+  return 'Discard all unsaved changes? This cannot be undone.'
+}
+
+export function confirmDiscardAllChanges() {
+  if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+    return true
+  }
+
+  return window.confirm(buildDiscardAllMessage())
+}
