@@ -21,6 +21,7 @@ import GitHubLink from './GitHubLink'
 import Icon from './Common/Icon'
 import Loader from './Common/Loader'
 import SaveWarningDialog from './SaveWarningDialog'
+import SavePreviewDialog from './SavePreviewDialog'
 import { readmeUrl } from './links'
 import { confirmDiscardAllChanges } from './shared/confirm-destructive'
 import { dismissSaveWarning, isSaveWarningDismissed } from './shared/save-warning'
@@ -181,6 +182,7 @@ function App() {
   const [saveError, setSaveError] = useState(null)
   const [activeTab, setActiveTab] = useState('keymap')
   const [pendingSave, setPendingSave] = useState(null)
+  const [pendingPreview, setPendingPreview] = useState(null)
 
   const baseKeymap = keymap
   const currentKeymap = editingKeymap || keymap
@@ -418,23 +420,25 @@ function App() {
     setEditingKeymap
   ])
 
-  const handleSaveBrowserFile = useMemo(() => function () {
+  const generateBrowserFileCode = useCallback(() => (
+    generateKeymap(layout, currentKeymap, undefined, {
+      sensors,
+      behaviours: mergedBehaviours,
+      behaviourTypes: definitions?.behaviourTypes || []
+    }).code
+  ), [layout, currentKeymap, sensors, mergedBehaviours, definitions])
+
+  const performSaveBrowserFile = useMemo(() => function (generatedCode) {
     const browserFile = sourceOther?.browserFile
 
     ;(async function () {
-      if (!currentKeymap) {
+      if (!currentKeymap || !generatedCode) {
         return
       }
 
       try {
         setSaving(true)
         setSaveError(null)
-
-        const generated = generateKeymap(layout, currentKeymap, undefined, {
-          sensors,
-          behaviours: mergedBehaviours,
-          behaviourTypes: definitions?.behaviourTypes || []
-        })
 
         let writeError = null
         if (browserFile?.writeCapable && browserFile?.keymapHandle) {
@@ -453,7 +457,7 @@ function App() {
             }
 
             const writeStream = await writable.createWritable()
-            await writeStream.write(generated.code)
+            await writeStream.write(generatedCode)
             await writeStream.close()
           } catch (err) {
             writeError = err
@@ -461,7 +465,7 @@ function App() {
         }
 
         if (writeError || !browserFile?.writeCapable || !browserFile?.keymapHandle) {
-          downloadTextFile(generated.code, getBrowserFileDownloadName(browserFile))
+          downloadTextFile(generatedCode, getBrowserFileDownloadName(browserFile))
           if (writeError) {
             setSaveError(`Saved as download because direct write failed: ${writeError?.message || String(writeError)}`)
           }
@@ -477,16 +481,69 @@ function App() {
     })()
   }, [
     sourceOther,
-    layout,
-    sensors,
     currentKeymap,
-    mergedBehaviours,
-    definitions,
     setSaving,
     setSaveError,
     setKeymap,
     setEditingKeymap
   ])
+
+  // 保存の入口。元ファイルのテキストがある場合は保存前プレビュー（差分）を表示し、
+  // 無い場合（GitHub / Local など）は従来どおり再生成の注意を表示する。
+  const handleSaveBrowserFile = useMemo(() => function () {
+    if (!currentKeymap) {
+      return
+    }
+
+    let generatedCode
+    try {
+      generatedCode = generateBrowserFileCode()
+    } catch (err) {
+      setSaveError(err?.message || String(err))
+      return
+    }
+
+    const originalCode = sourceOther?.browserFile?.originalCode
+    if (typeof originalCode === 'string') {
+      setPendingPreview({ generatedCode })
+      return
+    }
+
+    runSaveWithWarning(() => performSaveBrowserFile(generatedCode))
+  }, [
+    currentKeymap,
+    generateBrowserFileCode,
+    sourceOther,
+    runSaveWithWarning,
+    performSaveBrowserFile,
+    setSaveError
+  ])
+
+  const handleConfirmPreviewSave = useCallback(() => {
+    const pending = pendingPreview
+    setPendingPreview(null)
+    if (pending?.generatedCode) {
+      performSaveBrowserFile(pending.generatedCode)
+    }
+  }, [pendingPreview, performSaveBrowserFile])
+
+  const handleCancelPreviewSave = useCallback(() => {
+    setPendingPreview(null)
+  }, [])
+
+  const handleDownloadBackup = useCallback(() => {
+    const browserFile = sourceOther?.browserFile
+    const originalCode = browserFile?.originalCode
+    if (typeof originalCode !== 'string') {
+      return
+    }
+
+    const name = browserFile?.baseName
+      ? `${browserFile.baseName}.keymap.bak`
+      : 'keymap.keymap.bak'
+    downloadTextFile(originalCode, name)
+  }, [sourceOther])
+
 
   const handleKeyboardSelected = useMemo(() => function (event) {
     const { source, layout, keymap, sensors, ...other } = event
@@ -618,7 +675,7 @@ function App() {
           ? 'Save keymap/behavior/macro/combo/conditional-layer to selected local file (falls back to download if write fails)'
           : 'Save keymap/behavior/macro/combo/conditional-layer as download',
         disabled: !hasUnsavedChanges || saving,
-        onClick: () => runSaveWithWarning(handleSaveBrowserFile),
+        onClick: handleSaveBrowserFile,
         content: (
           <>
             {saving ? 'Saving' : 'Save Keymap'}
@@ -822,6 +879,15 @@ function App() {
         <SaveWarningDialog
           onConfirm={handleConfirmSaveWarning}
           onCancel={handleCancelSaveWarning}
+        />
+      )}
+      {pendingPreview && (
+        <SavePreviewDialog
+          originalCode={sourceOther?.browserFile?.originalCode}
+          generatedCode={pendingPreview.generatedCode}
+          onBackup={handleDownloadBackup}
+          onConfirm={handleConfirmPreviewSave}
+          onCancel={handleCancelPreviewSave}
         />
       )}
       <GitHubLink className="github-link" />

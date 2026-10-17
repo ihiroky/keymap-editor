@@ -21,9 +21,10 @@ jest.mock('./Pickers/KeyboardPicker', () => function MockKeyboardPicker ({ onSel
 
   React.useEffect(() => {
     onSelect({
-      source: 'local',
-      layout: [],
+      source: mockPickerSource,
+      layout: mockPickerLayout,
       sensors: [],
+      browserFile: mockPickerBrowserFile,
       keymap: {
         layer_names: ['Base'],
         layers: [[{ value: '&none', params: [] }]],
@@ -118,6 +119,9 @@ let mockLastBehaviorProps = null
 let mockLastMacroProps = null
 let mockLastComboProps = null
 let mockLastConditionalLayerProps = null
+let mockPickerSource = 'local'
+let mockPickerBrowserFile = undefined
+let mockPickerLayout = []
 
 jest.mock('./Behavior/BehaviorEditor', () => function MockBehaviorEditor (props) {
   mockLastBehaviorProps = props
@@ -238,6 +242,9 @@ describe('App macro/behavior split integration', () => {
     mockLastMacroProps = null
     mockLastComboProps = null
     mockLastConditionalLayerProps = null
+    mockPickerSource = 'local'
+    mockPickerBrowserFile = undefined
+    mockPickerLayout = []
   })
 
   test('shows Macro/Combo/Conditional Layers tabs and splits editor keymap definitions', async () => {
@@ -446,5 +453,37 @@ describe('App macro/behavior split integration', () => {
       expect(screen.queryByRole('dialog', { name: 'save warning' })).toBeNull()
     })
     expect(screen.getByRole('button', { name: 'Save Local' }).disabled).toBe(false)
+  })
+
+  test('shows the save preview with diff for browser-file saves', async () => {
+    mockPickerSource = 'browser-file'
+    mockPickerLayout = [{ x: 0, y: 0, label: 'A' }]
+    mockPickerBrowserFile = {
+      baseName: 'roBa',
+      writeCapable: false,
+      originalCode: '// old comment\n&kp A'
+    }
+
+    render(<App />)
+    await screen.findByText('Keymap')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Behavior' }))
+    await waitFor(() => {
+      expect(mockLastBehaviorProps).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Behavior Update' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save Keymap' }).disabled).toBe(false)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Keymap' }))
+
+    expect(await screen.findByRole('dialog', { name: 'save preview' })).toBeTruthy()
+    expect(screen.getByText(/変更: 追加/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'save preview' })).toBeNull()
+    })
   })
 })

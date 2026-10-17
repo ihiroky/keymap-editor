@@ -43,12 +43,15 @@ function BrowserFilePicker (props) {
       throw new Error('Failed to parse .keymap file')
     }
 
+    // 保存前の差分表示・バックアップ用に、読み込んだ元テキストを保持しておく。
+    const context = { ...sourceContext, originalCode: keymapContent }
+
     onSelect({
       layout,
       sensors,
       keymap: parseKeymap(codeKeymap),
-      sourceContext,
-      browserFile: sourceContext
+      sourceContext: context,
+      browserFile: context
     })
   }, [onSelect])
 
