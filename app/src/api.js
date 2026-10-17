@@ -5,15 +5,15 @@ export function healthcheck() {
 }
 
 export function loadBehaviours() {
-  return fetch(`${config.apiBaseUrl}/behaviors`).then(response => response.json())
+  return fetch(`${config.definitionsBaseUrl}/behaviors.json`).then(response => response.json())
 }
 
 export function loadBehaviourTypes() {
-  return fetch(`${config.apiBaseUrl}/behavior-types`).then(response => response.json())
+  return fetch(`${config.definitionsBaseUrl}/behavior-types.json`).then(response => response.json())
 }
 
 export function loadKeycodes() {
-  return fetch(`${config.apiBaseUrl}/keycodes`).then(response => response.json())
+  return fetch(`${config.definitionsBaseUrl}/keycodes.json`).then(response => response.json())
 }
 
 export function loadKeymap() {

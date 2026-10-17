@@ -162,14 +162,25 @@ A. `&kp` などのキーコードを使う behavior を含むと、選択した�
 
 ## データの扱い
 
-- behavior や keycode などの **定義はサーバーから取得** します。
-- ブラウザファイル版では **keymap の読み書きはローカルで完結** し、keymap 自体はサーバーへ送信されません。
+- behavior や keycode などの **定義は、アプリと同じディレクトリに静的ホストした JSON（`<PUBLIC_URL>/zmk-data/*.json`）を HTTP GET で取得** します。API サーバーは不要です。
+- ブラウザファイル版では **keymap の読み書きはローカルで完結** し、keymap 自体は外部へ送信されません。
 
 ---
 
 ## ローカルで動かす・開発する
 
 リポジトリを clone して手元で動かす場合は [running-locally.md](running-locally.md) を参照してください。
+
+### ビルド済みアプリを静的ホストする
+
+API サーバーを使わず、定義データごと手元で静的ホストする場合：
+
+```bash
+cd app && PUBLIC_URL=/keymap-editor npm run build && cd ..
+npm run serve   # -> http://localhost:8080/keymap-editor/
+```
+
+`npm run build` の前に `api/services/zmk/data/*.json` から `app/public/zmk-data/*.json` へ自動同期されます（`npm run sync:zmk-data` で単体実行も可能）。
 
 ## ライセンス
 
